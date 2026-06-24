@@ -1,10 +1,20 @@
-
+```html
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
 <meta charset="UTF-8">
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vehicle Parking Management</title>
+
+<title>
+Vehicle Parking Management System
+</title>
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 
 <style>
 
@@ -14,73 +24,103 @@
     padding:0;
 }
 
+
 body{
+
     font-family:Arial, sans-serif;
     background:#f4f6f9;
+
 }
+
 
 header{
+
     background:#1976d2;
     color:white;
-    text-align:center;
     padding:15px;
+    text-align:center;
+
 }
+
 
 .container{
+
     padding:20px;
+
 }
 
+
 button{
+
     background:#1976d2;
     color:white;
     border:none;
     padding:10px 15px;
     border-radius:5px;
     cursor:pointer;
-    margin-right:5px;
-    margin-bottom:10px;
+    margin:5px;
+
 }
 
+
 button:hover{
-    background:#145ca8;
+
+    background:#0d5ca8;
+
 }
+
 
 input,
 select{
+
     width:100%;
     padding:10px;
-    margin-bottom:10px;
+    margin:8px 0;
     border:1px solid #ccc;
     border-radius:5px;
+
 }
+
+
+.level{
+
+    margin-top:25px;
+
+}
+
 
 .vehicle-card,
 .history-card{
+
     background:white;
     padding:15px;
     margin:10px 0;
     border-radius:8px;
-    box-shadow:0 2px 5px rgba(0,0,0,0.1);
+    box-shadow:0 2px 5px rgba(0,0,0,.1);
     cursor:pointer;
+
 }
+
 
 .vehicle-card:hover{
+
     background:#eef5ff;
+
 }
 
-.level{
-    margin-top:25px;
-}
 
 .search-card{
-    background:#fff8e1;
-    padding:10px;
+
+    background:#fff3cd;
+    padding:12px;
     margin:10px 0;
-    border-left:5px solid orange;
-    border-radius:5px;
+    border-radius:6px;
+
 }
 
+
 .modal{
+
     display:none;
     position:fixed;
     top:0;
@@ -88,309 +128,702 @@ select{
     width:100%;
     height:100%;
     background:rgba(0,0,0,.5);
+
 }
 
+
 .modal-content{
+
     background:white;
     width:90%;
     max-width:500px;
     margin:50px auto;
     padding:20px;
     border-radius:10px;
+
 }
+
+
 
 #historyPage{
+
     display:none;
+
 }
 
-.badge-active{
-    color:green;
-    font-weight:bold;
-}
-
-.badge-history{
-    color:red;
-    font-weight:bold;
-}
 
 </style>
+
 </head>
+
 
 <body>
 
+
 <header>
-    <h2>Vehicle Parking Management System</h2>
+
+<h2>
+Vehicle Parking Management System
+</h2>
+
 </header>
+
+
 
 <div class="container">
 
-    <!-- HOME PAGE -->
-    <div id="homePage">
 
-        <input
-            type="text"
-            id="searchInput"
-            placeholder="Search by plate, driver, type, lot..."
-            onkeyup="searchVehicles()"
-        >
 
-        <button onclick="showAddForm()">
-            + Add Vehicle
-        </button>
+<!-- HOME PAGE -->
 
-        <button onclick="showHistoryPage()">
-            History
-        </button>
+<div id="homePage">
 
-        <div id="searchResults"></div>
 
-        <div id="parkingArea"></div>
+<input 
+type="text"
+id="searchInput"
+placeholder="Search vehicle..."
+onkeyup="searchVehicles()"
+>
 
-    </div>
 
-    <!-- HISTORY PAGE -->
-    <div id="historyPage">
+<button onclick="showAddForm()">
++ Add Vehicle
+</button>
 
-        <h2>Vehicle History</h2>
 
-        <br>
+<button onclick="showHistoryPage()">
+History
+</button>
 
-        <button onclick="showHomePage()">
-            ← Back Home
-        </button>
 
-        <input
-            type="text"
-            id="historySearch"
-            placeholder="Search History..."
-            onkeyup="renderHistory()"
-        >
 
-        <div id="historyContainer"></div>
+<div id="searchResults"></div>
 
-    </div>
+
+<div id="parkingArea"></div>
+
+
 
 </div>
+
+
+
+
+<!-- HISTORY PAGE -->
+
+<div id="historyPage">
+
+
+<h2>
+Vehicle History
+</h2>
+
+
+<br>
+
+
+<button onclick="showHomePage()">
+← Back
+</button>
+
+
+
+<input
+type="text"
+id="historySearch"
+placeholder="Search history..."
+onkeyup="renderHistory()"
+>
+
+
+
+<div id="historyContainer"></div>
+
+
+</div>
+
+
+
+
+</div>
+
+
+
+
 
 <!-- ADD VEHICLE MODAL -->
+
+
 <div class="modal" id="addModal">
 
-    <div class="modal-content">
 
-        <h3>Add Vehicle</h3>
+<div class="modal-content">
 
-        <br>
 
-        <input id="driver" placeholder="Driver Name">
+<h3>
+Add Vehicle
+</h3>
 
-        <input id="type" placeholder="Vehicle Type">
 
-        <input id="variant" placeholder="Variant">
+<input 
+id="driver"
+placeholder="Driver Name"
+>
 
-        <input id="plate" placeholder="License Plate">
 
-        <select id="level">
-            <option>Level 1</option>
-            <option>Level 2</option>
-            <option>Level 3</option>
-        </select>
+<input 
+id="type"
+placeholder="Vehicle Type"
+>
 
-        <input id="lot" placeholder="Parking Lot">
 
-        <button onclick="addVehicle()">
-            Save Vehicle
-        </button>
+<input 
+id="variant"
+placeholder="Variant"
+>
 
-        <button onclick="closeModal()">
-            Cancel
-        </button>
 
-    </div>
+<input 
+id="plate"
+placeholder="License Plate"
+>
+
+
+
+<select id="level">
+
+<option>
+Level 1
+</option>
+
+<option>
+Level 2
+</option>
+
+<option>
+Level 3
+</option>
+
+</select>
+
+
+
+<input
+id="lot"
+placeholder="Parking Lot"
+>
+
+
+
+<button onclick="addVehicle()">
+
+Save
+
+</button>
+
+
+
+<button onclick="closeModal()">
+
+Cancel
+
+</button>
+
+
 
 </div>
 
-<!-- DETAILS MODAL -->
+</div>
+
+
+
+
+
+
+<!-- VEHICLE DETAILS MODAL -->
+
+
 <div class="modal" id="detailsModal">
 
-    <div class="modal-content" id="detailsContent"></div>
+
+<div class="modal-content" id="detailsContent">
+
 
 </div>
+
+
+</div>
+
+
+
+
+
 
 <script>
 
-let vehicles =
-JSON.parse(localStorage.getItem("vehicles")) || [];
 
-let history =
-JSON.parse(localStorage.getItem("history")) || [];
+// =============================
+// SUPABASE CONNECTION
+// =============================
 
-function saveData(){
 
-    localStorage.setItem(
-        "vehicles",
-        JSON.stringify(vehicles)
-    );
+const SUPABASE_URL =
+"https://jzjjmpgonqbusumcryaj.supabase.co";
 
-    localStorage.setItem(
-        "history",
-        JSON.stringify(history)
-    );
-}
 
-function showAddForm(){
-    document.getElementById("addModal").style.display="block";
-}
 
-function closeModal(){
-    document.getElementById("addModal").style.display="none";
-    document.getElementById("detailsModal").style.display="none";
-}
+const SUPABASE_KEY =
+"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6amptcGdvbnFidXN1bWNyeWFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyODA0NTgsImV4cCI6MjA5Nzg1NjQ1OH0.k5A1OtUbsUT9UBZOD4-3T4-Mw-VHK9SWkzwF8Fp3NoM";
 
-function addVehicle(){
 
-    const vehicle = {
 
-        id:Date.now(),
+const supabaseClient =
+supabase.createClient(
+SUPABASE_URL,
+SUPABASE_KEY
+);
 
-        driver:
-        document.getElementById("driver").value,
 
-        type:
-        document.getElementById("type").value,
 
-        variant:
-        document.getElementById("variant").value,
+// =============================
+// GLOBAL VARIABLES
+// =============================
 
-        plate:
-        document.getElementById("plate").value,
 
-        level:
-        document.getElementById("level").value,
+let vehicles = [];
 
-        lot:
-        document.getElementById("lot").value,
+let history = [];
 
-        checkInTime:
-        new Date().toLocaleString()
-    };
 
-    vehicles.push(vehicle);
 
-    saveData();
+// =============================
+// LOAD VEHICLES FROM SUPABASE
+// =============================
+
+async function loadVehicles(){
+
+    const {data,error} = await supabaseClient
+    .from("vehicles")
+    .select("*")
+    .order("id",{ascending:true});
+
+
+    if(error){
+
+        console.log(error);
+        alert("Unable to load vehicles");
+
+        return;
+    }
+
+
+    vehicles = data || [];
 
     renderVehicles();
 
-    closeModal();
 }
+
+
+
+// =============================
+// DISPLAY PARKING LEVELS
+// =============================
+
 
 function renderVehicles(){
 
     let html="";
 
+
     ["Level 1","Level 2","Level 3"].forEach(level=>{
 
-        html += `<div class="level">
-        <h2>${level}</h2>`;
 
-        const levelVehicles =
-        vehicles.filter(v=>v.level===level);
+        html += `
+        <div class="level">
+
+        <h2>${level}</h2>
+        `;
+
+
+        let levelVehicles =
+        vehicles.filter(
+            v=>v.level===level
+        );
+
 
         if(levelVehicles.length===0){
 
-            html += "<p>No vehicles parked.</p>";
+            html += `
+            <p>
+            No vehicles parked.
+            </p>
+            `;
+
         }
+
 
         levelVehicles.forEach(v=>{
 
+
             html += `
-            <div
-                class="vehicle-card"
-                onclick="showDetails(${v.id})">
 
-                <strong>${v.plate}</strong><br>
+            <div class="vehicle-card"
+            onclick="showDetails(${v.id})">
 
-                Driver: ${v.driver}<br>
 
-                Lot: ${v.lot}
+            <strong>
+            ${v.plate}
+            </strong>
+
+            <br>
+
+            Driver:
+            ${v.driver}
+
+            <br>
+
+            Lot:
+            ${v.lot}
+
 
             </div>
+
             `;
+
+
         });
 
+
+
         html += "</div>";
+
     });
+
+
 
     document.getElementById(
         "parkingArea"
     ).innerHTML = html;
+
+
 }
+
+
+
+
+
+// =============================
+// ADD VEHICLE
+// =============================
+
+
+async function addVehicle(){
+
+
+    let vehicle={
+
+        plate:
+        document.getElementById("plate").value,
+
+
+        driver:
+        document.getElementById("driver").value,
+
+
+        vehicle_type:
+        document.getElementById("type").value,
+
+
+        variant:
+        document.getElementById("variant").value,
+
+
+        level:
+        document.getElementById("level").value,
+
+
+        lot:
+        document.getElementById("lot").value,
+
+
+        check_in:
+        new Date().toISOString()
+
+    };
+
+
+
+    const {error} =
+    await supabaseClient
+    .from("vehicles")
+    .insert([vehicle]);
+
+
+
+    if(error){
+
+        console.log(error);
+
+        alert(error.message);
+
+        return;
+
+    }
+
+
+
+    closeModal();
+
+
+    clearForm();
+
+
+    loadVehicles();
+
+
+}
+
+
+
+
+
+function clearForm(){
+
+    document.getElementById("driver").value="";
+    document.getElementById("type").value="";
+    document.getElementById("variant").value="";
+    document.getElementById("plate").value="";
+    document.getElementById("lot").value="";
+
+}
+
+
+
+
+// =============================
+// VEHICLE DETAILS
+// =============================
+
 
 function showDetails(id){
 
-    const v =
-    vehicles.find(x=>x.id===id);
+
+    let vehicle =
+    vehicles.find(
+        v=>v.id===id
+    );
+
+
 
     document.getElementById(
         "detailsContent"
     ).innerHTML = `
 
-    <h3>Vehicle Details</h3>
+
+    <h3>
+    Vehicle Details
+    </h3>
+
 
     <br>
 
-    <p><b>Driver:</b> ${v.driver}</p>
-    <p><b>Vehicle Type:</b> ${v.type}</p>
-    <p><b>Variant:</b> ${v.variant}</p>
-    <p><b>Parking Level:</b> ${v.level}</p>
-    <p><b>Parking Lot:</b> ${v.lot}</p>
-    <p><b>License Plate:</b> ${v.plate}</p>
-    <p><b>Check In:</b> ${v.checkInTime}</p>
+
+    <p>
+    <b>Driver:</b>
+    ${vehicle.driver}
+    </p>
+
+
+    <p>
+    <b>Vehicle Type:</b>
+    ${vehicle.vehicle_type}
+    </p>
+
+
+    <p>
+    <b>Variant:</b>
+    ${vehicle.variant}
+    </p>
+
+
+    <p>
+    <b>License Plate:</b>
+    ${vehicle.plate}
+    </p>
+
+
+    <p>
+    <b>Level:</b>
+    ${vehicle.level}
+    </p>
+
+
+    <p>
+    <b>Parking Lot:</b>
+    ${vehicle.lot}
+    </p>
+
+
+    <p>
+    <b>Check In:</b>
+    ${new Date(vehicle.check_in)
+    .toLocaleString()}
+    </p>
+
 
     <br>
 
-    <button onclick="moveOut(${v.id})">
-        Move Out Vehicle
+
+    <button onclick="moveOut(${vehicle.id})">
+
+    Move Out
+
     </button>
+
 
     <button onclick="closeModal()">
-        Close
+
+    Close
+
     </button>
+
+
     `;
+
+
 
     document.getElementById(
         "detailsModal"
     ).style.display="block";
+
+
 }
 
-function moveOut(id){
 
-    const index =
-    vehicles.findIndex(v=>v.id===id);
 
-    if(index > -1){
 
-        const vehicle =
-        vehicles.splice(index,1)[0];
 
-        vehicle.checkOutTime =
-        new Date().toLocaleString();
+// =============================
+// MOVE VEHICLE OUT
+// =============================
 
-        history.push(vehicle);
 
-        saveData();
+async function moveOut(id){
 
-        renderVehicles();
 
-        closeModal();
+    let vehicle =
+    vehicles.find(
+        v=>v.id===id
+    );
+
+
+
+    if(!vehicle)
+    return;
+
+
+
+    let historyRecord={
+
+
+        plate:
+        vehicle.plate,
+
+
+        driver:
+        vehicle.driver,
+
+
+        vehicle_type:
+        vehicle.vehicle_type,
+
+
+        variant:
+        vehicle.variant,
+
+
+        level:
+        vehicle.level,
+
+
+        lot:
+        vehicle.lot,
+
+
+        check_in:
+        vehicle.check_in,
+
+
+        check_out:
+        new Date().toISOString()
+
+    };
+
+
+
+    const historyResult =
+    await supabaseClient
+    .from("history")
+    .insert([historyRecord]);
+
+
+
+    if(historyResult.error){
+
+        console.log(historyResult.error);
+
+        return;
+
     }
+
+
+
+    const deleteResult =
+    await supabaseClient
+    .from("vehicles")
+    .delete()
+    .eq("id",id);
+
+
+
+    if(deleteResult.error){
+
+        console.log(deleteResult.error);
+
+        return;
+
+    }
+
+
+
+    closeModal();
+
+
+    loadVehicles();
+
+
 }
 
-function searchVehicles(){
 
-    const keyword =
+
+
+
+
+// =============================
+// SEARCH ACTIVE VEHICLES
+// =============================
+
+
+async function searchVehicles(){
+
+
+    let keyword =
     document.getElementById(
         "searchInput"
     ).value.toLowerCase();
+
+
 
     if(keyword===""){
 
@@ -399,177 +832,300 @@ function searchVehicles(){
         ).innerHTML="";
 
         return;
+
     }
 
-    let html="<h3>Search Results</h3>";
 
-    const results = [];
 
-    vehicles.forEach(v=>{
+    let results =
+    vehicles.filter(v=>{
 
-        const text =
-        JSON.stringify(v).toLowerCase();
-
-        if(text.includes(keyword)){
-
-            results.push({
-                ...v,
-                status:"Active"
-            });
-        }
-    });
-
-    history.forEach(v=>{
-
-        const text =
-        JSON.stringify(v).toLowerCase();
-
-        if(text.includes(keyword)){
-
-            results.push({
-                ...v,
-                status:"History"
-            });
-        }
-    });
-
-    if(results.length===0){
-
-        html += `
-        <div class="search-card">
-            No results found.
-        </div>`;
-    }
-
-    results.forEach(v=>{
-
-        html += `
-        <div class="search-card">
-
-            <strong>${v.plate}</strong><br>
-
-            Driver: ${v.driver}<br>
-
-            Lot: ${v.lot}<br>
-
-            Status:
-            <span class="${
-                v.status==="Active"
-                ? "badge-active"
-                : "badge-history"
-            }">
-                ${v.status}
-            </span>
-
-        </div>`;
-    });
-
-    document.getElementById(
-        "searchResults"
-    ).innerHTML = html;
-}
-
-function showHistoryPage(){
-
-    document.getElementById(
-        "homePage"
-    ).style.display="none";
-
-    document.getElementById(
-        "historyPage"
-    ).style.display="block";
-
-    renderHistory();
-}
-
-function showHomePage(){
-
-    document.getElementById(
-        "historyPage"
-    ).style.display="none";
-
-    document.getElementById(
-        "homePage"
-    ).style.display="block";
-}
-
-function renderHistory(){
-
-    const keyword =
-    document.getElementById(
-        "historySearch"
-    ).value.toLowerCase();
-
-    let html="";
-
-    const filtered =
-    history.filter(v=>{
 
         return JSON.stringify(v)
         .toLowerCase()
         .includes(keyword);
+
+
     });
 
-    if(filtered.length===0){
 
-        html =
-        "<p>No history records found.</p>";
+
+    let html="<h3>Search Results</h3>";
+
+
+
+    results.forEach(v=>{
+
+
+        html+=`
+
+        <div class="search-card">
+
+
+        <b>
+        ${v.plate}
+        </b>
+
+        <br>
+
+        Driver:
+        ${v.driver}
+
+        <br>
+
+        Level:
+        ${v.level}
+
+        <br>
+
+        Lot:
+        ${v.lot}
+
+
+        </div>
+
+        `;
+
+
+    });
+
+
+
+    if(results.length===0){
+
+        html+="No vehicles found";
+
     }
 
-    filtered.forEach(v=>{
 
-        html += `
+
+    document.getElementById(
+        "searchResults"
+    ).innerHTML=html;
+
+
+}
+
+
+
+
+
+
+
+// =============================
+// HISTORY PAGE
+// =============================
+
+
+function showHistoryPage(){
+
+
+    document.getElementById(
+        "homePage"
+    ).style.display="none";
+
+
+    document.getElementById(
+        "historyPage"
+    ).style.display="block";
+
+
+    renderHistory();
+
+}
+
+
+
+
+
+function showHomePage(){
+
+
+    document.getElementById(
+        "historyPage"
+    ).style.display="none";
+
+
+    document.getElementById(
+        "homePage"
+    ).style.display="block";
+
+
+}
+
+
+
+
+
+
+
+async function renderHistory(){
+
+
+    let keyword =
+    document.getElementById(
+        "historySearch"
+    ).value.toLowerCase();
+
+
+
+    const {data,error} =
+    await supabaseClient
+    .from("history")
+    .select("*")
+    .order("id",{ascending:false});
+
+
+
+    if(error){
+
+        console.log(error);
+
+        return;
+
+    }
+
+
+
+    let html="";
+
+
+
+    let records =
+    data.filter(v=>{
+
+
+        return JSON.stringify(v)
+        .toLowerCase()
+        .includes(keyword);
+
+
+    });
+
+
+
+
+    records.forEach(v=>{
+
+
+        html+=`
+
         <div class="history-card">
 
-            <h3>${v.plate}</h3>
 
-            <p>
-                <strong>Driver:</strong>
-                ${v.driver}
-            </p>
+        <h3>
+        ${v.plate}
+        </h3>
 
-            <p>
-                <strong>Vehicle Type:</strong>
-                ${v.type}
-            </p>
 
-            <p>
-                <strong>Variant:</strong>
-                ${v.variant}
-            </p>
+        <p>
+        Driver:
+        ${v.driver}
+        </p>
 
-            <p>
-                <strong>Level:</strong>
-                ${v.level}
-            </p>
 
-            <p>
-                <strong>Lot:</strong>
-                ${v.lot}
-            </p>
+        <p>
+        Vehicle:
+        ${v.vehicle_type}
+        ${v.variant}
+        </p>
 
-            <p>
-                <strong>Check In:</strong>
-                ${v.checkInTime}
-            </p>
 
-            <p>
-                <strong>Check Out:</strong>
-                ${v.checkOutTime}
-            </p>
+        <p>
+        Parking:
+        ${v.level}
+        ${v.lot}
+        </p>
 
-        </div>`;
+
+        <p>
+        Check In:
+        ${new Date(v.check_in)
+        .toLocaleString()}
+        </p>
+
+
+        <p>
+        Check Out:
+        ${new Date(v.check_out)
+        .toLocaleString()}
+        </p>
+
+
+
+        </div>
+
+        `;
+
+
     });
+
+
+
+    if(records.length===0){
+
+        html="No history found";
+
+    }
+
+
 
     document.getElementById(
         "historyContainer"
-    ).innerHTML = html;
+    ).innerHTML=html;
+
+
+
 }
 
-renderVehicles();
+
+
+
+
+// =============================
+// MODAL FUNCTIONS
+// =============================
+
+
+function showAddForm(){
+
+    document.getElementById(
+        "addModal"
+    ).style.display="block";
+
+}
+
+
+
+function closeModal(){
+
+    document.getElementById(
+        "addModal"
+    ).style.display="none";
+
+
+    document.getElementById(
+        "detailsModal"
+    ).style.display="none";
+
+}
+
+
+
+// =============================
+// START APP
+// =============================
+
+
+loadVehicles();
+
 
 </script>
 
+
 </body>
+
 </html>
+
+```
 
