@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vehicle Parking Management</title>
+
+<style>
+body{
+    font-family: Arial, sans-serif;
+    margin:0;
+    background:#f5f5f5;
+}
+
+header{
+    background:#1976d2;
+    color:white;
+    padding:15px;
+    text-align:center;
+}
+
+.container{
+    padding:20px;
+}
+
+button{
+    background:#1976d2;
+    color:white;
+    border:none;
+    padding:10px 15px;
+    border-radius:5px;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#125ea7;
+}
+
+.vehicle-card{
+    background:white;
+    padding:15px;
+    margin:10px 0;
+    border-radius:8px;
+    box-shadow:0 2px 5px rgba(0,0,0,0.1);
+    cursor:pointer;
+}
+
+.level{
+    margin-bottom:30px;
+}
+
+.modal{
+    display:none;
+    position:fixed;
+    left:0;
+    top:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.5);
+}
+
+.modal-content{
+    background:white;
+    width:90%;
+    max-width:500px;
+    margin:50px auto;
+    padding:20px;
+    border-radius:10px;
+}
+
+input,select{
+    width:100%;
+    padding:10px;
+    margin:5px 0 15px;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h2>Vehicle Parking System</h2>
+</header>
+
+<div class="container">
+
+    <button onclick="showAddForm()">+ Add Vehicle</button>
+    <button onclick="viewHistory()">History</button>
+
+    <div id="parkingArea"></div>
+
+</div>
+
+<!-- Add Vehicle Modal -->
+<div class="modal" id="addModal">
+    <div class="modal-content">
+        <h3>Add Vehicle</h3>
+
+        <input id="driver" placeholder="Driver Name">
+
+        <input id="type" placeholder="Vehicle Type">
+
+        <input id="variant" placeholder="Variant">
+
+        <input id="plate" placeholder="License Plate">
+
+        <select id="level">
+            <option>Level 1</option>
+            <option>Level 2</option>
+            <option>Level 3</option>
+        </select>
+
+        <input id="lot" placeholder="Parking Lot">
+
+        <button onclick="addVehicle()">Save Vehicle</button>
+        <button onclick="closeModal()">Cancel</button>
+    </div>
+</div>
+
+<!-- Vehicle Details Modal -->
+<div class="modal" id="detailsModal">
+    <div class="modal-content" id="detailsContent"></div>
+</div>
+
+<script>
+
+let vehicles =
+JSON.parse(localStorage.getItem("vehicles")) || [];
+
+let history =
+JSON.parse(localStorage.getItem("history")) || [];
+
+function saveData(){
+    localStorage.setItem(
+        "vehicles",
+        JSON.stringify(vehicles)
+    );
+
+    localStorage.setItem(
+        "history",
+        JSON.stringify(history)
+    );
+}
+
+function showAddForm(){
+    document.getElementById("addModal").style.display="block";
+}
+
+function closeModal(){
+    document.getElementById("addModal").style.display="none";
+    document.getElementById("detailsModal").style.display="none";
+}
+
+function addVehicle(){
+
+    const vehicle = {
+        id: Date.now(),
+        driver: document.getElementById("driver").value,
+        type: document.getElementById("type").value,
+        variant: document.getElementById("variant").value,
+        plate: document.getElementById("plate").value,
+        level: document.getElementById("level").value,
+        lot: document.getElementById("lot").value
+    };
+
+    vehicles.push(vehicle);
+
+    saveData();
+    renderVehicles();
+    closeModal();
+}
+
+function renderVehicles(){
+
+    let html = "";
+
+    ["Level 1","Level 2","Level 3"].forEach(level => {
+
+        html += `<div class="level">
+                    <h2>${level}</h2>`;
+
+        const filtered =
+            vehicles.filter(v=>v.level===level);
+
+        if(filtered.length===0){
+            html += "<p>No vehicles.</p>";
+        }
+
+        filtered.forEach(v=>{
+
+            html += `
+            <div class="vehicle-card"
+                 onclick="showDetails(${v.id})">
+
+                 <strong>${v.plate}</strong><br>
+                 Driver: ${v.driver}<br>
+                 Lot: ${v.lot}
+
+            </div>`;
+        });
+
+        html += "</div>";
+    });
+
+    document.getElementById(
+        "parkingArea"
+    ).innerHTML = html;
+}
+
+function showDetails(id){
+
+    const v =
+      vehicles.find(vehicle=>vehicle.id===id);
+
+    document.getElementById(
+      "detailsContent"
+    ).innerHTML = `
+        <h3>Vehicle Details</h3>
+
+        <p><b>Driver:</b> ${v.driver}</p>
+        <p><b>Vehicle Type:</b> ${v.type}</p>
+        <p><b>Variant:</b> ${v.variant}</p>
+        <p><b>Parking Level:</b> ${v.level}</p>
+        <p><b>Parking Lot:</b> ${v.lot}</p>
+        <p><b>License Plate:</b> ${v.plate}</p>
+
+        <button onclick="moveOut(${v.id})">
+            Move Out Vehicle
+        </button>
+
+        <button onclick="closeModal()">
+            Close
+        </button>
+    `;
+
+    document.getElementById(
+        "detailsModal"
+    ).style.display="block";
+}
+
+function moveOut(id){
+
+    const index =
+      vehicles.findIndex(v=>v.id===id);
+
+    if(index>-1){
+
+        const vehicle =
+            vehicles.splice(index,1)[0];
+
+        vehicle.movedOut =
+            new Date().toLocaleString();
+
+        history.push(vehicle);
+
+        saveData();
+        renderVehicles();
+
+        closeModal();
+    }
+}
+
+function viewHistory(){
+
+    let text = "Vehicle History\n\n";
+
+    history.forEach(v=>{
+
+        text +=
+        `${v.plate}
+Driver: ${v.driver}
+Moved Out: ${v.movedOut}
+
+`;
+    });
+
+    alert(text || "No history");
+}
+
+renderVehicles();
+
+</script>
+
+</body>
+</html>
