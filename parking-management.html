@@ -711,11 +711,30 @@ async function init() {
   document.getElementById('safety-msg').textContent = SAFETY_MESSAGES[dayOfYear % SAFETY_MESSAGES.length];
   document.getElementById('safety-date').textContent = new Date().toLocaleDateString('en-SG', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
 
+  // 1. Ask Supabase for the currently active logged-in user
+  const { data: { user }, error } = await supabaseClient.auth.getUser();
+
+  // 2. Route guard: Kick them out if no real session exists
+  if (error || !user) {
+    console.warn("🔒 Unauthorized access. Redirecting to login page...");
+    window.location.href = "login.html";
+    return;
+  }
+
+  // 3. Construct your currentUser object dynamically using the verified session details
   currentUser = {
-    id: 'mock-uuid', name: 'Bing Han', email: 'binghan123@test.com',
-    phone: '+65 9123 4567', role: 'driver', depot: 'Block 210 — Level 2', created_at: '2024-01-15'
+    id: user.id,
+    email: user.email,
+    created_at: user.created_at.slice(0, 10), // Trims timestamp into 'YYYY-MM-DD'
+    
+    // Read your custom fields directly out of user_metadata (with safe fallbacks)
+    name: user.user_metadata?.name || 'Unknown User',
+    phone: user.user_metadata?.phone || 'Not Registered',
+    role: user.user_metadata?.role || 'viewer', // 'viewer', 'driver', or 'admin'
+    depot: user.user_metadata?.depot || 'Unassigned Depot'
   };
 
+  // 4. Fire off your existing layout routines using the real user data
   updateProfileUI();
   await loadDashboard();
   renderParkingOverview();
