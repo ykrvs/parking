@@ -1,6 +1,39 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+ <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+    // ⚠️ CRITICAL: Use the EXACT same credentials you used in your login page
+    const supabaseUrl = 'https://jzjjmpgonqbusumcryaj.supabase.co/'; 
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6amptcGdvbnFidXN1bWNyeWFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyODA0NTgsImV4cCI6MjA5Nzg1NjQ1OH0.k5A1OtUbsUT9UBZOD4-3T4-Mw-VHK9SWkzwF8Fp3NoM';               
+    
+    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+    // Run this check instantly as the page loads
+    async function checkUserAuthentication() {
+        try {
+            // Ask Supabase if a valid login session exists in the browser's local storage
+            const { data: { session }, error } = await supabaseClient.auth.getSession();
+
+            if (error || !session) {
+                console.log("🔒 Access Denied: No active session found. Redirecting to login...");
+                // Send them back to your login page. 
+                // Adjust "login.html" if your main page is named "index.html"
+                window.location.href = "login.html"; 
+            } else {
+                console.log("🔓 Access Granted: Welcome user", session.user.email);
+                // Optional: You can now use session.user to display their email on the dashboard!
+            }
+        } catch (err) {
+            console.error("Auth system failure:", err);
+            window.location.href = "login.html";
+        }
+    }
+
+    // Trigger the check immediately
+    checkUserAuthentication();
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FleetOps — Block 210</title>
