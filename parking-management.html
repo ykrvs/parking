@@ -643,6 +643,7 @@
     <div class="field"><label>Driver Name</label><input type="text" id="ci-driver" placeholder="Full name"></div>
     <div class="field"><label>Driver Phone</label><input type="tel" id="ci-driver-phone" placeholder="+65 9XXX XXXX"></div>
     <div class="field"><label>Driver Depot</label><input type="text" id="ci-driver-depot" placeholder="e.g. 11FMD 42FMP"></div>
+   <div class="field"><label>Fire Extinguisher Expiry</label><input type="date" id="ci-fire-expiry"></div>
     <div style="display:flex;gap:10px;">
       <div class="field" style="flex:1;">
         <label>Level</label>
@@ -975,6 +976,7 @@ async function submitCheckin() {
   const odometer = parseFloat(document.getElementById('ci-odometer').value) || 0;
   const fuel_pct = parseInt(document.getElementById('ci-fuel-pct').value) || 0;
   const notes   = document.getElementById('ci-notes').value;
+  const fire_ext_expiry = document.getElementById('ci-fire-expiry').value; // Ensure 'ci-fire-expiry' matches your HTML ID
 
   if (!plate || !driver || !lot) { showToast('⚠ Plate, driver and lot are required'); return; }
 
