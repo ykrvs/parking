@@ -766,7 +766,7 @@ function goBack() {
   currentTab = 'search';
 }
 
-// ── DASHBOARD ──
+ //Dashboard
 async function loadDashboard() {
     // 1. Fetch from Supabase
     const { data, error } = await supabaseClient.from('vehicles').select('*');
