@@ -767,21 +767,39 @@ function goBack() {
 
 // ── DASHBOARD ──
 async function loadDashboard() {
-  const vl = generateMockVehicles();
-  allVehicles = vl;
+  // 1. Fetch live data from Supabase instead of generating fake vehicles
+  const { data: vl, error } = await supabaseClient
+    .from('vehicles') // ⚠️ Ensure this matches your exact table name in Supabase
+    .select('*');
 
-  const counts = { Workshop:0, L1:0, L2:0, L3:0 };
-  vl.forEach(v => { if (counts[v.level] !== undefined) counts[v.level]++; });
-  document.getElementById('total-count').textContent = vl.length;
+  if (error) {
+    console.error("❌ Failed to load live dashboard statistics:", error.message);
+    return;
+  }
+
+  // 2. Assign the live data to your global tracker array
+  allVehicles = vl || [];
+
+  // 3. Your metric calculation logic can now stay exactly the same!
+  const counts = { Workshop: 0, L1: 0, L2: 0, L3: 0 };
+  allVehicles.forEach(v => { 
+    if (counts[v.level] !== undefined) counts[v.level]++; 
+  });
+  
+  document.getElementById('total-count').textContent = allVehicles.length;
   document.getElementById('chip-ws').textContent = counts.Workshop;
   document.getElementById('chip-l1').textContent = counts.L1;
   document.getElementById('chip-l2').textContent = counts.L2;
   document.getElementById('chip-l3').textContent = counts.L3;
 
-  const recent = [...vl].sort((a,b) => new Date(b.check_in)-new Date(a.check_in)).slice(0,4);
+  // 4. Sort the live vehicles by their database check-in timestamps
+  const recent = [...allVehicles]
+    .sort((a, b) => new Date(b.check_in) - new Date(a.check_in))
+    .slice(0, 4);
+    
   document.getElementById('recent-list').innerHTML = recent.map(v => renderVehItem(v)).join('');
 
-  // also refresh vehicle list
+  // 5. Refresh your main UI lists with the live data
   renderVehicleList(allVehicles);
 }
 
