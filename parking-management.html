@@ -1391,14 +1391,14 @@ function drawL2(svg) {
   }
 
   // Rooms aligned with F col: top of room = top of F6, bottom = bottom of F1
-  const roomTop = PAD;
-  const roomBot = PAD + 6*(CH+ROW_GAP) - ROW_GAP;
-  const roomTotalH = roomBot - roomTop;
+  //const roomTop = PAD;
+  //const roomBot = PAD + 6*(CH+ROW_GAP) - ROW_GAP;
+  //const roomTotalH = roomBot - roomTop;
   // Gunnery Training: top ~60%, PETA Store: bottom ~40%
-  const gunH = Math.round(roomTotalH * 0.58);
-  const petaH = roomTotalH - gunH - 3;
-  makeRoomRect(svg,roomX, roomTop,         roomW, gunH,  'GUNNERY\nTRAINING','#EEF5FF','#2A4A8A');
-  makeRoomRect(svg,roomX, roomTop+gunH+3,  roomW, petaH, 'PETA\nSTORE',      '#EEF5FF','#2A4A8A');
+  //const gunH = Math.round(roomTotalH * 0.58);
+  //const petaH = roomTotalH - gunH - 3;
+  //makeRoomRect(svg,roomX, roomTop,         roomW, gunH,  'GUNNERY\nTRAINING','#EEF5FF','#2A4A8A');
+  //makeRoomRect(svg,roomX, roomTop+gunH+3,  roomW, petaH, 'PETA\nSTORE',      '#EEF5FF','#2A4A8A');
 }
 
 function drawL3(svg) {
@@ -1457,14 +1457,14 @@ function drawL3(svg) {
   }
 
   // Rooms: vertically alongside F lots (same y-band as F6 top → F1 bottom)
-  const bandTop = PAD;
-  const bandBot = PAD + (F_COUNT-1)*(CH+ROW_GAP) + CH;
-  const bandH   = bandBot - bandTop;
+  //const bandTop = PAD;
+  //const bandBot = PAD + (F_COUNT-1)*(CH+ROW_GAP) + CH;
+  //const bandH   = bandBot - bandTop;
   // Armskote: top 3 rows (F6,F5,F4); Opstronic Store: bottom 3 rows (F3,F2,F1)
-  const armH  = 3*(CH+ROW_GAP) - ROW_GAP;
-  const opsH  = bandH - armH - 3;
-  makeRoomRect(svg,roomX, bandTop,        roomW, armH, 'ARMSKOTE',        '#EEF5FF','#2A4A8A');
-  makeRoomRect(svg,roomX, bandTop+armH+3, roomW, opsH, 'OPSTRONIC\nSTORE','#EEF5FF','#2A4A8A');
+  //const armH  = 3*(CH+ROW_GAP) - ROW_GAP;
+  //const opsH  = bandH - armH - 3;
+  //makeRoomRect(svg,roomX, bandTop,        roomW, armH, 'ARMSKOTE',        '#EEF5FF','#2A4A8A');
+  //makeRoomRect(svg,roomX, bandTop+armH+3, roomW, opsH, 'OPSTRONIC\nSTORE','#EEF5FF','#2A4A8A');
 }
 
 function selectLotById(lotId, veh) {
