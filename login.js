@@ -1,8 +1,9 @@
-const supabaseUrl = 'https://your-project-id.supabase.co';
-const supabaseKey = 'your-anon-public-key';
+// 1. Set up your credentials
+const supabaseUrl = 'https://jzjjmpgonqbusumcryaj.supabase.co/'; // Keep your actual URL here
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6amptcGdvbnFidXN1bWNyeWFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyODA0NTgsImV4cCI6MjA5Nzg1NjQ1OH0.k5A1OtUbsUT9UBZOD4-3T4-Mw-VHK9SWkzwF8Fp3NoM';               // Keep your actual Key here
 
-// 2. Properly initialize your specific client instance
-const supabaseClient = createClient(supabaseUrl, supabaseKey);
+// 2. Initialize the client using the global object directly
+const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
 // 3. Define the login function that your HTML button calls
 async function login() {
