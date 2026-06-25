@@ -768,15 +768,22 @@ function goBack() {
 
 // ── DASHBOARD ──
 async function loadDashboard() {
-  // 1. Fetch live data from Supabase instead of generating fake vehicles
-  const { data: vl, error } = await supabaseClient
-    .from('vehicles') // ⚠️ Ensure this matches your exact table name in Supabase
-    .select('*');
+    // 1. Fetch from Supabase
+    const { data, error } = await supabaseClient.from('vehicles').select('*');
+    
+    if (error) {
+        console.error("Fetch Error:", error);
+        return;
+    }
 
-  if (error) {
-    console.error("❌ Failed to load live dashboard statistics:", error.message);
-    return;
-  }
+    // 2. IMPORTANT: Update the global variable
+    allVehicles = data; 
+    console.log("Vehicles loaded:", allVehicles);
+
+    // 3. Trigger your render functions
+    renderRecentList(); // Or whatever function draws your dashboard lists
+    renderParkingOverview(); 
+}
 
   // 2. Assign the live data to your global tracker array
   allVehicles = vl || [];
