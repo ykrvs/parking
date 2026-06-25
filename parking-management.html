@@ -1366,7 +1366,7 @@ function drawL2(svg) {
   const bg=document.createElementNS(ns,'rect');
   bg.setAttribute('x','0'); bg.setAttribute('y','0');
   bg.setAttribute('width',svgW); bg.setAttribute('height',svgH);
-  bg.setAttribute('fill','#F8F8F4'); bg.setAttribute('rx','6');
+  bg.setAttribute('stroke','#444'); bg.setAttribute('stroke-width','1.5');
   svg.appendChild(bg);
   const handler=(lotId,veh,rect)=>{highlightLot(rect,!!veh);selectLotById(lotId,veh);};
   makeDrivewayLabel(svg,xA+CW+1,PAD+2,COL_GAP-2,ROWS*(CH+ROW_GAP),true);
@@ -1431,7 +1431,7 @@ function drawL3(svg) {
   const bg=document.createElementNS(ns,'rect');
   bg.setAttribute('x','0'); bg.setAttribute('y','0');
   bg.setAttribute('width',svgW); bg.setAttribute('height',svgH);
-  bg.setAttribute('fill','#F8F8F4'); bg.setAttribute('rx','6');
+  bg.setAttribute('stroke','#444'); bg.setAttribute('stroke-width','1.5');
   svg.appendChild(bg);
   const handler=(lotId,veh,rect)=>{highlightLot(rect,!!veh);selectLotById(lotId,veh);};
   makeDrivewayLabel(svg,xA+CW+1,PAD+2,COL_GAP-2,ROWS*(CH+ROW_GAP),true);
