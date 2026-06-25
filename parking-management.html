@@ -642,8 +642,8 @@
 // ──────────────────────────────────────────
 // SUPABASE CONFIG
 // ──────────────────────────────────────────
-const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
-const SUPABASE_KEY = 'YOUR_ANON_KEY';
+const SUPABASE_URL = 'https://jzjjmpgonqbusumcryaj.supabase.co/';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6amptcGdvbnFidXN1bWNyeWFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyODA0NTgsImV4cCI6MjA5Nzg1NjQ1OH0.k5A1OtUbsUT9UBZOD4-3T4-Mw-VHK9SWkzwF8Fp3NoM';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ── STATE ──
@@ -664,12 +664,12 @@ const SAFETY_MESSAGES = [
 ];
 
 const MOCK_EMPLOYEES = {
-  'Ahmad Fadzli':  { phone: '+65 9123 4567', depot: 'Depot A — Jurong' },
-  'Ravi Kumar':    { phone: '+65 9234 5678', depot: 'Depot B — Toa Payoh' },
-  'John Tan':      { phone: '+65 9345 6789', depot: 'Depot C — Tampines' },
-  'Hassan Ali':    { phone: '+65 9456 7890', depot: 'Depot A — Jurong' },
-  'Mary Lim':      { phone: '+65 9567 8901', depot: 'Depot D — Woodlands' },
-  'Siva Raj':      { phone: '+65 9678 9012', depot: 'Depot B — Toa Payoh' },
+  'Bing Han':  { phone: '+65 9123 4567', depot: '11FMD - 42FMP' },
+  'S Deshan':    { phone: '+65 9234 5678', depot: '11FMD — 42FMP' },
+  'Tze Bing':      { phone: '+65 9345 6789', depot: '11FMD — FMW2' },
+  'Hoon Y Q':    { phone: '+65 9456 7890', depot: '12FMD — 41FMP' },
+  'Roman':      { phone: '+65 9567 8901', depot: '11FMD — FMW2' },
+  'Nicholas Lui':      { phone: '+65 9678 9012', depot: '11FMD — 42FMP' },
 };
 
 // ── INIT ──
@@ -679,7 +679,7 @@ async function init() {
   document.getElementById('safety-date').textContent = new Date().toLocaleDateString('en-SG', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
 
   currentUser = {
-    id: 'mock-uuid', name: 'Ahmad Fadzli', email: 'ahmad.fadzli@block210.sg',
+    id: 'mock-uuid', name: 'Bing Han', email: 'binghan123@test.com',
     phone: '+65 9123 4567', role: 'driver', depot: 'Block 210 — Level 2', created_at: '2024-01-15'
   };
 
@@ -1573,11 +1573,11 @@ function renderFireExtCard(expiryDateStr) {
 
 // ── MOCK DATA ──
 function generateMockVehicles() {
-  const plates   = ['SBQ1234A','SGX5678B','SLA9012C','SDM3456D','SJE7890E','SBC2345F','SHK6789G','SNG0123H','SME4567J','SRF8901K'];
-  const variants = ['Toyota Hiace','Nissan Urvan','Ford Transit','Mitsubishi Rosa','Isuzu Elf'];
-  const drivers  = ['Ahmad Fadzli','Ravi Kumar','John Tan','Hassan Ali','Mary Lim','Siva Raj'];
-  const levels   = ['Workshop','L1','L1','L2','L2','L3','L1','L2','L3','Workshop'];
-  const lots     = ['A3','B7','C12','D4','E9','A11','B2','C15','D8','B5'];
+  const plates   = ['MID88000','MID87000','MID89000','MID70000','MID79000'];
+  const variants = ['Hunter AFV','Hunter RCV','Hunter AFV','Bronco TMTV','Bronco'];
+  const drivers  = ['Bing Han','S Deshan','Tze Bing','Hoon Y Q','Roman'];
+  const levels   = ['Workshop','L1','L1','L2','L3'];
+  const lots     = ['A3','B7','C12','D4','E9'];
   return plates.map((plate, i) => ({
     id: i+1, plate,
     variant: variants[i % variants.length],
