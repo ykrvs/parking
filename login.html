@@ -1,18 +1,161 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Employee Login</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Military Vehicle Parking System</title>
+
+<style>
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+    }
+
+    body {
+        height: 100vh;
+        background: linear-gradient(rgba(59,77,42,0.8),
+                                    rgba(59,77,42,0.8)),
+                    url('https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=1200') center/cover no-repeat;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .login-container {
+        width: 420px;
+        background: rgba(255,255,255,0.95);
+        padding: 40px;
+        border-radius: 12px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        text-align: center;
+        border-top: 8px solid #556B2F;
+    }
+
+    .logo {
+        width: 80px;
+        height: 80px;
+        margin: auto;
+        border-radius: 50%;
+        background: #556B2F;
+        color: white;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 36px;
+        margin-bottom: 20px;
+    }
+
+    h1 {
+        color: #3B4D2A;
+        margin-bottom: 8px;
+        font-size: 28px;
+    }
+
+    .subtitle {
+        color: #666;
+        margin-bottom: 30px;
+        font-size: 14px;
+    }
+
+    .input-group {
+        margin-bottom: 20px;
+        text-align: left;
+    }
+
+    label {
+        display: block;
+        margin-bottom: 8px;
+        color: #3B4D2A;
+        font-weight: bold;
+    }
+
+    input {
+        width: 100%;
+        padding: 14px;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        font-size: 15px;
+    }
+
+    input:focus {
+        outline: none;
+        border-color: #556B2F;
+    }
+
+    .login-btn {
+        width: 100%;
+        padding: 14px;
+        background: #556B2F;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: 0.3s;
+        font-weight: bold;
+    }
+
+    .login-btn:hover {
+        background: #3B4D2A;
+    }
+
+    #message {
+        margin-top: 20px;
+        color: red;
+        font-size: 14px;
+    }
+
+    .footer {
+        margin-top: 30px;
+        color: #666;
+        font-size: 12px;
+    }
+</style>
 </head>
+
 <body>
 
-<h2>Employee Login</h2>
+<div class="login-container">
 
-<input type="email" id="email" placeholder="Email">
-<input type="password" id="password" placeholder="Password">
+    <div class="logo">
+    <img src="images/unit-logo.png" width="60">
+    </div>
 
-<button onclick="login()">Login</button>
+    <h1>Vehicle Parking System</h1>
 
-<p id="message"></p>
+    <p class="subtitle">
+        Military Vehicle Parking Management
+    </p>
+
+    <div class="input-group">
+        <label>Email Address</label>
+        <input
+            type="email"
+            id="email"
+            placeholder="Enter your military email">
+    </div>
+
+    <div class="input-group">
+        <label>Password</label>
+        <input
+            type="password"
+            id="password"
+            placeholder="Enter your password">
+    </div>
+
+    <button class="login-btn" onclick="login()">
+        LOGIN
+    </button>
+
+    <p id="message"></p>
+
+    <div class="footer">
+        Authorized Personnel Only
+    </div>
+
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="login.js"></script>
