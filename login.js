@@ -1,6 +1,3 @@
-// 1. Grab the createClient function out of the global supabase object
-const { createClient } = supabase;
-
 const supabaseUrl = 'https://your-project-id.supabase.co';
 const supabaseKey = 'your-anon-public-key';
 
