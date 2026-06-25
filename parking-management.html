@@ -696,14 +696,14 @@ const SAFETY_MESSAGES = [
   "Wear your high-visibility vest when working in the car park outside your vehicle.",
 ];
 
-const MOCK_EMPLOYEES = {
-  'Bing Han':  { phone: '+65 9123 4567', depot: '11FMD - 42FMP' },
-  'S Deshan':    { phone: '+65 9234 5678', depot: '11FMD — 42FMP' },
-  'Tze Bing':      { phone: '+65 9345 6789', depot: '11FMD — FMW2' },
-  'Hoon Y Q':    { phone: '+65 9456 7890', depot: '12FMD — 41FMP' },
-  'Roman':      { phone: '+65 9567 8901', depot: '11FMD — FMW2' },
-  'Nicholas Lui':      { phone: '+65 9678 9012', depot: '11FMD — 42FMP' },
-};
+//const MOCK_EMPLOYEES = {
+//  'Bing Han':  { phone: '+65 9123 4567', depot: '11FMD - 42FMP' },
+//  'S Deshan':    { phone: '+65 9234 5678', depot: '11FMD — 42FMP' },
+//  'Tze Bing':      { phone: '+65 9345 6789', depot: '11FMD — FMW2' },
+ // 'Hoon Y Q':    { phone: '+65 9456 7890', depot: '12FMD — 41FMP' },
+//  'Roman':      { phone: '+65 9567 8901', depot: '11FMD — FMW2' },
+ // 'Nicholas Lui':      { phone: '+65 9678 9012', depot: '11FMD — 42FMP' },
+//};
 
 // ── INIT ──
 async function init() {
@@ -1617,51 +1617,51 @@ function renderFireExtCard(expiryDateStr) {
 }
 
 // ── MOCK DATA ──
-function generateMockVehicles() {
-  const plates   = ['MID88000','MID87000','MID89000','MID70000','MID79000'];
-  const variants = ['Hunter AFV','Hunter RCV','Hunter AFV','Bronco TMTV','Bronco'];
-  const drivers  = ['Bing Han','S Deshan','Tze Bing','Hoon Y Q','Roman'];
-  const levels   = ['Workshop','L1','L1','L2','L3'];
-  const lots     = ['A3','B7','C12','D4','E9'];
-  return plates.map((plate, i) => ({
-    id: i+1, plate,
-    variant: variants[i % variants.length],
-    driver:  drivers[i % drivers.length],
-    level:   levels[i],
-    lot:     lots[i],
-    check_in: new Date(Date.now() - Math.random()*86400000*2).toISOString(),
-    odometer: Math.floor(30000 + Math.random()*50000),
-    engine_hours: parseFloat((500 + Math.random()*2000).toFixed(1)),
-    battery_pct: Math.floor(40 + Math.random()*60),
-    battery_v: parseFloat((11.5 + Math.random()*2.5).toFixed(1)),
-    fuel_pct: Math.floor(10 + Math.random()*90),
-    fuel_l: parseFloat((10 + Math.random()*60).toFixed(1)),
-    fire_ext_expiry: (() => {
-      const offsets = [-60, 30, 60, 180, 365, 400, 500, 600, 700, 800];
-      const d = new Date(); d.setDate(d.getDate() + offsets[i % offsets.length]);
-      return d.toISOString().slice(0,10);
-    })(),
-    notes: i % 3 === 0 ? 'Check engine light intermittent. Reported to workshop.' : '',
-  }));
-}
+//function generateMockVehicles() {
+  //const plates   = ['MID88000','MID87000','MID89000','MID70000','MID79000'];
+  //const variants = ['Hunter AFV','Hunter RCV','Hunter AFV','Bronco TMTV','Bronco'];
+  //const drivers  = ['Bing Han','S Deshan','Tze Bing','Hoon Y Q','Roman'];
+  //const levels   = ['Workshop','L1','L1','L2','L3'];
+  //const lots     = ['A3','B7','C12','D4','E9'];
+  //return plates.map((plate, i) => ({
+  //  id: i+1, plate,
+  //variant: variants[i % variants.length],
+  //  driver:  drivers[i % drivers.length],
+  //  level:   levels[i],
+  //  lot:     lots[i],
+  //  check_in: new Date(Date.now() - Math.random()*86400000*2).toISOString(),
+  //  odometer: Math.floor(30000 + Math.random()*50000),
+  //  engine_hours: parseFloat((500 + Math.random()*2000).toFixed(1)),
+  //  battery_pct: Math.floor(40 + Math.random()*60),
+  //  battery_v: parseFloat((11.5 + Math.random()*2.5).toFixed(1)),
+  //  fuel_pct: Math.floor(10 + Math.random()*90),
+  //  fuel_l: parseFloat((10 + Math.random()*60).toFixed(1)),
+  //  fire_ext_expiry: (() => {
+  //    const offsets = [-60, 30, 60, 180, 365, 400, 500, 600, 700, 800];
+  //    const d = new Date(); d.setDate(d.getDate() + offsets[i % offsets.length]);
+  //    return d.toISOString().slice(0,10);
+    //})(),
+  //  notes: i % 3 === 0 ? 'Check engine light intermittent. Reported to workshop.' : '',
+//  }));
+//}
 
-function generateMockHistory(vehicleId) {
-  const v = allVehicles.find(x => x.id == vehicleId);
-  const drivers = ['Ahmad Fadzli','Ravi Kumar','John Tan'];
-  return Array.from({length:6}, (_, i) => ({
-    id: i+1, vehicle_id: vehicleId,
-    driver: drivers[i % drivers.length],
-    created_at: new Date(Date.now() - (i+1)*86400000*3).toISOString(),
-    odometer: (v?.odometer||40000) - (i+1)*300,
-    engine_hours: parseFloat(((v?.engine_hours||1000) - (i+1)*8).toFixed(1)),
-    battery_pct: Math.floor(50 + Math.random()*40),
-    battery_v: parseFloat((11.8 + Math.random()*2).toFixed(1)),
-    fuel_pct: Math.floor(20 + Math.random()*80),
-    fuel_l: parseFloat((15 + Math.random()*55).toFixed(1)),
-    fire_ext_expiry: v?.fire_ext_expiry || new Date(Date.now()+86400000*200).toISOString().slice(0,10),
-    notes: i === 1 ? 'Topped up fuel. AC making noise — monitoring.' : '',
-  }));
-}
+//function generateMockHistory(vehicleId) {
+ // const v = allVehicles.find(x => x.id == vehicleId);
+ // const drivers = ['Ahmad Fadzli','Ravi Kumar','John Tan'];
+ // return Array.from({length:6}, (_, i) => ({
+ //   id: i+1, vehicle_id: vehicleId,
+ //   driver: drivers[i % drivers.length],
+ //   created_at: new Date(Date.now() - (i+1)*86400000*3).toISOString(),
+ //   odometer: (v?.odometer||40000) - (i+1)*300,
+ //   engine_hours: parseFloat(((v?.engine_hours||1000) - (i+1)*8).toFixed(1)),
+ //   battery_pct: Math.floor(50 + Math.random()*40),
+ //   battery_v: parseFloat((11.8 + Math.random()*2).toFixed(1)),
+ //   fuel_pct: Math.floor(20 + Math.random()*80),
+ //   fuel_l: parseFloat((15 + Math.random()*55).toFixed(1)),
+ //   fire_ext_expiry: v?.fire_ext_expiry || new Date(Date.now()+86400000*200).toISOString().slice(0,10),
+ //   notes: i === 1 ? 'Topped up fuel. AC making noise — monitoring.' : '',
+ // }));
+//}
 
 // ── HELPERS ──
 function timeAgo(iso) {
