@@ -1348,7 +1348,13 @@ function drawL2(svg) {
   // We align: room top = F6 top (PAD), room bottom = F1 bottom (PAD + 6*(CH+ROW_GAP) - ROW_GAP)
   const ns = 'http://www.w3.org/2000/svg';
   const occ = occupiedLots('L2');
-  const CW=30, CH=19, CGAP=2, COL_GAP=14, ROWS=15, PAD=8, ROW_GAP=2;
+  const CW = 42;      // parking lot width
+  const CH = 28;      // parking lot height
+  const CGAP = 0;     // no gap between B/C and D/E
+  const COL_GAP = 42; // wide driveway spacing
+  const ROWS = 15;
+  const PAD = 18;
+  const ROW_GAP = 0;  // stacked lots like the drawing
   const PAIR_W=CW*2+CGAP;
   const xA=PAD, xBC=xA+CW+COL_GAP, xDE=xBC+PAIR_W+COL_GAP, xF=xDE+PAIR_W+COL_GAP;
   const roomW=54, roomX=xF+CW+5;
@@ -1407,7 +1413,13 @@ function drawL3(svg) {
   //   [F1] [Opstronic Store ]   ← Opstronic Store is bottom ~half (F3-F1)
   const ns = 'http://www.w3.org/2000/svg';
   const occ = occupiedLots('L3');
-  const CW=30, CH=19, CGAP=2, COL_GAP=14, ROWS=15, PAD=8, ROW_GAP=2;
+  const CW = 42;      // parking lot width
+  const CH = 28;      // parking lot height
+  const CGAP = 0;     // no gap between B/C and D/E
+  const COL_GAP = 42; // wide driveway spacing
+  const ROWS = 15;
+  const PAD = 18;
+  const ROW_GAP = 0;  // stacked lots like the drawing
   const PAIR_W=CW*2+CGAP;
   const xA=PAD, xBC=xA+CW+COL_GAP, xDE=xBC+PAIR_W+COL_GAP, xF=xDE+PAIR_W+COL_GAP;
   const roomGap=4, roomW=58, roomX=xF+CW+roomGap;
