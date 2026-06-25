@@ -966,60 +966,66 @@ async function submitUpdate() {
 function openCheckinModal() { openModal('checkin-modal'); }
 
 async function submitCheckin() {
-  // Grab the new value
-  const fireExpiry = document.getElementById('ci-fire-expiry').value;
+  // 1. Grab all values from the UI
+  const plate    = document.getElementById('ci-plate').value.toUpperCase().trim();
+  const variant  = document.getElementById('ci-variant').value.trim();
+  const driver   = document.getElementById('ci-driver').value.trim();
+  const dPhone   = document.getElementById('ci-driver-phone').value.trim();
+  const dDepot   = document.getElementById('ci-driver-depot').value.trim();
+  const level    = document.getElementById('ci-level').value;
+  const lot      = document.getElementById('ci-lot').value.trim();
+  const odometer = parseFloat(document.getElementById('ci-odometer').value) || 0;
+  const fuel_pct = parseInt(document.getElementById('ci-fuel-pct').value) || 0;
+  const fire_expiry = document.getElementById('ci-fire-expiry').value;
+  const notes    = document.getElementById('ci-notes').value;
 
-  // ... (Your other variables) ...
+  // 2. Validate essential fields
+  if (!plate || !level || !lot) {
+      alert("Please fill in the Plate, Level, and Lot fields.");
+      return;
+  }
 
   try {
+    // 3. Send data to Supabase
     const { data, error } = await supabaseClient
       .from('vehicles')
       .insert([{ 
-        // ... (Your other fields) ...
-        fire_ext_expiry: fireExpiry, // Ensure this matches your DB column name
-        check_in: new Date().toISOString() 
+        plate: plate, 
+        variant: variant || '—',
+        driver: driver,
+        driver_phone: dPhone,
+        driver_depot: dDepot,
+        level: level,
+        lot: lot,
+        odometer: odometer,
+        fuel_pct: fuel_pct,
+        fire_ext_expiry: fire_expiry || null,
+        notes: notes,
+        check_in: new Date().toISOString()
       }]);
 
     if (error) {
-      console.error("Supabase Insert Error:", error); // Essential for debugging
+      console.error("Supabase Insert Error:", error);
       alert("Error saving to database: " + error.message);
       return;
     }
 
-    alert("Vehicle logged successfully!");
-    // Refresh your dashboard to see the change
+    // 4. Success: Refresh the dashboard to pull the new row from the DB
     await loadDashboard(); 
+    alert("Vehicle logged successfully!");
+    
+    // 5. Reset form and close modal
+    ['ci-plate','ci-variant','ci-driver','ci-driver-phone','ci-driver-depot','ci-lot','ci-odometer','ci-fuel-pct','ci-notes','ci-fire-expiry'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
     closeModal('checkin-modal');
 
   } catch (err) {
     console.error("General Submission Error:", err);
+    alert("An unexpected error occurred.");
   }
 }
-  // Add to local state
-  const newVeh = {
-    id: allVehicles.length + 100,
-    plate, variant: variant || '—', driver,
-    driver_phone: dPhone, driver_depot: dDepot,
-    level, lot,
-    check_in: new Date().toISOString(),
-    odometer, engine_hours: 0,
-    battery_pct: 0, battery_v: 0,
-    fuel_pct, fuel_l: 0,
-    fire_ext_expiry: null,
-    notes,
-  };
-  // await sb.from('vehicles').insert(newVeh);
-  allVehicles.unshift(newVeh);
-
-  // Reset form
-  ['ci-plate','ci-variant','ci-driver','ci-driver-phone','ci-driver-depot','ci-lot','ci-odometer','ci-fuel-pct','ci-notes'].forEach(id => document.getElementById(id).value = '');
-
-  closeModal('checkin-modal');
-  await loadDashboard();
-  renderParkingOverview();
-  showToast('✓ ' + plate + ' checked in to ' + level + ' Lot ' + lot);
-}
-
 // ── HISTORY ──
 async function openHistory(vehicleId) {
   const v = allVehicles.find(x => x.id == vehicleId);
