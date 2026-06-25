@@ -37,7 +37,7 @@ async function login() {
             messageElement.innerText = "Login successful! Redirecting...";
             
             setTimeout(() => {
-                window.location.href = "dashboard.html"; 
+                window.location.href = "parking-management.html"; 
             }, 1500);
         }
     } catch (err) {
