@@ -24,11 +24,11 @@ async function login() {
 
     try {
         // 3. Authenticate against Supabase Auth
-        const { data, error } = await supabase.auth.signInWithPassword({
+        // Change 'supabase.auth...' to 'supabaseClient.auth...'
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
             email: email,
             password: password,
         });
-
         if (error) {
             // If Supabase returns an error (e.g., wrong password)
             messageElement.style.color = "red";
