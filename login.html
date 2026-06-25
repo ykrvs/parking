@@ -14,17 +14,20 @@
     }
 
     body {
-    height: 100vh;
-    background: url('hunter-afv.avif') center/cover no-repeat;
-
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
+        height: 100vh;
+        background: url('hunter-afv.avif') center/cover no-repeat;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
 
     .login-container {
         width: 420px;
-        background: rgba(255,255,255,0.95);
+        /* Made more translucent and added a blur effect to see the background better */
+        background: rgba(255, 255, 255, 0.75);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px); /* For Safari support */
+        
         padding: 40px;
         border-radius: 12px;
         box-shadow: 0 8px 20px rgba(0,0,0,0.3);
@@ -44,6 +47,14 @@
         align-items: center;
         font-size: 36px;
         margin-bottom: 20px;
+        overflow: hidden; /* Prevents the image from bleeding out of the circle */
+    }
+
+    /* Added this rule to fix the giant logo image */
+    .logo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover; /* Keeps aspect ratio while filling the circle */
     }
 
     h1 {
@@ -76,11 +87,13 @@
         border: 2px solid #ddd;
         border-radius: 8px;
         font-size: 15px;
+        background: rgba(255, 255, 255, 0.8); /* Slightly translucent inputs */
     }
 
     input:focus {
         outline: none;
         border-color: #556B2F;
+        background: #fff;
     }
 
     .login-btn {
@@ -108,8 +121,9 @@
 
     .footer {
         margin-top: 30px;
-        color: #666;
+        color: #3B4D2A; /* Darkened slightly for contrast against the translucent background */
         font-size: 12px;
+        font-weight: bold;
     }
 </style>
 </head>
@@ -119,7 +133,7 @@
 <div class="login-container">
 
     <div class="logo">
-    <img src="unit-logo.jpeg">
+        <img src="unit-logo.jpeg" alt="Unit Logo">
     </div>
 
     <h1>Vehicle Parking System</h1>
