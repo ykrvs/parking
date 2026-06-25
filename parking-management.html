@@ -966,20 +966,35 @@ async function submitUpdate() {
 function openCheckinModal() { openModal('checkin-modal'); }
 
 async function submitCheckin() {
-  const plate   = document.getElementById('ci-plate').value.toUpperCase().trim();
-  const variant = document.getElementById('ci-variant').value.trim();
-  const driver  = document.getElementById('ci-driver').value.trim();
-  const dPhone  = document.getElementById('ci-driver-phone').value.trim();
-  const dDepot  = document.getElementById('ci-driver-depot').value.trim();
-  const level   = document.getElementById('ci-level').value;
-  const lot     = document.getElementById('ci-lot').value.trim();
-  const odometer = parseFloat(document.getElementById('ci-odometer').value) || 0;
-  const fuel_pct = parseInt(document.getElementById('ci-fuel-pct').value) || 0;
-  const notes   = document.getElementById('ci-notes').value;
-  const fire_ext_expiry = document.getElementById('ci-fire-expiry').value; // Ensure 'ci-fire-expiry' matches your HTML ID
+  // Grab the new value
+  const fireExpiry = document.getElementById('ci-fire-expiry').value;
 
-  if (!plate || !driver || !lot) { showToast('⚠ Plate, driver and lot are required'); return; }
+  // ... (Your other variables) ...
 
+  try {
+    const { data, error } = await supabaseClient
+      .from('vehicles')
+      .insert([{ 
+        // ... (Your other fields) ...
+        fire_ext_expiry: fireExpiry, // Ensure this matches your DB column name
+        check_in: new Date().toISOString() 
+      }]);
+
+    if (error) {
+      console.error("Supabase Insert Error:", error); // Essential for debugging
+      alert("Error saving to database: " + error.message);
+      return;
+    }
+
+    alert("Vehicle logged successfully!");
+    // Refresh your dashboard to see the change
+    await loadDashboard(); 
+    closeModal('checkin-modal');
+
+  } catch (err) {
+    console.error("General Submission Error:", err);
+  }
+}
   // Add to local state
   const newVeh = {
     id: allVehicles.length + 100,
