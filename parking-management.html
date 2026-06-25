@@ -1432,7 +1432,7 @@ function drawL2(svg) {
   const svgH=PAD+ROWS*(CH+ROW_GAP)+PAD;
   svg.setAttribute('viewBox',`0 0 ${svgW} ${svgH}`);
   svg.setAttribute('width','100%');
-  svg.style.height = 'auto';
+  svg.style.height = 'auto';         //  This is the fixed line
   svg.style.maxWidth=svgW+'px';
   const bg=document.createElementNS(ns,'rect');
   bg.setAttribute('x','0'); bg.setAttribute('y','0');
