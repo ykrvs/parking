@@ -2,7 +2,7 @@
 // Replace these placeholders with your actual project URL and Anon Key from your Supabase Dashboard
 const supabaseUrl = 'https://jzjjmpgonqbusumcryaj.supabase.co/';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6amptcGdvbnFidXN1bWNyeWFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyODA0NTgsImV4cCI6MjA5Nzg1NjQ1OH0.k5A1OtUbsUT9UBZOD4-3T4-Mw-VHK9SWkzwF8Fp3NoM';
-const supabase = supabaseUrl._supabase.createClient(supabaseUrl, supabaseKey);
+const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
 // 2. Define the login function that the HTML button calls
 async function login() {
