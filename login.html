@@ -23,16 +23,17 @@
 
     .login-container {
         width: 420px;
-        /* Made more translucent and added a blur effect to see the background better */
-        background: rgba(255, 255, 255, 0.75);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px); /* For Safari support */
+        /* Significantly dropped opacity to 0.4 and increased blur for an ultra-translucent glass effect */
+        background: rgba(255, 255, 255, 0.4);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
         
         padding: 40px;
         border-radius: 12px;
-        box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
         text-align: center;
         border-top: 8px solid #556B2F;
+        border-left: 1px solid rgba(255, 255, 255, 0.2); /* Soft highlight on the glass edge */
     }
 
     .logo {
@@ -41,32 +42,33 @@
         margin: auto;
         border-radius: 50%;
         background: #556B2F;
-        color: white;
         display: flex;
         justify-content: center;
         align-items: center;
-        font-size: 36px;
         margin-bottom: 20px;
-        overflow: hidden; /* Prevents the image from bleeding out of the circle */
+        overflow: hidden; 
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     }
 
-    /* Added this rule to fix the giant logo image */
     .logo img {
         width: 100%;
         height: 100%;
-        object-fit: cover; /* Keeps aspect ratio while filling the circle */
+        object-fit: cover;
+        border-radius: 50%; /* Forces the image itself to respect the circular shape completely */
     }
 
     h1 {
-        color: #3B4D2A;
+        color: #1e2b10; /* Darkened text slightly for better contrast against the clear glass */
         margin-bottom: 8px;
         font-size: 28px;
+        text-shadow: 0 1px 2px rgba(255,255,255,0.4);
     }
 
     .subtitle {
-        color: #666;
+        color: #222;
         margin-bottom: 30px;
         font-size: 14px;
+        font-weight: 500;
     }
 
     .input-group {
@@ -77,23 +79,25 @@
     label {
         display: block;
         margin-bottom: 8px;
-        color: #3B4D2A;
+        color: #1e2b10;
         font-weight: bold;
     }
 
     input {
         width: 100%;
         padding: 14px;
-        border: 2px solid #ddd;
+        border: 1px solid rgba(0, 0, 0, 0.15);
         border-radius: 8px;
         font-size: 15px;
-        background: rgba(255, 255, 255, 0.8); /* Slightly translucent inputs */
+        /* Inputs are semi-translucent too so they blend into the design */
+        background: rgba(255, 255, 255, 0.6); 
+        color: #000;
     }
 
     input:focus {
         outline: none;
         border-color: #556B2F;
-        background: #fff;
+        background: rgba(255, 255, 255, 0.9);
     }
 
     .login-btn {
@@ -107,6 +111,7 @@
         cursor: pointer;
         transition: 0.3s;
         font-weight: bold;
+        box-shadow: 0 4px 12px rgba(85, 107, 47, 0.3);
     }
 
     .login-btn:hover {
@@ -115,15 +120,17 @@
 
     #message {
         margin-top: 20px;
-        color: red;
+        color: #b30000; /* Darker red for safety contrast */
         font-size: 14px;
+        font-weight: bold;
     }
 
     .footer {
         margin-top: 30px;
-        color: #3B4D2A; /* Darkened slightly for contrast against the translucent background */
+        color: #1e2b10; 
         font-size: 12px;
         font-weight: bold;
+        letter-spacing: 0.5px;
     }
 </style>
 </head>
@@ -165,7 +172,7 @@
     <p id="message"></p>
 
     <div class="footer">
-        Authorized Personnel Only
+        AUTHORIZED PERSONNEL ONLY
     </div>
 
 </div>
