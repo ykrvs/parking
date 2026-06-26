@@ -745,30 +745,11 @@ async function submitCheckin() {
   const dDepot  = document.getElementById('ci-driver-depot').value.trim();
   const level   = document.getElementById('ci-level').value;
   const lot     = document.getElementById('ci-lot').value.trim().toUpperCase();
-  const starterV   = parseFloat(document.getElementById('ci-batt-starter-v').value) || 0;
-  const starterPct = parseInt(document.getElementById('ci-batt-starter-pct').value) || 0;
-  const auxV       = parseFloat(document.getElementById('ci-batt-aux-v').value) || 0;
-  const auxPct     = parseInt(document.getElementById('ci-batt-aux-pct').value) || 0;
   const odometer    = parseFloat(document.getElementById('ci-odometer').value) || null;
   const fuel_pct    = parseInt(document.getElementById('ci-fuel-pct').value)   || null;
   const fire_expiry = document.getElementById('ci-fire-expiry').value          || null;
   const notes       = document.getElementById('ci-notes').value;
 
- try {
-    const { data, error } = await supabaseClient
-      .from('vehicles')
-      .insert([{ 
-        // ... existing fields ...
-        starter_v: starterV,
-        starter_pct: starterPct,
-        aux_v: auxV,
-        aux_pct: auxPct,
-        check_in: new Date().toISOString()
-      }]);
-    
-    // ... handle errors/success ...
-  } catch (err) { ... }
-}
   if (!plate || !level || !lot) {
     showToast('⚠ Plate, Level and Lot are required');
     return;
