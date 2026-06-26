@@ -52,6 +52,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M8 7h8M8 11h8"/></svg>
           Update Logbook
         </button>
+        <button class="sidebar-link" data-page="driveout-history" type="button" onclick="goTab('driveout-history')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/><path d="m9 3 3 3-3 3"/></svg>
+          Drive-Out History
+        </button>
         <button class="sidebar-link" data-page="profile" type="button" onclick="goTab('profile')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           Profile
@@ -159,6 +163,36 @@
       </div>
       <div id="lot-detail-panel" style="margin-top:10px;"></div>
     </div>
+  </div>
+
+
+  <!-- ═══ DRIVE-OUT HISTORY ═══ -->
+  <div id="screen-driveout-history" class="screen">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Drive-Out History</div>
+        <div class="topbar-sub">Vehicles that have left Block 210</div>
+      </div>
+    </div>
+    <div class="scroll-body">
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="driveout-search-input" placeholder="Search plate or driver…">
+      </div>
+      <div id="driveout-list"><div class="loading"><div class="spinner"></div>Loading…</div></div>
+    </div>
+  </div>
+
+  <!-- ═══ DRIVE-OUT DETAIL ═══ -->
+  <div id="screen-driveout-detail" class="screen">
+    <div class="topbar">
+      <button class="back-btn" onclick="showScreen('driveout-history')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        History
+      </button>
+      <div class="topbar-right" id="driveout-detail-badge"></div>
+    </div>
+    <div class="scroll-body" id="driveout-detail-body"></div>
   </div>
 
   <!-- ═══ PROFILE ═══ -->
