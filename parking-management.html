@@ -903,8 +903,16 @@ function drawL2(svg) {
   const ns='http://www.w3.org/2000/svg', occ=occupiedLots('L2');
   const CW=30,CH=19,CGAP=2,COL_GAP=14,ROWS=15,PAD=8,ROW_GAP=2,PAIR_W=CW*2+CGAP;
   const xA=PAD,xBC=xA+CW+COL_GAP,xDE=xBC+PAIR_W+COL_GAP,xF=xDE+PAIR_W+COL_GAP;
-  const roomW=54,roomX=xF+CW+4;
-  const svgW=roomX+roomW+PAD,svgH=PAD+ROWS*(CH+ROW_GAP)+PAD;
+  // Rooms sit below F1, aligned to the F column
+const roomX = xF;
+const roomW = 60;
+const roomTop = PAD + 6 * (CH + ROW_GAP) + 4;
+const gunH = 2 * (CH + ROW_GAP) - ROW_GAP;
+const petaH = 2 * (CH + ROW_GAP) - ROW_GAP;
+
+makeRoomRect(svg, roomX, roomTop, roomW, gunH, 'GUNNERY\nTRAINING', '#EEF5FF', '#2A4A8A');
+makeRoomRect(svg, roomX, roomTop + gunH + 3, roomW, petaH, 'PETA\nSTORE', '#EEF5FF', '#2A4A8A');
+  const svgW = Math.max(xF + CW + PAD, roomX + roomW + PAD);
   svg.setAttribute('viewBox',`0 0 ${svgW} ${svgH}`);svg.setAttribute('width','100%');svg.setAttribute('height','auto');svg.style.maxWidth=svgW+'px';
   const bg=document.createElementNS(ns,'rect');bg.setAttribute('x','0');bg.setAttribute('y','0');bg.setAttribute('width',svgW);bg.setAttribute('height',svgH);bg.setAttribute('fill','#F8F8F4');bg.setAttribute('rx','6');svg.appendChild(bg);
   const handler=(id,veh,rect)=>{highlightLot(rect,!!veh);selectLotById(id,veh);};
@@ -935,8 +943,16 @@ function drawL3(svg) {
   const ns='http://www.w3.org/2000/svg', occ=occupiedLots('L3');
   const CW=30,CH=19,CGAP=2,COL_GAP=14,ROWS=15,PAD=8,ROW_GAP=2,PAIR_W=CW*2+CGAP;
   const xA=PAD,xBC=xA+CW+COL_GAP,xDE=xBC+PAIR_W+COL_GAP,xF=xDE+PAIR_W+COL_GAP;
-  const roomW=58,roomX=xF+CW+4;
-  const svgW=roomX+roomW+PAD,svgH=PAD+ROWS*(CH+ROW_GAP)+PAD;
+  // Rooms sit below F1, aligned to the F column
+const roomX = xF;
+const roomW = 60;
+const roomTop = PAD + 6 * (CH + ROW_GAP) + 4;
+const armH = 2 * (CH + ROW_GAP) - ROW_GAP;
+const opsH = 2 * (CH + ROW_GAP) - ROW_GAP;
+
+makeRoomRect(svg, roomX, roomTop, roomW, armH, 'ARMSKOTE', '#EEF5FF', '#2A4A8A');
+makeRoomRect(svg, roomX, roomTop + armH + 3, roomW, opsH, 'OPSTRONIC\nSTORE', '#EEF5FF', '#2A4A8A');
+  const svgW = Math.max(xF + CW + PAD, roomX + roomW + PAD);
   svg.setAttribute('viewBox',`0 0 ${svgW} ${svgH}`);svg.setAttribute('width','100%');svg.setAttribute('height','auto');svg.style.maxWidth=svgW+'px';
   const bg=document.createElementNS(ns,'rect');bg.setAttribute('x','0');bg.setAttribute('y','0');bg.setAttribute('width',svgW);bg.setAttribute('height',svgH);bg.setAttribute('fill','#F8F8F4');bg.setAttribute('rx','6');svg.appendChild(bg);
   const handler=(id,veh,rect)=>{highlightLot(rect,!!veh);selectLotById(id,veh);};
