@@ -710,16 +710,16 @@ function renderDetailScreen(v) {
       <div class="stat-cell"><div class="stat-label">Engine Hours</div><div class="stat-value">${safe(v.engine_hours)} <span class="stat-unit">hrs</span></div></div>
     </div>
 
-      <div class="card-sm" style="margin-bottom:10px; background: #fff; padding: 10px; border-radius: 8px;">
+      <div class="card-sm" style="margin-bottom:10px;">
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-    <div style="font-size:14px; font-weight:700;">Starter</div>
-    <div style="font-size:14px; color:var(--muted);">
+    <div style="font-size:12px; font-weight:600;">Starter</div>
+    <div style="font-size:12px; color:var(--muted);">
        ${v.starter_v || '--'}V | ${v.starter_pct || 0}%
     </div>
   </div>
   <div style="display:flex; justify-content:space-between; align-items:center;">
-    <div style="font-size:14px; font-weight:700;">Aux</div>
-    <div style="font-size:14px; color:var(--muted);">
+    <div style="font-size:12px; font-weight:600;">Aux</div>
+    <div style="font-size:12px; color:var(--muted);">
        ${v.aux_v || '--'}V | ${v.aux_pct || 0}%
     </div>
   </div>
