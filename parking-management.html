@@ -704,11 +704,17 @@ function renderDetailScreen(v) {
       <div class="stat-cell"><div class="stat-label">Engine Hours</div><div class="stat-value">${safe(v.engine_hours)} <span class="stat-unit">hrs</span></div></div>
     </div>
 
-    <div class="card-sm" style="margin-bottom:10px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <div style="font-size:12px;color:var(--muted);">Battery (before start)</div>
-        <div style="font-size:12px;color:var(--muted);">${safe(v.battery_v)}V</div>
-      </div>
+    // Inside your vehicle card rendering function:
+<div class="card-sm" style="margin-bottom:10px;">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+    <div style="font-size:12px; font-weight:600;">Starter</div>
+    <div style="font-size:12px;">${safe(v.starter_v)}V | ${safe(v.starter_pct)}%</div>
+  </div>
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <div style="font-size:12px; font-weight:600;">Aux</div>
+    <div style="font-size:12px;">${safe(v.aux_v)}V | ${safe(v.aux_pct)}%</div>
+  </div>
+</div>
       <div style="display:flex;align-items:center;gap:12px;">
         <div style="font-size:22px;font-weight:700;color:${batColor};">${batPct}%</div>
         <div style="flex:1;"><div class="gauge-bar-wrap"><div class="gauge-bar" style="width:${batPct}%;background:${batColor};"></div></div></div>
