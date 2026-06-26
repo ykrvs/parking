@@ -117,12 +117,14 @@ async function loadDashboard() {
 // ══════════════════════════════════════════════
 function goTab(tab) {
   closeSidebar();
-  if (!['home','search','parking','profile'].includes(tab)) return;
+  if (!['home','search','parking','profile','driveout-history'].includes(tab)) return;
   currentTab = tab;
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + tab).classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('nav-' + tab)?.classList.add('active');
+  // Load driveout history data when that tab is opened
+  if (tab === 'driveout-history') loadDriveoutHistory();
 }
 
 function showScreen(id) {
@@ -903,34 +905,224 @@ async function logout() {
 async function driveOut(vehicleId) {
   if (!confirm('Mark this vehicle as driven out? It will be removed from active parking.')) return;
   try {
-    // Archive to history first
     const v = allVehicles.find(x => String(x.id) === String(vehicleId));
-    if (v) {
-      await sb.from('history').insert([{
-        vehicle_id: v.id,
-        plate: v.plate,
-        driver: v.driver,
-        odometer: v.odometer,
-        engine_hours: v.engine_hours,
-        fuel_pct: v.fuel_pct,
-        fuel_l: v.fuel_l,
-        fire_ext_expiry: v.fire_ext_expiry,
-        notes: '[Drive-out] ' + (v.notes || ''),
-        created_at: new Date().toISOString(),
-      }]);
-    }
-    // Delete from vehicles table
-    const { error } = await sb.from('vehicles').delete().eq('id', vehicleId);
-    if (error) throw error;
+    if (!v) throw new Error('Vehicle not found in local state');
+
+    const checkOutTime = new Date().toISOString();
+
+    // Build the full driveout history row —
+    // current user overwrites driver/depot/phone as the person checking out
+    const histRow = {
+      // Vehicle identity
+      vehicle_id:      v.id,
+      plate:           v.plate,
+      variant:         v.variant,
+      level:           v.level,
+      lot:             v.lot,
+      // Check-in / check-out timestamps
+      check_in:        v.check_in,
+      check_out:       checkOutTime,
+      // Last driver = the user performing the drive-out
+      driver:          currentUser?.name         || v.driver,
+      driver_phone:    currentUser?.phone        || v.driver_phone,
+      driver_depot:    currentUser?.depot        || v.driver_depot,
+      // All telemetry from most recent vehicle state
+      odometer:        v.odometer,
+      engine_hours:    v.engine_hours,
+      starter_v:       v.starter_v,
+      starter_pct:     v.starter_pct,
+      aux_v:           v.aux_v,
+      aux_pct:         v.aux_pct,
+      fuel_l:          v.fuel_l,
+      fuel_pct:        v.fuel_pct,
+      fire_ext_expiry: v.fire_ext_expiry,
+      notes:           v.notes,
+      created_at:      checkOutTime,
+    };
+
+    const { error: hErr } = await sb.from('history').insert([histRow]);
+    if (hErr) throw new Error('History insert failed: ' + hErr.message);
+
+    // Remove from vehicles table
+    const { error: dErr } = await sb.from('vehicles').delete().eq('id', vehicleId);
+    if (dErr) throw new Error('Vehicle delete failed: ' + dErr.message);
+
     // Remove from local state
     allVehicles = allVehicles.filter(x => String(x.id) !== String(vehicleId));
     await loadDashboard();
     goBack();
-    showToast('✓ Vehicle marked as driven out');
+    showToast('✓ ' + v.plate + ' has been checked out');
   } catch(e) {
     console.error('Drive-out failed:', e);
     showToast('⚠ Drive-out failed: ' + e.message);
   }
+}
+
+// ══════════════════════════════════════════════
+// DRIVE-OUT HISTORY — fetches history table rows that have check_out set
+// ══════════════════════════════════════════════
+let allDriveoutRecords = [];
+
+async function loadDriveoutHistory() {
+  document.getElementById('driveout-list').innerHTML =
+    '<div class="loading"><div class="spinner"></div>Loading…</div>';
+  try {
+    // Rows in history that have a check_out timestamp are drive-out records
+    const { data, error } = await sb
+      .from('history')
+      .select('*')
+      .not('check_out', 'is', null)
+      .order('check_out', { ascending: false });
+    if (error) throw error;
+    allDriveoutRecords = data || [];
+    renderDriveoutList(allDriveoutRecords);
+    setupDriveoutSearch();
+  } catch(e) {
+    console.error('Driveout history fetch failed:', e);
+    document.getElementById('driveout-list').innerHTML =
+      '<div class="empty"><p>Could not load drive-out history</p></div>';
+  }
+}
+
+let driveoutSearchSetup = false;
+function setupDriveoutSearch() {
+  if (driveoutSearchSetup) return;
+  driveoutSearchSetup = true;
+  document.getElementById('driveout-search-input').addEventListener('input', e => {
+    const q = e.target.value.toLowerCase();
+    renderDriveoutList(allDriveoutRecords.filter(r =>
+      (r.plate||'').toLowerCase().includes(q) ||
+      (r.driver||'').toLowerCase().includes(q) ||
+      (r.variant||'').toLowerCase().includes(q)
+    ));
+  });
+}
+
+function renderDriveoutList(records) {
+  const el = document.getElementById('driveout-list');
+  if (!records.length) {
+    el.innerHTML = '<div class="empty"><p>No drive-out records found</p></div>';
+    return;
+  }
+  el.innerHTML = records.map(r => `
+    <div class="veh-item" onclick="openDriveoutDetail('${r.id}')">
+      <div class="veh-icon" style="background:#FEF0F0;color:var(--danger);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="18" height="18">
+          <path d="M19 17H5a2 2 0 0 1-2-2V7l2-3h12l2 3v8a2 2 0 0 1-2 2z"/>
+          <path d="M7 17v2M17 17v2M3 11h18"/>
+          <path d="M17 7l4 4-4 4"/>
+        </svg>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div class="veh-plate">${r.plate || '—'}</div>
+        <div class="veh-meta">${r.variant || '—'} &nbsp;·&nbsp; ${r.level || '—'} – Lot ${r.lot || '—'}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;">
+        <div style="font-size:11px;color:var(--danger);font-weight:600;">OUT ${r.check_out ? timeAgo(r.check_out) : '—'}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">${r.driver || '—'}</div>
+      </div>
+    </div>`).join('');
+}
+
+function openDriveoutDetail(recordId) {
+  const r = allDriveoutRecords.find(x => String(x.id) === String(recordId));
+  if (!r) return;
+  renderDriveoutDetailScreen(r);
+  showScreen('driveout-detail');
+}
+
+function renderDriveoutDetailScreen(r) {
+  const fuelPct = Number(r.fuel_pct) || 0;
+  const fuelColor = fuelPct > 50 ? 'var(--accent)' : fuelPct > 20 ? 'var(--warn)' : 'var(--danger)';
+  const dInitials = (r.driver || 'UN').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+
+  document.getElementById('driveout-detail-badge').innerHTML =
+    `<span class="badge badge-red" style="font-size:11px;">Checked Out</span>`;
+
+  document.getElementById('driveout-detail-body').innerHTML = `
+    <div style="margin-bottom:18px;">
+      <div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;letter-spacing:-.5px;">${safe(r.plate)}</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:2px;">${safe(r.variant)}</div>
+    </div>
+
+    <!-- Timing -->
+    <div class="card" style="margin-bottom:14px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <div style="font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.4px;text-transform:uppercase;margin-bottom:3px;">Checked In</div>
+          <div style="font-size:13px;font-weight:600;">${r.check_in ? formatDate(r.check_in) : '—'}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--danger);font-weight:600;letter-spacing:.4px;text-transform:uppercase;margin-bottom:3px;">Checked Out</div>
+          <div style="font-size:13px;font-weight:600;">${r.check_out ? formatDate(r.check_out) : '—'}</div>
+        </div>
+      </div>
+      ${r.check_in && r.check_out ? `
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);">
+        Duration: <strong style="color:var(--text);">${durationBetween(r.check_in, r.check_out)}</strong>
+        &nbsp;·&nbsp; Parked at <strong style="color:var(--text);">${r.level} – Lot ${r.lot}</strong>
+      </div>` : ''}
+    </div>
+
+    <!-- Driver who checked out -->
+    <div class="section-label">Checked Out By</div>
+    <div class="driver-card">
+      <div class="driver-avatar-sm">${dInitials}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:15px;">${safe(r.driver)}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:1px;">${safe(r.driver_depot)}</div>
+        <a href="tel:${safe(r.driver_phone,'')}" style="font-size:12px;color:var(--accent);text-decoration:none;margin-top:2px;display:block;font-weight:600;">${safe(r.driver_phone)}</a>
+      </div>
+    </div>
+
+    <!-- Readings at checkout -->
+    <div class="section-label">Readings at Check-Out</div>
+    <div class="stat-grid" style="margin-bottom:12px;">
+      <div class="stat-cell"><div class="stat-label">Odometer</div><div class="stat-value">${r.odometer != null ? Number(r.odometer).toLocaleString() : '—'} <span class="stat-unit">km</span></div></div>
+      <div class="stat-cell"><div class="stat-label">Engine Hours</div><div class="stat-value">${safe(r.engine_hours)} <span class="stat-unit">hrs</span></div></div>
+    </div>
+
+    <div class="card-sm" style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <div style="font-size:12px;font-weight:600;">Starter Battery</div>
+        <div style="font-size:12px;color:var(--muted);">${safe(r.starter_v,'—')}V | ${safe(r.starter_pct,'—')}%</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-size:12px;font-weight:600;">Aux Battery</div>
+        <div style="font-size:12px;color:var(--muted);">${safe(r.aux_v,'—')}V | ${safe(r.aux_pct,'—')}%</div>
+      </div>
+    </div>
+
+    <div class="card-sm" style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div style="font-size:12px;color:var(--muted);">Fuel Level</div>
+        <div style="font-size:12px;color:var(--muted);">${safe(r.fuel_l,'—')}L</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="font-size:22px;font-weight:700;color:${fuelColor};">${fuelPct}%</div>
+        <div style="flex:1;"><div class="gauge-bar-wrap"><div class="gauge-bar" style="width:${fuelPct}%;background:${fuelColor};"></div></div></div>
+      </div>
+    </div>
+
+    ${renderFireExtCard(r.fire_ext_expiry)}
+
+    ${r.notes ? `
+    <div class="section-label">Notes / Faults</div>
+    <div class="card-sm" style="font-size:13px;color:var(--text);white-space:pre-wrap;">${r.notes}</div>` : ''}
+  `;
+}
+
+// Duration helper: returns human-readable string between two ISO timestamps
+function durationBetween(isoA, isoB) {
+  const ms = new Date(isoB) - new Date(isoA);
+  if (ms < 0) return '—';
+  const totalMin = Math.floor(ms / 60000);
+  const days = Math.floor(totalMin / 1440);
+  const hrs  = Math.floor((totalMin % 1440) / 60);
+  const mins = totalMin % 60;
+  if (days > 0) return `${days}d ${hrs}h ${mins}m`;
+  if (hrs  > 0) return `${hrs}h ${mins}m`;
+  return `${mins}m`;
 }
 
 
