@@ -909,6 +909,11 @@ async function driveOut(vehicleId) {
     if (!v) throw new Error('Vehicle not found in local state');
 
     const checkOutTime = new Date().toISOString();
+const histRow = {
+    ...vehicleData,
+    check_out: checkOutTime, // <--- Make sure this field exists
+    created_at: checkOutTime
+};
 
     // Build the full driveout history row —
     // current user overwrites driver/depot/phone as the person checking out
