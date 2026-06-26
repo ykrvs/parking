@@ -759,6 +759,12 @@ function renderDetailScreen(v) {
 // UPDATE MODAL — saves to vehicles + history
 // ══════════════════════════════════════════════
 function openUpdateModal() {
+ console.log("Button clicked, opening modal..."); // Add this line
+  
+  if (!currentVehicle) {
+    console.error("currentVehicle is missing!");
+    return;
+  }
   const v = currentVehicle;
   
   // Existing header
