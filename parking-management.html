@@ -353,33 +353,8 @@
     <div style="font-size:13px;color:var(--muted);margin-bottom:18px;" id="modal-plate-sub">—</div>
     <div class="field"><label>Odometer (km)</label><input type="number" id="m-odometer" placeholder="e.g. 45230"></div>
     <div class="field"><label>Engine Hours (hrs)</label><input type="number" id="m-engine-hours" step="0.1"></div>
-    <div class="field" style="margin-top:15px; border-top:1px solid var(--border); padding-top:10px;">
-  <label style="font-weight:700;">Starter Battery</label>
-  <div style="display:flex; gap:10px;">
-    <div style="flex:1;">
-      <label style="font-size:11px;">Voltage (Before Start)</label>
-      <input type="number" id="ci-batt-starter-v" step="0.1" placeholder="e.g. 12.6">
-    </div>
-    <div style="flex:1;">
-      <label style="font-size:11px;">Battery %</label>
-      <input type="number" id="ci-batt-starter-pct" min="0" max="100" placeholder="%">
-    </div>
-  </div>
-</div>
-
-<div class="field">
-  <label style="font-weight:700;">Auxiliary Battery</label>
-  <div style="display:flex; gap:10px;">
-    <div style="flex:1;">
-      <label style="font-size:11px;">Voltage (Before Start)</label>
-      <input type="number" id="ci-batt-aux-v" step="0.1" placeholder="e.g. 12.6">
-    </div>
-    <div style="flex:1;">
-      <label style="font-size:11px;">Battery %</label>
-      <input type="number" id="ci-batt-aux-pct" min="0" max="100" placeholder="%">
-    </div>
-  </div>
-</div>
+    <div class="field"><label>Battery % (before start)</label><input type="number" id="m-battery-pct" min="0" max="100"></div>
+    <div class="field"><label>Battery Voltage (V)</label><input type="number" id="m-battery-v" step="0.1"></div>
     <div class="field"><label>Fuel %</label><input type="number" id="m-fuel-pct" min="0" max="100"></div>
     <div class="field"><label>Fuel Balance (L)</label><input type="number" id="m-fuel-l" step="0.1"></div>
     <div class="field"><label>🧯 Fire Extinguisher Expiry</label><input type="date" id="m-fire-ext-expiry"></div>
