@@ -911,9 +911,12 @@ async function driveOut(vehicleId) {
     const checkOutTime = new Date().toISOString();
 const histRow = {
     ...vehicleData,
-    check_out: checkOutTime, // <--- Make sure this field exists
-    created_at: checkOutTime
+    check_in: v.check_in,
+  check_out: checkOutTime, 
+  created_at: checkOutTime
 };
+
+    const { error: hErr } = await sb.from('history').insert([histRow]);
 
     // Build the full driveout history row —
     // current user overwrites driver/depot/phone as the person checking out
@@ -954,7 +957,7 @@ const histRow = {
 
     // Remove from local state
     allVehicles = allVehicles.filter(x => String(x.id) !== String(vehicleId));
-    await loadDashboard();
+await loadDashboard();
     goBack();
     showToast('✓ ' + v.plate + ' has been checked out');
   } catch(e) {
