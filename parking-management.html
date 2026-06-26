@@ -352,7 +352,8 @@
     <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin-bottom:4px;">Update Vehicle</div>
     <div style="font-size:13px;color:var(--muted);margin-bottom:18px;">Edit vehicle details</div>
     
-    <div class="field"><label>Licence Plate</label><input type="text" id="up-plate" style="text-transform:uppercase;"></div>
+    <div class="field"><label>Licence Plate</label><input type="text" id="up-plate" readonly style="background-color: #f9f9f9; cursor: not-allowed;"></div>
+    
     <div class="field"><label>Variant / Model</label><input type="text" id="up-variant"></div>
     <div class="field"><label>Driver Name</label><input type="text" id="up-driver"></div>
     <div class="field"><label>Driver Phone</label><input type="tel" id="up-driver-phone"></div>
@@ -360,9 +361,9 @@
     <div class="field"><label>🧯 Fire Extinguisher Expiry</label><input type="date" id="up-fire-expiry"></div>
     
     <div style="display:flex;gap:10px;">
-      <div class="field" style="flex:1;"><label>Level</label>
-        <select id="up-level">
-          <option value="Workshop">Workshop</option><option value="L1">L1</option>
+      <div class="field" style="flex:1;">
+        <label>Level</label>
+        <select id="up-level" disabled> <option value="Workshop">Workshop</option><option value="L1">L1</option>
           <option value="L2">L2</option><option value="L3">L3</option>
         </select>
       </div>
@@ -786,29 +787,41 @@ function openUpdateModal() {
 
 async function submitUpdate() {
   const update = {
-    odometer:        parseFloat(document.getElementById('m-odometer').value)     || null,
-    engine_hours:    parseFloat(document.getElementById('m-engine-hours').value) || null,
-    battery_pct:     parseInt(document.getElementById('m-battery-pct').value)    || null,
-    battery_v:       parseFloat(document.getElementById('m-battery-v').value)    || null,
-    fuel_pct:        parseInt(document.getElementById('m-fuel-pct').value)       || null,
-    fuel_l:          parseFloat(document.getElementById('m-fuel-l').value)       || null,
-    fire_ext_expiry: document.getElementById('m-fire-ext-expiry').value          || null,
-    notes:           document.getElementById('m-notes').value,
+    odometer:        parseFloat(document.getElementById('up-odometer').value)       || null,
+    engine_hours:    parseFloat(document.getElementById('up-engine-hours').value)   || null,
+    // NEW DUAL-BATTERY FIELDS
+    starter_v:       parseFloat(document.getElementById('up-batt-starter-v').value) || null,
+    starter_pct:     parseInt(document.getElementById('up-batt-starter-pct').value) || null,
+    aux_v:           parseFloat(document.getElementById('up-batt-aux-v').value)     || null,
+    aux_pct:         parseInt(document.getElementById('up-batt-aux-pct').value)     || null,
+    // NEW FUEL FIELDS
+    fuel_l:          parseFloat(document.getElementById('up-fuel-l').value)         || null,
+    fuel_pct:        parseInt(document.getElementById('up-fuel-pct').value)         || null,
+    // REST OF FIELDS
+    fire_ext_expiry: document.getElementById('up-fire-expiry').value              || null,
+    notes:           document.getElementById('up-notes').value,
   };
 
   try {
-    // Write history record first
-    const historyRow = { ...update, vehicle_id: currentVehicle.id, plate: currentVehicle.plate, driver: currentVehicle.driver, created_at: new Date().toISOString() };
+    // 1. Write history record
+    const historyRow = { 
+        ...update, 
+        vehicle_id: currentVehicle.id, 
+        plate: currentVehicle.plate, 
+        driver: currentVehicle.driver, 
+        created_at: new Date().toISOString() 
+    };
     const { error: hErr } = await sb.from('history').insert([historyRow]);
     if (hErr) console.warn('History insert failed:', hErr.message);
 
-    // Update vehicle record
-    const { error: vErr } = await sb.from('vehicles').update(update).eq('id', currentVehicle.id);
+    // 2. Update vehicle record
+    const { error: vErr } = await sb.from('vehicles')
+        .update(update)
+        .eq('id', currentVehicle.id);
     if (vErr) throw vErr;
 
-    // Sync local state
+    // 3. Sync local state
     Object.assign(currentVehicle, update);
-    // Also update in allVehicles array
     const idx = allVehicles.findIndex(v => v.id === currentVehicle.id);
     if (idx !== -1) allVehicles[idx] = { ...allVehicles[idx], ...update };
 
@@ -820,7 +833,6 @@ async function submitUpdate() {
     showToast('⚠ Update failed: ' + e.message);
   }
 }
-
 // ══════════════════════════════════════════════
 // CHECK-IN MODAL — inserts to vehicles table
 // ══════════════════════════════════════════════
