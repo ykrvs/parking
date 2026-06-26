@@ -195,6 +195,9 @@
     <div class="topbar">
       <div><div class="topbar-title">FleetOps</div><div class="topbar-sub">Block 210</div></div>
       <div class="topbar-right">
+        <button class="icon-btn" onclick="openSidebar()" aria-label="Menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
         <div id="home-user-avatar" class="avatar" style="width:36px;height:36px;font-size:15px;border-width:2px;cursor:pointer;" onclick="goTab('profile')">—</div>
       </div>
     </div>
@@ -297,6 +300,10 @@
         <div id="profile-role-badge" style="margin-top:4px;"></div>
       </div>
       <div id="profile-view">
+        <button class="btn btn-full" onclick="logout()" style="margin-bottom:16px;background:rgba(192,57,43,.08);color:var(--danger);border:1px solid rgba(192,57,43,.25);font-weight:600;gap:8px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Log Out
+        </button>
         <div class="section-label">Account Details</div>
         <div class="card">
           <div style="display:flex;flex-direction:column;gap:12px;">
@@ -406,9 +413,7 @@
 
     <div class="section-label">Description / Faults</div>
 <div class="field">
-  <textarea id="notes" 
-            style="min-height:100px; background-color: #f4f4f4; cursor: not-allowed;" 
-            readonly>${v.notes || ''}</textarea>
+  <textarea id="up-notes" style="min-height:100px;" placeholder="Notes or faults…"></textarea>
 </div>
     
     <div style="display:flex;gap:10px;margin-top:4px;">
@@ -604,6 +609,7 @@ async function loadDashboard() {
 // NAVIGATION
 // ══════════════════════════════════════════════
 function goTab(tab) {
+  closeSidebar();
   if (!['home','search','parking','profile'].includes(tab)) return;
   currentTab = tab;
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -741,18 +747,20 @@ function renderDetailScreen(v) {
 
     <div class="section-label">Description / Faults</div>
 <div class="field">
-  <textarea id="detail-notes" 
-            style="min-height:100px; background-color: #f4f4f4; cursor: not-allowed;" 
-            readonly>${v.notes || ''}</textarea>
+  <textarea id="detail-notes" style="min-height:100px;" placeholder="Notes or faults…">${v.notes || ''}</textarea>
 </div>
 
     <button class="btn btn-primary btn-full" style="margin-bottom:10px;" onclick="openUpdateModal()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
       Update Vehicle Record
     </button>
-    <button class="btn btn-ghost btn-full" onclick="openHistory('${v.id}')">
+    <button class="btn btn-ghost btn-full" onclick="openHistory('${v.id}')" style="margin-bottom:10px;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       View History
+    </button>
+    <button class="btn btn-full" onclick="driveOut('${v.id}')" style="background:rgba(192,57,43,.08);color:var(--danger);border:1px solid rgba(192,57,43,.25);font-weight:600;gap:8px;margin-bottom:24px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M19 17H5a2 2 0 0 1-2-2V7l2-3h12l2 3v8a2 2 0 0 1-2 2z"/><path d="M17 7l4 4-4 4"/></svg>
+      Drive Out / Move Off
     </button>`;
 }
 
@@ -864,20 +872,6 @@ async function submitCheckin() {
   const fuel_pct    = parseInt(document.getElementById('ci-fuel-pct').value)   || null;
   const fire_expiry = document.getElementById('ci-fire-expiry').value          || null;
   const notes       = document.getElementById('ci-notes').value;
- // 1. Get the values
-const fuelL   = parseFloat(document.getElementById('ci-fuel-l').value) || 0;
-const fuelPct = parseInt(document.getElementById('ci-fuel-pct').value) || 0;
-
-// 2. Insert into Supabase
-const { data, error } = await supabaseClient
-  .from('vehicles')
-  .insert([{ 
-    // ... existing fields ...
-    fuel_l: fuelL,
-    fuel_pct: fuelPct,
-    check_in: new Date().toISOString()
-  }]);
-
   if (!plate || !level || !lot) {
     showToast('⚠ Plate, Level and Lot are required');
     return;
@@ -1115,14 +1109,18 @@ function drawL2(svg) {
   const CW=30,CH=19,CGAP=2,COL_GAP=14,ROWS=15,PAD=8,ROW_GAP=2,PAIR_W=CW*2+CGAP;
   const xA=PAD,xBC=xA+CW+COL_GAP,xDE=xBC+PAIR_W+COL_GAP,xF=xDE+PAIR_W+COL_GAP;
   
-  // Rooms sit below F1, aligned to the F column
-  const roomX = xF;
-  const roomW = 60;
-  const roomTop = PAD + 6 * (CH + ROW_GAP) + 4;
-  const gunH = 2 * (CH + ROW_GAP) - ROW_GAP;
-  const petaH = 2 * (CH + ROW_GAP) - ROW_GAP;
+  // Rooms RIGHT of F col, vertically aligned with F6 (top) → F1 (bottom)
+  const roomGap = 4;
+  const roomW = 56;
+  const roomX = xF + CW + roomGap;
+  // F6 is at PAD + 0*(CH+ROW_GAP), F1 is at PAD + 5*(CH+ROW_GAP)
+  const bandTop = PAD;
+  const bandBot = PAD + 5*(CH+ROW_GAP) + CH;
+  const bandH   = bandBot - bandTop;
+  const gunH  = Math.round(bandH * 0.5) - 2;
+  const petaH = bandH - gunH - 3;
 
-  const svgW = Math.max(xF + CW + PAD, roomX + roomW + PAD);
+  const svgW = roomX + roomW + PAD;
   const svgH = PAD+ROWS*(CH+ROW_GAP)+PAD;
   
   svg.setAttribute('viewBox',`0 0 ${svgW} ${svgH}`);
@@ -1158,9 +1156,9 @@ function drawL2(svg) {
     makeLotRect(svg,xF,fy,CW,CH,'F'+fn,!!occ['F'+fn],false,handler); 
   }
   
-  // Draw Rooms (Only declared and drawn once!)
-  makeRoomRect(svg, roomX, roomTop, roomW, gunH, 'GUNNERY\nTRAINING', '#EEF5FF', '#2A4A8A');
-  makeRoomRect(svg, roomX, roomTop + gunH + 3, roomW, petaH, 'PETA\nSTORE', '#EEF5FF', '#2A4A8A');
+  // Rooms alongside F lots (same vertical band)
+  makeRoomRect(svg, roomX, bandTop,          roomW, gunH,  'GUNNERY\nTRAINING', '#EEF5FF', '#2A4A8A');
+  makeRoomRect(svg, roomX, bandTop+gunH+3,   roomW, petaH, 'PETA\nSTORE',       '#EEF5FF', '#2A4A8A');
 }
 
 // ── LEVEL 3 ── F6-F1 flush top; Armskote & Opstronic Store below F1
@@ -1169,14 +1167,17 @@ function drawL3(svg) {
   const CW=30,CH=19,CGAP=2,COL_GAP=14,ROWS=15,PAD=8,ROW_GAP=2,PAIR_W=CW*2+CGAP;
   const xA=PAD,xBC=xA+CW+COL_GAP,xDE=xBC+PAIR_W+COL_GAP,xF=xDE+PAIR_W+COL_GAP;
   
-  // Rooms sit below F1, aligned to the F column
-  const roomX = xF;
+  // Rooms RIGHT of F col, vertically aligned with F6 (top) → F1 (bottom)
+  const roomGap = 4;
   const roomW = 60;
-  const roomTop = PAD + 6 * (CH + ROW_GAP) + 4;
-  const armH = 2 * (CH + ROW_GAP) - ROW_GAP;
-  const opsH = 2 * (CH + ROW_GAP) - ROW_GAP;
+  const roomX = xF + CW + roomGap;
+  const bandTop = PAD;
+  const bandBot = PAD + 5*(CH+ROW_GAP) + CH;
+  const bandH   = bandBot - bandTop;
+  const armH  = Math.round(bandH * 0.45) - 2;
+  const opsH  = bandH - armH - 3;
 
-  const svgW = Math.max(xF + CW + PAD, roomX + roomW + PAD);
+  const svgW = roomX + roomW + PAD;
   const svgH = PAD+ROWS*(CH+ROW_GAP)+PAD;
   
   svg.setAttribute('viewBox',`0 0 ${svgW} ${svgH}`);
@@ -1211,9 +1212,9 @@ function drawL3(svg) {
     makeLotRect(svg,xF,fy,CW,CH,'F'+fn,!!occ['F'+fn],false,handler); 
   }
   
-  // Draw Rooms (Only declared and drawn once!)
-  makeRoomRect(svg, roomX, roomTop, roomW, armH, 'ARMSKOTE', '#EEF5FF', '#2A4A8A');
-  makeRoomRect(svg, roomX, roomTop + armH + 3, roomW, opsH, 'OPSTRONIC\nSTORE', '#EEF5FF', '#2A4A8A');
+  // Rooms alongside F lots (same vertical band)
+  makeRoomRect(svg, roomX, bandTop,         roomW, armH, 'ARMSKOTE',         '#EEF5FF', '#2A4A8A');
+  makeRoomRect(svg, roomX, bandTop+armH+3,  roomW, opsH, 'OPSTRONIC\nSTORE','#EEF5FF', '#2A4A8A');
 }
 
 // ── LOT SELECTION PANEL ──
@@ -1359,6 +1360,72 @@ function formatDate(iso) {
 function formatDateOnly(iso) {
   return new Date(iso+'T00:00:00').toLocaleDateString('en-SG', { day:'numeric', month:'short', year:'numeric' });
 }
+
+// ══════════════════════════════════════════════
+// SIDEBAR
+// ══════════════════════════════════════════════
+function openSidebar() {
+  document.getElementById('sidebar-overlay').classList.add('open');
+}
+function closeSidebar() {
+  document.getElementById('sidebar-overlay').classList.remove('open');
+}
+function handleSidebarOverlayClick(e) {
+  // close only if clicking the dark backdrop, not the panel itself
+  if (e.target === document.getElementById('sidebar-overlay')) closeSidebar();
+}
+function goPage(page) {
+  // Placeholder: extend this as new pages are added
+  closeSidebar();
+  showToast('🚧 ' + page + ' page coming soon');
+}
+
+// ══════════════════════════════════════════════
+// LOGOUT
+// ══════════════════════════════════════════════
+async function logout() {
+  try {
+    await sb.auth.signOut();
+  } catch(e) { /* ignore */ }
+  window.location.href = 'login.html';
+}
+
+// ══════════════════════════════════════════════
+// DRIVE OUT — removes vehicle from active list
+// ══════════════════════════════════════════════
+async function driveOut(vehicleId) {
+  if (!confirm('Mark this vehicle as driven out? It will be removed from active parking.')) return;
+  try {
+    // Archive to history first
+    const v = allVehicles.find(x => String(x.id) === String(vehicleId));
+    if (v) {
+      await sb.from('history').insert([{
+        vehicle_id: v.id,
+        plate: v.plate,
+        driver: v.driver,
+        odometer: v.odometer,
+        engine_hours: v.engine_hours,
+        fuel_pct: v.fuel_pct,
+        fuel_l: v.fuel_l,
+        fire_ext_expiry: v.fire_ext_expiry,
+        notes: '[Drive-out] ' + (v.notes || ''),
+        created_at: new Date().toISOString(),
+      }]);
+    }
+    // Delete from vehicles table
+    const { error } = await sb.from('vehicles').delete().eq('id', vehicleId);
+    if (error) throw error;
+    // Remove from local state
+    allVehicles = allVehicles.filter(x => String(x.id) !== String(vehicleId));
+    await loadDashboard();
+    goBack();
+    showToast('✓ Vehicle marked as driven out');
+  } catch(e) {
+    console.error('Drive-out failed:', e);
+    showToast('⚠ Drive-out failed: ' + e.message);
+  }
+}
+
 
 // ══════════════════════════════════════════════
 // START
