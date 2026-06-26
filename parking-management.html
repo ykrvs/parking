@@ -759,52 +759,12 @@ function renderDetailScreen(v) {
 // UPDATE MODAL — saves to vehicles + history
 // ══════════════════════════════════════════════
 function openUpdateModal() {
- console.log("Button clicked...");
-  const v = currentVehicle;
-  if (!v) return;
-
-  // Helper function to safely set values
-  function safeSet(id, val) {
-    const el = document.getElementById(id);
-    if (el) {
-      el.value = val ?? '';
-    } else {
-      console.warn(`Element with ID '${id}' not found in HTML!`);
-    }
+ console.log("Button clicked, opening modal..."); // Add this line
   
-
-  // Use this for all fields
-  safeSet('up-plate', v.plate);
-  safeSet('up-variant', v.variant);
- safeSet('up-driver', v.driver);
-  safeSet('up-driver-phone', v.driver_phone);
-  safeSet('up-driver-depot', v.driver_depot);
-  safeSet('up-fire-expiry', v.fire_ext_expiry);
-  safeSet('up-level', v.level ?? 'Workshop');
-  safeSet('up-lot', v.lot);
-  safeSet('up-odometer', v.odometer);
-  safeSet('up-engine-hours', v.engine_hours);
-
-  // Battery Fields
-  safeSet('up-batt-starter-v', v.starter_v);
-  safeSet('up-batt-starter-pct', v.starter_pct);
-  safeSet('up-batt-aux-v', v.aux_v);
-  safeSet('up-batt-aux-pct', v.aux_pct);
-
-  // Fuel Fields
-  safeSet('up-fuel-l', v.fuel_l);
-  safeSet('up-fuel-pct', v.fuel_pct);
-
-  // Notes
-  safeSet('up-notes', v.notes);
-  // ... continue for other fields ...
-
-  // For textContent elements like 'modal-plate-sub'
-  const plateSub = document.getElementById('modal-plate-sub');
-  if (plateSub) {
-      plateSub.textContent = `${v.plate} · ${v.variant}`;
+  if (!currentVehicle) {
+    console.error("currentVehicle is missing!");
+    return;
   }
-
   const v = currentVehicle;
   
   // Existing header
