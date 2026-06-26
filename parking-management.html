@@ -720,11 +720,20 @@ function renderDetailScreen(v) {
     <div style="font-size:12px;">${safe(v.aux_v)}V | ${safe(v.aux_pct)}%</div>
   </div>
 </div>
-      <div style="display:flex;align-items:center;gap:12px;">
-        <div style="font-size:22px;font-weight:700;color:${batColor};">${batPct}%</div>
-        <div style="flex:1;"><div class="gauge-bar-wrap"><div class="gauge-bar" style="width:${batPct}%;background:${batColor};"></div></div></div>
-      </div>
+      <div class="card-sm" style="margin-bottom:10px; background: #fff; padding: 10px; border-radius: 8px;">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+    <div style="font-size:14px; font-weight:700;">Starter</div>
+    <div style="font-size:14px; color:var(--muted);">
+       ${v.starter_v || '--'}V | ${v.starter_pct || 0}%
     </div>
+  </div>
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <div style="font-size:14px; font-weight:700;">Aux</div>
+    <div style="font-size:14px; color:var(--muted);">
+       ${v.aux_v || '--'}V | ${v.aux_pct || 0}%
+    </div>
+  </div>
+</div>
 
     <div class="card-sm" style="margin-bottom:12px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
