@@ -1,410 +1,136 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
- <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<script>
-    // ⚠️ CRITICAL: Use the EXACT same credentials you used in your login page
-    const supabaseUrl = 'https://jzjjmpgonqbusumcryaj.supabase.co/'; 
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6amptcGdvbnFidXN1bWNyeWFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyODA0NTgsImV4cCI6MjA5Nzg1NjQ1OH0.k5A1OtUbsUT9UBZOD4-3T4-Mw-VHK9SWkzwF8Fp3NoM';               
-    
-    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
-
-    // Run this check instantly as the page loads
-    async function checkUserAuthentication() {
-        try {
-            // Ask Supabase if a valid login session exists in the browser's local storage
-            const { data: { session }, error } = await supabaseClient.auth.getSession();
-
-            if (error || !session) {
-                console.log("🔒 Access Denied: No active session found. Redirecting to login...");
-                // Send them back to your login page. 
-                // Adjust "login.html" if your main page is named "index.html"
-                window.location.href = "login.html"; 
-            } else {
-                console.log("🔓 Access Granted: Welcome user", session.user.email);
-                // Optional: You can now use session.user to display their email on the dashboard!
-            }
-        } catch (err) {
-            console.error("Auth system failure:", err);
-            window.location.href = "login.html";
-        }
-    }
-
-    // Trigger the check immediately
-    checkUserAuthentication();
-</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FleetOps — Block 210</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<!-- Single Supabase import -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
   :root {
-    --bg:        #F5F5F0;
-    --surface:   #FFFFFF;
-    --surface2:  #EEEEE8;
-    --accent:    #5C7A3E;
-    --accent-dim:#4A6232;
-    --accent-lt: #E8F0DF;
-    --danger:    #C0392B;
-    --warn:      #D4860A;
-    --text:      #1A1F14;
-    --muted:     #6B7560;
-    --border:    #D4D9C8;
-    --radius:    12px;
-    --radius-sm: 8px;
+    --bg: #F5F5F0; --surface: #FFFFFF; --surface2: #EEEEE8;
+    --accent: #5C7A3E; --accent-dim: #4A6232; --accent-lt: #E8F0DF;
+    --danger: #C0392B; --warn: #D4860A;
+    --text: #1A1F14; --muted: #6B7560; --border: #D4D9C8;
+    --radius: 12px; --radius-sm: 8px;
   }
-
-  html, body {
-    height: 100%;
-    background: #E8E8E0;
-    color: var(--text);
-    font-family: 'Inter', sans-serif;
-    font-size: 15px;
-    line-height: 1.5;
-    overflow: hidden;
-  }
-
-  #app {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    max-width: 480px;
-    margin: 0 auto;
-    position: relative;
-    background: var(--bg);
-    box-shadow: 0 0 60px rgba(0,0,0,.15);
-  }
-
+  html, body { height: 100%; background: #E8E8E0; color: var(--text); font-family: 'Inter', sans-serif; font-size: 15px; line-height: 1.5; overflow: hidden; }
+  #app { display: flex; flex-direction: column; height: 100vh; max-width: 480px; margin: 0 auto; background: var(--bg); box-shadow: 0 0 60px rgba(0,0,0,.15); }
   .screen { display: none; flex-direction: column; flex: 1; overflow: hidden; }
   .screen.active { display: flex; }
-
-  .scroll-body {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px 16px 24px;
-    scrollbar-width: thin;
-    scrollbar-color: var(--border) transparent;
-  }
-
-  /* ── Top bar ── */
-  .topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 18px 10px;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
-    position: sticky; top: 0; z-index: 10;
-  }
-  .topbar-title { font-family: 'Syne', sans-serif; font-size: 18px; letter-spacing: -.3px; color: var(--text); }
+  .scroll-body { flex: 1; overflow-y: auto; padding: 16px 16px 24px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px 10px; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .topbar-title { font-family: 'Syne', sans-serif; font-size: 18px; letter-spacing: -.3px; }
   .topbar-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
   .topbar-right { display: flex; gap: 8px; align-items: center; }
-
-  /* ── Bottom nav ── */
-  #bottom-nav {
-    display: flex;
-    border-top: 1px solid var(--border);
-    background: var(--surface);
-  }
-  .nav-btn {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    padding: 10px 0 12px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--muted);
-    font-size: 10px;
-    font-family: 'Inter', sans-serif;
-    transition: color .2s;
-  }
+  #bottom-nav { display: flex; border-top: 1px solid var(--border); background: var(--surface); }
+  .nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 0 12px; background: none; border: none; cursor: pointer; color: var(--muted); font-size: 10px; font-family: 'Inter', sans-serif; transition: color .2s; }
   .nav-btn svg { width: 22px; height: 22px; }
   .nav-btn.active { color: var(--accent); }
   .nav-btn.active .nav-dot { background: var(--accent); }
-  .nav-dot { width: 4px; height: 4px; border-radius: 50%; background: transparent; margin-top: 2px; transition: background .2s; }
-
-  /* ── Cards ── */
+  .nav-dot { width: 4px; height: 4px; border-radius: 50%; background: transparent; margin-top: 2px; }
   .card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 16px; margin-bottom: 12px; }
   .card-sm { background: var(--surface2); border-radius: var(--radius-sm); border: 1px solid var(--border); padding: 12px 14px; }
-
-  /* ── Badges ── */
-  .badge {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 3px 9px; border-radius: 999px;
-    font-size: 12px; font-weight: 600; letter-spacing: .3px; text-transform: uppercase;
-  }
+  .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; letter-spacing: .3px; text-transform: uppercase; }
   .badge-green  { background: rgba(92,122,62,.12);  color: var(--accent); }
   .badge-yellow { background: rgba(212,134,10,.12); color: var(--warn); }
   .badge-red    { background: rgba(192,57,43,.12);  color: var(--danger); }
   .badge-blue   { background: rgba(60,120,200,.12); color: #2563C0; }
-  .badge-gray   { background: var(--surface2); color: var(--muted); }
-
-  /* ── Buttons ── */
-  .btn {
-    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-    padding: 10px 18px; border-radius: var(--radius-sm);
-    font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600;
-    cursor: pointer; border: none; transition: opacity .2s, transform .1s;
-  }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 18px; border-radius: var(--radius-sm); font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: opacity .2s, transform .1s; }
   .btn:active { transform: scale(.97); }
   .btn-primary { background: var(--accent); color: #fff; }
-  .btn-ghost   { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
-  .btn-danger  { background: rgba(192,57,43,.1); color: var(--danger); border: 1px solid rgba(192,57,43,.25); }
-  .btn-full    { width: 100%; }
-
-  /* ── FAB ── */
-  .fab {
-    position: fixed;
-    bottom: 72px;
-    right: calc(50% - 228px);
-    width: 52px; height: 52px;
-    border-radius: 50%;
-    background: var(--accent);
-    color: #fff;
-    border: none;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 4px 16px rgba(92,122,62,.4);
-    font-size: 24px;
-    line-height: 1;
-    z-index: 20;
-    transition: transform .2s, box-shadow .2s;
-  }
-  .fab:active { transform: scale(.92); }
-
-  /* ── Forms ── */
+  .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-full { width: 100%; }
   label { font-size: 12px; color: var(--muted); font-weight: 500; letter-spacing: .4px; text-transform: uppercase; margin-bottom: 6px; display: block; }
-  input, select, textarea {
-    width: 100%; background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius-sm); color: var(--text);
-    font-family: 'Inter', sans-serif; font-size: 14px; padding: 10px 12px;
-    transition: border-color .2s; outline: none;
-  }
+  input, select, textarea { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-family: 'Inter', sans-serif; font-size: 14px; padding: 10px 12px; transition: border-color .2s; outline: none; }
   input:focus, select:focus, textarea:focus { border-color: var(--accent); }
-  input[disabled], select[disabled] { opacity: .5; cursor: not-allowed; background: var(--surface2); }
+  input[disabled] { opacity: .5; cursor: not-allowed; background: var(--surface2); }
   textarea { resize: vertical; min-height: 80px; }
   .field { margin-bottom: 14px; }
-
-  /* ── Section heading ── */
   .section-label { font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: .8px; text-transform: uppercase; margin-bottom: 10px; }
-
-  /* ── Stat grid ── */
   .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .stat-cell { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; }
   .stat-label { font-size: 11px; color: var(--muted); font-weight: 500; margin-bottom: 4px; }
   .stat-value { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
   .stat-unit { font-size: 13px; color: var(--muted); font-weight: 400; }
-
-  /* ── Gauge bar ── */
   .gauge-bar-wrap { margin-top: 4px; background: var(--border); border-radius: 999px; height: 6px; overflow: hidden; }
   .gauge-bar { height: 100%; border-radius: 999px; transition: width .6s cubic-bezier(.4,0,.2,1); }
-
-  /* ── Vehicle list ── */
-  .veh-item {
-    display: flex; align-items: center; gap: 12px;
-    padding: 12px 14px; background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius-sm); margin-bottom: 8px; cursor: pointer;
-    transition: border-color .2s, background .2s;
-  }
+  .veh-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 8px; cursor: pointer; transition: border-color .2s, background .2s; }
   .veh-item:hover { border-color: var(--accent); background: var(--accent-lt); }
   .veh-plate { font-family: 'Syne', sans-serif; font-size: 15px; letter-spacing: .5px; flex: 1; }
   .veh-meta { font-size: 12px; color: var(--muted); }
-  .veh-icon {
-    width: 38px; height: 38px; border-radius: 10px; background: var(--accent-lt);
-    display: flex; align-items: center; justify-content: center; color: var(--accent); flex-shrink: 0;
-  }
-
-  /* ── Search bar ── */
+  .veh-icon { width: 38px; height: 38px; border-radius: 10px; background: var(--accent-lt); display: flex; align-items: center; justify-content: center; color: var(--accent); flex-shrink: 0; }
   .search-wrap { position: relative; margin-bottom: 14px; }
   .search-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); width: 16px; height: 16px; }
   .search-wrap input { padding-left: 38px; }
-
-  /* ── Back button ── */
-  .back-btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-size: 13px; color: var(--accent); background: none; border: none;
-    cursor: pointer; padding: 0; font-family: 'Inter', sans-serif; font-weight: 500;
-  }
-
-  /* ── Safety card ── */
-  .safety-card {
-    background: linear-gradient(135deg, #3D5228 0%, #4F6B33 100%);
-    border: 1px solid #3D5228;
-    border-left: 4px solid #A8C472;
-    border-radius: var(--radius);
-    padding: 18px 20px; margin-bottom: 16px;
-    position: relative; overflow: hidden;
-  }
-  .safety-card::before {
-    content: ''; position: absolute; right: -20px; top: -20px;
-    width: 100px; height: 100px;
-    background: radial-gradient(circle, rgba(255,255,255,.08) 0%, transparent 70%);
-    pointer-events: none;
-  }
-  .safety-label {
-    font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase;
-    color: #A8C472; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
-  }
+  .back-btn { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--accent); background: none; border: none; cursor: pointer; padding: 0; font-family: 'Inter', sans-serif; font-weight: 500; }
+  .safety-card { background: linear-gradient(135deg, #3D5228 0%, #4F6B33 100%); border: 1px solid #3D5228; border-left: 4px solid #A8C472; border-radius: var(--radius); padding: 18px 20px; margin-bottom: 16px; position: relative; overflow: hidden; }
+  .safety-label { font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #A8C472; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
   .safety-text { font-size: 15px; line-height: 1.6; color: #F0F5E8; font-style: italic; }
   .safety-date { font-size: 11px; color: rgba(240,245,232,.55); margin-top: 8px; }
-
-  /* ── Count card ── */
-  .count-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 20px; text-align: center; margin-bottom: 12px;
-  }
-  .count-big {
-    font-family: 'Syne', sans-serif; font-size: 64px; font-weight: 800;
-    color: var(--accent); line-height: 1; letter-spacing: -2px;
-  }
+  .count-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; text-align: center; margin-bottom: 12px; }
+  .count-big { font-family: 'Syne', sans-serif; font-size: 64px; font-weight: 800; color: var(--accent); line-height: 1; letter-spacing: -2px; }
   .count-label { font-size: 13px; color: var(--muted); margin-top: 4px; }
-
-  /* ── Level chips ── */
   .level-chips { display: flex; gap: 8px; justify-content: center; margin-top: 14px; }
-  .level-chip {
-    flex: 1; background: var(--surface2); border: 1px solid var(--border);
-    border-radius: var(--radius-sm); padding: 10px 8px; text-align: center;
-    cursor: pointer; transition: border-color .2s, background .2s;
-  }
+  .level-chip { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 8px; text-align: center; cursor: pointer; transition: border-color .2s, background .2s; }
   .level-chip:hover { border-color: var(--accent); background: var(--accent-lt); }
   .level-chip-num { font-size: 22px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
   .level-chip-lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
-
-  /* ── Driver info card ── */
-  .driver-card {
-    background: var(--accent-lt);
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--accent);
-    border-radius: var(--radius-sm);
-    padding: 12px 14px;
-    margin-bottom: 16px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .driver-avatar-sm {
-    width: 40px; height: 40px; border-radius: 50%;
-    background: var(--accent); color: #fff;
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700;
-    flex-shrink: 0;
-  }
-
-  /* ── Profile ── */
-  .profile-hero {
-    text-align: center; padding: 28px 20px 20px;
-    background: linear-gradient(180deg, var(--accent-lt) 0%, transparent 100%);
-    border-bottom: 1px solid var(--border); margin-bottom: 16px;
-  }
-  .avatar {
-    width: 72px; height: 72px; border-radius: 50%; background: var(--accent-lt);
-    display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;
-    font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 800;
-    color: var(--accent); border: 3px solid var(--accent);
-  }
+  .driver-card { background: var(--accent-lt); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+  .driver-avatar-sm { width: 40px; height: 40px; border-radius: 50%; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; flex-shrink: 0; }
+  .profile-hero { text-align: center; padding: 28px 20px 20px; background: linear-gradient(180deg, var(--accent-lt) 0%, transparent 100%); border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+  .avatar { width: 72px; height: 72px; border-radius: 50%; background: var(--accent-lt); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 800; color: var(--accent); border: 3px solid var(--accent); }
   .profile-name { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; }
-  .profile-role { font-size: 13px; color: var(--muted); margin-top: 4px; }
-
-  /* ── History list ── */
   .history-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 8px; }
   .history-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
   .history-date { font-size: 12px; color: var(--muted); }
   .history-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
   .history-field { font-size: 12px; }
   .history-field span { color: var(--muted); }
-
-  /* ── Parking map ── */
-  .parking-zone-btn {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 16px 18px; background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); margin-bottom: 10px; cursor: pointer;
-    transition: border-color .2s, background .2s;
-  }
+  .parking-zone-btn { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 10px; cursor: pointer; transition: border-color .2s, background .2s; }
   .parking-zone-btn:hover { border-color: var(--accent); background: var(--accent-lt); }
   .pz-left { display: flex; align-items: center; gap: 14px; }
-  .pz-icon {
-    width: 44px; height: 44px; border-radius: 10px;
-    background: var(--accent-lt); display: flex; align-items: center; justify-content: center;
-    color: var(--accent); font-size: 20px; flex-shrink: 0;
-  }
+  .pz-icon { width: 44px; height: 44px; border-radius: 10px; background: var(--accent-lt); display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 20px; flex-shrink: 0; }
   .pz-name { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; }
   .pz-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
   .pz-count { text-align: right; }
   .pz-num { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 800; color: var(--accent); line-height: 1; }
   .pz-lbl { font-size: 11px; color: var(--muted); }
-
-  /* ── Lot grid ── */
-  .lot-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
-  .lot-cell {
-    aspect-ratio: 1; border-radius: 8px; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 2px;
-    font-size: 11px; font-weight: 600; border: 1.5px solid var(--border);
-    cursor: pointer; transition: transform .15s;
-    position: relative;
-  }
-  .lot-cell:active { transform: scale(.94); }
-  .lot-cell.occupied { background: var(--accent-lt); border-color: var(--accent); color: var(--accent-dim); }
-  .lot-cell.empty { background: var(--surface); border-color: var(--border); color: var(--muted); }
-  .lot-cell.workshop { background: #FFF3E0; border-color: #D4860A; color: #A86A00; }
-  .lot-num { font-size: 13px; font-weight: 700; }
-  .lot-plate { font-size: 9px; font-weight: 500; opacity: .85; }
-
-  /* ── Loading / Empty ── */
   .loading { text-align: center; padding: 32px; color: var(--muted); font-size: 13px; }
   .spinner { width: 24px; height: 24px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; margin: 0 auto 10px; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .empty { text-align: center; padding: 40px 20px; color: var(--muted); }
-  .empty svg { width: 48px; height: 48px; margin-bottom: 12px; opacity: .4; }
   .empty p { font-size: 14px; }
-
-  /* ── Toast ── */
-  #toast {
-    position: fixed; bottom: 80px; left: 50%;
-    transform: translateX(-50%) translateY(20px);
-    background: var(--text); border-radius: var(--radius-sm);
-    padding: 10px 18px; font-size: 13px; color: #fff;
-    opacity: 0; transition: opacity .3s, transform .3s; z-index: 100; white-space: nowrap;
-  }
+  #toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--text); border-radius: var(--radius-sm); padding: 10px 18px; font-size: 13px; color: #fff; opacity: 0; transition: opacity .3s, transform .3s; z-index: 100; white-space: nowrap; pointer-events: none; }
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-  /* ── Modal ── */
-  .modal-overlay {
-    display: none; position: fixed; inset: 0;
-    background: rgba(0,0,0,.35); z-index: 50; align-items: flex-end;
-  }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 50; align-items: flex-end; }
   .modal-overlay.open { display: flex; }
-  .modal-sheet {
-    background: var(--surface); border-radius: var(--radius) var(--radius) 0 0;
-    border: 1px solid var(--border); border-bottom: none;
-    width: 100%; max-height: 88vh; overflow-y: auto; padding: 20px 16px 32px;
-  }
+  .modal-sheet { background: var(--surface); border-radius: var(--radius) var(--radius) 0 0; border: 1px solid var(--border); border-bottom: none; width: 100%; max-height: 88vh; overflow-y: auto; padding: 20px 16px 32px; }
   .modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 999px; margin: 0 auto 18px; }
-
-  /* ── Divider ── */
-  .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
-
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+  /* Loading screen */
+  #loading-screen { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 200; gap: 16px; }
+  #loading-screen .spinner { width: 36px; height: 36px; }
+  #loading-screen p { font-size: 14px; color: var(--muted); }
 </style>
 </head>
 <body>
 
-<div id="app">
+<!-- Loading overlay shown while auth + data loads -->
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <p>Loading FleetOps…</p>
+</div>
+
+<div id="app" style="display:none;">
 
   <!-- ═══ HOME ═══ -->
   <div id="screen-home" class="screen active">
     <div class="topbar">
-      <div>
-        <div class="topbar-title">FleetOps</div>
-        <div class="topbar-sub">Block 210</div>
-      </div>
+      <div><div class="topbar-title">FleetOps</div><div class="topbar-sub">Block 210</div></div>
       <div class="topbar-right">
         <div id="home-user-avatar" class="avatar" style="width:36px;height:36px;font-size:15px;border-width:2px;cursor:pointer;" onclick="goTab('profile')">—</div>
       </div>
@@ -418,8 +144,6 @@
         <div class="safety-text" id="safety-msg">Loading…</div>
         <div class="safety-date" id="safety-date"></div>
       </div>
-
-      <!-- Quick check-in row -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
         <div class="section-label" style="margin-bottom:0;">Quick Actions</div>
         <button class="btn btn-primary" style="padding:7px 14px;font-size:13px;gap:5px;" onclick="openCheckinModal()">
@@ -427,30 +151,16 @@
           Log Vehicle In
         </button>
       </div>
-
       <div class="count-card">
         <div class="count-big" id="total-count">—</div>
         <div class="count-label">vehicles currently in Block 210</div>
         <div class="level-chips">
-          <div class="level-chip" onclick="openParkingLevel('Workshop')">
-            <div class="level-chip-num" id="chip-ws">—</div>
-            <div class="level-chip-lbl">WS</div>
-          </div>
-          <div class="level-chip" onclick="openParkingLevel('L1')">
-            <div class="level-chip-num" id="chip-l1">—</div>
-            <div class="level-chip-lbl">L1</div>
-          </div>
-          <div class="level-chip" onclick="openParkingLevel('L2')">
-            <div class="level-chip-num" id="chip-l2">—</div>
-            <div class="level-chip-lbl">L2</div>
-          </div>
-          <div class="level-chip" onclick="openParkingLevel('L3')">
-            <div class="level-chip-num" id="chip-l3">—</div>
-            <div class="level-chip-lbl">L3</div>
-          </div>
+          <div class="level-chip" onclick="openParkingLevel('Workshop')"><div class="level-chip-num" id="chip-ws">—</div><div class="level-chip-lbl">WS</div></div>
+          <div class="level-chip" onclick="openParkingLevel('L1')"><div class="level-chip-num" id="chip-l1">—</div><div class="level-chip-lbl">L1</div></div>
+          <div class="level-chip" onclick="openParkingLevel('L2')"><div class="level-chip-num" id="chip-l2">—</div><div class="level-chip-lbl">L2</div></div>
+          <div class="level-chip" onclick="openParkingLevel('L3')"><div class="level-chip-num" id="chip-l3">—</div><div class="level-chip-lbl">L3</div></div>
         </div>
       </div>
-
       <div class="section-label">Recently Checked In</div>
       <div id="recent-list"><div class="loading"><div class="spinner"></div>Loading…</div></div>
     </div>
@@ -458,12 +168,7 @@
 
   <!-- ═══ SEARCH ═══ -->
   <div id="screen-search" class="screen">
-    <div class="topbar">
-      <div>
-        <div class="topbar-title">Vehicles</div>
-        <div class="topbar-sub">Select to view status</div>
-      </div>
-    </div>
+    <div class="topbar"><div><div class="topbar-title">Vehicles</div><div class="topbar-sub">Select to view status</div></div></div>
     <div class="scroll-body">
       <div class="search-wrap">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -476,10 +181,7 @@
   <!-- ═══ VEHICLE DETAIL ═══ -->
   <div id="screen-detail" class="screen">
     <div class="topbar">
-      <button class="back-btn" onclick="goBack()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-        Back
-      </button>
+      <button class="back-btn" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>Back</button>
       <div class="topbar-right" id="detail-badge"></div>
     </div>
     <div class="scroll-body" id="detail-body"></div>
@@ -488,57 +190,29 @@
   <!-- ═══ HISTORY ═══ -->
   <div id="screen-history" class="screen">
     <div class="topbar">
-      <button class="back-btn" onclick="showScreen('detail')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-        Back
-      </button>
-      <div>
-        <div class="topbar-title" id="history-plate-title">History</div>
-        <div class="topbar-sub">All records</div>
-      </div>
+      <button class="back-btn" onclick="showScreen('detail')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>Back</button>
+      <div><div class="topbar-title" id="history-plate-title">History</div><div class="topbar-sub">All records</div></div>
     </div>
-    <div class="scroll-body">
-      <div id="history-list"><div class="loading"><div class="spinner"></div>Loading…</div></div>
-    </div>
+    <div class="scroll-body"><div id="history-list"><div class="loading"><div class="spinner"></div>Loading…</div></div></div>
   </div>
 
   <!-- ═══ PARKING OVERVIEW ═══ -->
   <div id="screen-parking" class="screen">
-    <div class="topbar">
-      <div>
-        <div class="topbar-title">Parking</div>
-        <div class="topbar-sub">Block 210 — All Levels</div>
-      </div>
-    </div>
-    <div class="scroll-body">
-      <div class="section-label">Select a Level</div>
-      <div id="parking-zones"></div>
-    </div>
+    <div class="topbar"><div><div class="topbar-title">Parking</div><div class="topbar-sub">Block 210 — All Levels</div></div></div>
+    <div class="scroll-body"><div class="section-label">Select a Level</div><div id="parking-zones"></div></div>
   </div>
 
-  <!-- ═══ PARKING LEVEL DETAIL ═══ -->
+  <!-- ═══ PARKING LEVEL ═══ -->
   <div id="screen-parking-level" class="screen">
     <div class="topbar">
-      <button class="back-btn" onclick="goTab('parking')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-        Parking
-      </button>
-      <div>
-        <div class="topbar-title" id="level-title">Level</div>
-        <div class="topbar-sub" id="level-sub">Lot occupancy</div>
-      </div>
+      <button class="back-btn" onclick="goTab('parking')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>Parking</button>
+      <div><div class="topbar-title" id="level-title">Level</div><div class="topbar-sub" id="level-sub">Lot occupancy</div></div>
     </div>
     <div class="scroll-body" style="padding:12px 10px 24px;">
       <div style="display:flex;gap:14px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
-        <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);">
-          <span style="width:12px;height:12px;border-radius:3px;background:#C8DFB0;border:1.5px solid #5C7A3E;display:inline-block;"></span>Occupied
-        </span>
-        <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);">
-          <span style="width:12px;height:12px;border-radius:3px;background:#fff;border:1.5px solid #D4D9C8;display:inline-block;"></span>Empty
-        </span>
-        <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);">
-          <span style="width:12px;height:12px;border-radius:3px;background:#FFF3CD;border:1.5px solid #D4860A;display:inline-block;"></span>Selected
-        </span>
+        <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);"><span style="width:12px;height:12px;border-radius:3px;background:#C8DFB0;border:1.5px solid #5C7A3E;display:inline-block;"></span>Occupied</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);"><span style="width:12px;height:12px;border-radius:3px;background:#fff;border:1.5px solid #D4D9C8;display:inline-block;"></span>Empty</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);"><span style="width:12px;height:12px;border-radius:3px;background:#FFF3CD;border:1.5px solid #D4860A;display:inline-block;"></span>Selected</span>
       </div>
       <div id="floor-plan-wrap" style="width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;background:#fff;border:1px solid #D4D9C8;border-radius:12px;padding:8px;">
         <svg id="floor-plan-svg" style="display:block;"></svg>
@@ -557,7 +231,7 @@
       <div class="profile-hero">
         <div class="avatar" id="profile-avatar">—</div>
         <div class="profile-name" id="profile-name">Loading…</div>
-        <div class="profile-role" id="profile-role-badge">—</div>
+        <div id="profile-role-badge" style="margin-top:4px;"></div>
       </div>
       <div id="profile-view">
         <div class="section-label">Account Details</div>
@@ -577,10 +251,7 @@
           <div class="field"><label>Email</label><input type="email" id="pe-email"></div>
           <div class="field"><label>Phone</label><input type="tel" id="pe-phone"></div>
           <div class="field"><label>Depot</label><input type="text" id="pe-depot"></div>
-          <div class="field">
-            <label>Role <span style="color:var(--danger);font-size:10px;">(cannot be changed)</span></label>
-            <input type="text" id="pe-role" disabled>
-          </div>
+          <div class="field"><label>Role <span style="color:var(--danger);font-size:10px;">(cannot be changed)</span></label><input type="text" id="pe-role" disabled></div>
         </div>
         <div style="display:flex;gap:10px;">
           <button class="btn btn-ghost" style="flex:1;" onclick="cancelEditProfile()">Cancel</button>
@@ -618,13 +289,13 @@
     <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin-bottom:4px;">Update Vehicle Record</div>
     <div style="font-size:13px;color:var(--muted);margin-bottom:18px;" id="modal-plate-sub">—</div>
     <div class="field"><label>Odometer (km)</label><input type="number" id="m-odometer" placeholder="e.g. 45230"></div>
-    <div class="field"><label>Engine Hours (hrs)</label><input type="number" id="m-engine-hours" step="0.1" placeholder="e.g. 1204.5"></div>
-    <div class="field"><label>Battery % (before start)</label><input type="number" id="m-battery-pct" min="0" max="100" placeholder="e.g. 78"></div>
-    <div class="field"><label>Battery Voltage (V)</label><input type="number" id="m-battery-v" step="0.1" placeholder="e.g. 12.4"></div>
-    <div class="field"><label>Fuel %</label><input type="number" id="m-fuel-pct" min="0" max="100" placeholder="e.g. 65"></div>
-    <div class="field"><label>Fuel Balance (L)</label><input type="number" id="m-fuel-l" step="0.1" placeholder="e.g. 42.5"></div>
+    <div class="field"><label>Engine Hours (hrs)</label><input type="number" id="m-engine-hours" step="0.1"></div>
+    <div class="field"><label>Battery % (before start)</label><input type="number" id="m-battery-pct" min="0" max="100"></div>
+    <div class="field"><label>Battery Voltage (V)</label><input type="number" id="m-battery-v" step="0.1"></div>
+    <div class="field"><label>Fuel %</label><input type="number" id="m-fuel-pct" min="0" max="100"></div>
+    <div class="field"><label>Fuel Balance (L)</label><input type="number" id="m-fuel-l" step="0.1"></div>
     <div class="field"><label>🧯 Fire Extinguisher Expiry</label><input type="date" id="m-fire-ext-expiry"></div>
-    <div class="field"><label>Notes / Faults</label><textarea id="m-notes" placeholder="Describe any faults, observations or actions taken…"></textarea></div>
+    <div class="field"><label>Notes / Faults</label><textarea id="m-notes" placeholder="Describe any faults or observations…"></textarea></div>
     <div style="display:flex;gap:10px;margin-top:4px;">
       <button class="btn btn-ghost" style="flex:1;" onclick="closeModal('update-modal')">Cancel</button>
       <button class="btn btn-primary" style="flex:1;" onclick="submitUpdate()">Save Update</button>
@@ -643,23 +314,14 @@
     <div class="field"><label>Driver Name</label><input type="text" id="ci-driver" placeholder="Full name"></div>
     <div class="field"><label>Driver Phone</label><input type="tel" id="ci-driver-phone" placeholder="+65 9XXX XXXX"></div>
     <div class="field"><label>Driver Depot</label><input type="text" id="ci-driver-depot" placeholder="e.g. 11FMD 42FMP"></div>
-   <div class="field"><label>Fire Extinguisher Expiry</label><input type="date" id="ci-fire-expiry"></div>
+    <div class="field"><label>🧯 Fire Extinguisher Expiry</label><input type="date" id="ci-fire-expiry"></div>
     <div style="display:flex;gap:10px;">
-      <div class="field" style="flex:1;">
-        <label>Level</label>
-        <select id="ci-level">
-          <option value="Workshop">Workshop</option>
-          <option value="L1">L1</option>
-          <option value="L2">L2</option>
-          <option value="L3">L3</option>
-        </select>
+      <div class="field" style="flex:1;"><label>Level</label>
+        <select id="ci-level"><option value="Workshop">Workshop</option><option value="L1">L1</option><option value="L2">L2</option><option value="L3">L3</option></select>
       </div>
-      <div class="field" style="flex:1;">
-        <label>Lot No.</label>
-        <input type="text" id="ci-lot" placeholder="e.g. A5">
-      </div>
+      <div class="field" style="flex:1;"><label>Lot No.</label><input type="text" id="ci-lot" placeholder="e.g. A5"></div>
     </div>
-    <div class="field"><label>Odometer (km)</label><input type="number" id="ci-odometer" placeholder="e.g 50"></div>
+    <div class="field"><label>Odometer (km)</label><input type="number" id="ci-odometer" placeholder="e.g. 50000"></div>
     <div class="field"><label>Fuel %</label><input type="number" id="ci-fuel-pct" min="0" max="100" placeholder="e.g. 65"></div>
     <div class="field"><label>Notes</label><textarea id="ci-notes" placeholder="Any notes on arrival…" style="min-height:60px;"></textarea></div>
     <div style="display:flex;gap:10px;margin-top:4px;">
@@ -669,23 +331,27 @@
   </div>
 </div>
 
-<!-- Toast -->
 <div id="toast"></div>
 
 <script>
-// ──────────────────────────────────────────
-// SUPABASE CONFIG
-// ──────────────────────────────────────────
-const SUPABASE_URL = 'https://jzjjmpgonqbusumcryaj.supabase.co/';
+// ══════════════════════════════════════════════
+// SUPABASE — single client, consistent naming
+// ══════════════════════════════════════════════
+const SUPABASE_URL = 'https://jzjjmpgonqbusumcryaj.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6amptcGdvbnFidXN1bWNyeWFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyODA0NTgsImV4cCI6MjA5Nzg1NjQ1OH0.k5A1OtUbsUT9UBZOD4-3T4-Mw-VHK9SWkzwF8Fp3NoM';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// ── STATE ──
-let currentTab = 'home';
+// ══════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════
 let allVehicles = [];
 let currentVehicle = null;
 let currentUser = null;
+let currentTab = 'home';
 let currentLevel = null;
+let selectedLotRect = null;
+let selectedLotOrigFill = '#FFFFFF';
+let selectedLotOrigStroke = '#C8CDB8';
 
 const SAFETY_MESSAGES = [
   "Always check your mirrors before reversing. A moment of caution prevents a lifetime of regret.",
@@ -697,66 +363,106 @@ const SAFETY_MESSAGES = [
   "Wear your high-visibility vest when working in the car park outside your vehicle.",
 ];
 
-//const MOCK_EMPLOYEES = {
-//  'Bing Han':  { phone: '+65 9123 4567', depot: '11FMD - 42FMP' },
-//  'S Deshan':    { phone: '+65 9234 5678', depot: '11FMD — 42FMP' },
-//  'Tze Bing':      { phone: '+65 9345 6789', depot: '11FMD — FMW2' },
- // 'Hoon Y Q':    { phone: '+65 9456 7890', depot: '12FMD — 41FMP' },
-//  'Roman':      { phone: '+65 9567 8901', depot: '11FMD — FMW2' },
- // 'Nicholas Lui':      { phone: '+65 9678 9012', depot: '11FMD — 42FMP' },
-//};
+const LEVEL_META = {
+  Workshop: { label:'Workshop', desc:'Maintenance & service bays', icon:'🔧', totalLots:25 },
+  L1:       { label:'Level 1',  desc:'Ground level',               icon:'1',  totalLots:84 },
+  L2:       { label:'Level 2',  desc:'Second level',               icon:'2',  totalLots:81 },
+  L3:       { label:'Level 3',  desc:'Top level',                  icon:'3',  totalLots:81 },
+};
 
-// ── INIT ──
+// ══════════════════════════════════════════════
+// INIT — auth check then load everything
+// ══════════════════════════════════════════════
 async function init() {
-  const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(),0,0)) / 86400000);
-  document.getElementById('safety-msg').textContent = SAFETY_MESSAGES[dayOfYear % SAFETY_MESSAGES.length];
+  // Safety message
+  const day = Math.floor((new Date() - new Date(new Date().getFullYear(),0,0)) / 86400000);
+  document.getElementById('safety-msg').textContent = SAFETY_MESSAGES[day % SAFETY_MESSAGES.length];
   document.getElementById('safety-date').textContent = new Date().toLocaleDateString('en-SG', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
 
-  // 1. Ask Supabase for the currently active logged-in user
-  const { data: { user }, error } = await supabaseClient.auth.getUser();
-
-  // 2. Route guard: Kick them out if no real session exists
-  if (error || !user) {
-    console.warn("🔒 Unauthorized access. Redirecting to login page...");
-    window.location.href = "login.html";
+  // Auth check
+  try {
+    const { data: { session }, error } = await sb.auth.getSession();
+    if (error || !session) {
+      window.location.href = 'login.html';
+      return;
+    }
+    const user = session.user;
+    currentUser = {
+      id:         user.id,
+      email:      user.email,
+      name:       user.user_metadata?.name  || user.email.split('@')[0],
+      phone:      user.user_metadata?.phone || '—',
+      role:       user.user_metadata?.role  || 'viewer',
+      depot:      user.user_metadata?.depot || '—',
+      created_at: user.created_at?.slice(0,10) || '',
+    };
+  } catch (e) {
+    console.error('Auth error:', e);
+    window.location.href = 'login.html';
     return;
   }
 
-  // 3. Construct your currentUser object dynamically using the verified session details
-  currentUser = {
-    id: user.id,
-    email: user.email,
-    created_at: user.created_at.slice(0, 10), // Trims timestamp into 'YYYY-MM-DD'
-    
-    // Read your custom fields directly out of user_metadata (with safe fallbacks)
-    name: user.user_metadata?.name || 'Unknown User',
-    phone: user.user_metadata?.phone || 'Not Registered',
-    role: user.user_metadata?.role || 'viewer', // 'viewer', 'driver', or 'admin'
-    depot: user.user_metadata?.depot || 'Unassigned Depot'
-  };
-
-  // 4. Fire off your existing layout routines using the real user data
   updateProfileUI();
-  await loadDashboard();
+  await loadDashboard();          // fetches vehicles, updates counts + recent list
+  renderParkingOverview();
+  setupSearch();
+
+  // Show app, hide loader
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+}
+
+// ══════════════════════════════════════════════
+// DATA — single source of truth fetch
+// ══════════════════════════════════════════════
+async function loadDashboard() {
+  try {
+    const { data, error } = await sb.from('vehicles').select('*').order('check_in', { ascending: false });
+    if (error) throw error;
+    allVehicles = data || [];
+  } catch (e) {
+    console.error('Failed to load vehicles:', e);
+    showToast('⚠ Could not load vehicle data');
+    allVehicles = [];
+  }
+
+  // Counts
+  const counts = { Workshop:0, L1:0, L2:0, L3:0 };
+  allVehicles.forEach(v => { if (counts[v.level] !== undefined) counts[v.level]++; });
+  document.getElementById('total-count').textContent = allVehicles.length;
+  document.getElementById('chip-ws').textContent = counts.Workshop;
+  document.getElementById('chip-l1').textContent = counts.L1;
+  document.getElementById('chip-l2').textContent = counts.L2;
+  document.getElementById('chip-l3').textContent = counts.L3;
+
+  // Recent list (top 4)
+  const recent = allVehicles.slice(0, 4);
+  document.getElementById('recent-list').innerHTML = recent.length
+    ? recent.map(renderVehItem).join('')
+    : '<div class="empty"><p>No vehicles checked in yet</p></div>';
+
+  // Refresh vehicle search list
+  renderVehicleList(allVehicles);
+
+  // Refresh parking overview if it's already been rendered
   renderParkingOverview();
 }
 
-// ── NAVIGATION ──
+// ══════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════
 function goTab(tab) {
-  const tabs = ['home','search','parking','profile'];
-  if (!tabs.includes(tab)) return;
+  if (!['home','search','parking','profile'].includes(tab)) return;
   currentTab = tab;
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + tab).classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('nav-' + tab)?.classList.add('active');
-  document.getElementById('bottom-nav').style.display = 'flex';
 }
 
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + id).classList.add('active');
-  document.getElementById('bottom-nav').style.display = 'flex';
 }
 
 function goBack() {
@@ -766,59 +472,27 @@ function goBack() {
   currentTab = 'search';
 }
 
- //Dashboard
-async function loadDashboard() {
-    // 1. Fetch from Supabase
-    const { data, error } = await supabaseClient.from('vehicles').select('*');
-    
-    if (error) {
-        console.error("Fetch Error:", error);
-        return;
-    }
-
-    // 2. IMPORTANT: Update the global variable
-    allVehicles = data; 
-    console.log("Vehicles loaded:", allVehicles);
-
-    // 3. Trigger your render functions
-    renderRecentList(); // Or whatever function draws your dashboard lists
-    renderParkingOverview(); 
-}
-
-  // 2. Assign the live data to your global tracker array
-  allVehicles = vl || [];
-
-  // 3. Your metric calculation logic can now stay exactly the same!
-  const counts = { Workshop: 0, L1: 0, L2: 0, L3: 0 };
-  allVehicles.forEach(v => { 
-    if (counts[v.level] !== undefined) counts[v.level]++; 
+// ══════════════════════════════════════════════
+// VEHICLES LIST
+// ══════════════════════════════════════════════
+function setupSearch() {
+  document.getElementById('search-input').addEventListener('input', e => {
+    const q = e.target.value.toLowerCase();
+    renderVehicleList(allVehicles.filter(v =>
+      (v.plate||'').toLowerCase().includes(q) ||
+      (v.driver||'').toLowerCase().includes(q) ||
+      (v.variant||'').toLowerCase().includes(q)
+    ));
   });
-  
-  document.getElementById('total-count').textContent = allVehicles.length;
-  document.getElementById('chip-ws').textContent = counts.Workshop;
-  document.getElementById('chip-l1').textContent = counts.L1;
-  document.getElementById('chip-l2').textContent = counts.L2;
-  document.getElementById('chip-l3').textContent = counts.L3;
-
-  // 4. Sort the live vehicles by their database check-in timestamps
-  const recent = [...allVehicles]
-    .sort((a, b) => new Date(b.check_in) - new Date(a.check_in))
-    .slice(0, 4);
-    
-  document.getElementById('recent-list').innerHTML = recent.map(v => renderVehItem(v)).join('');
-
-  // 5. Refresh your main UI lists with the live data
-  renderVehicleList(allVehicles);
 }
 
-// ── VEHICLES ──
 function renderVehicleList(vehicles) {
-  const vl = document.getElementById('vehicle-list');
+  const el = document.getElementById('vehicle-list');
   if (!vehicles.length) {
-    vl.innerHTML = `<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 17H5a2 2 0 0 1-2-2V7l2-3h12l2 3v8a2 2 0 0 1-2 2z"/><path d="M7 17v2M17 17v2"/></svg><p>No vehicles found</p></div>`;
+    el.innerHTML = '<div class="empty"><p>No vehicles found</p></div>';
     return;
   }
-  vl.innerHTML = vehicles.map(v => renderVehItem(v)).join('');
+  el.innerHTML = vehicles.map(renderVehItem).join('');
 }
 
 function renderVehItem(v) {
@@ -828,101 +502,89 @@ function renderVehItem(v) {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="18" height="18"><path d="M19 17H5a2 2 0 0 1-2-2V7l2-3h12l2 3v8a2 2 0 0 1-2 2z"/><path d="M7 17v2M17 17v2M3 11h18"/></svg>
     </div>
     <div style="flex:1;min-width:0;">
-      <div class="veh-plate">${v.plate}</div>
-      <div class="veh-meta">${v.variant} &nbsp;·&nbsp; ${v.level} – Lot ${v.lot}</div>
+      <div class="veh-plate">${v.plate || '—'}</div>
+      <div class="veh-meta">${v.variant || '—'} &nbsp;·&nbsp; ${v.level || '—'} – Lot ${v.lot || '—'}</div>
     </div>
     <div style="text-align:right;flex-shrink:0;">
       <div style="font-size:11px;color:var(--muted);">${ago}</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:2px;">${v.driver}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;">${v.driver || '—'}</div>
     </div>
   </div>`;
 }
 
-document.getElementById('search-input').addEventListener('input', e => {
-  const q = e.target.value.toLowerCase();
-  renderVehicleList(allVehicles.filter(v =>
-    v.plate.toLowerCase().includes(q) || v.driver.toLowerCase().includes(q) || v.variant.toLowerCase().includes(q)
-  ));
-});
-
-// ── VEHICLE DETAIL ──
+// ══════════════════════════════════════════════
+// VEHICLE DETAIL
+// ══════════════════════════════════════════════
 function openVehicle(id) {
-  currentVehicle = allVehicles.find(v => v.id == id);
+  currentVehicle = allVehicles.find(v => String(v.id) === String(id));
   if (!currentVehicle) return;
   renderDetailScreen(currentVehicle);
   showScreen('detail');
 }
 
+function safe(val, fallback = '—') {
+  return (val !== null && val !== undefined && val !== '') ? val : fallback;
+}
+
 function renderDetailScreen(v) {
-  const fuelColor = v.fuel_pct > 50 ? 'var(--accent)' : v.fuel_pct > 20 ? 'var(--warn)' : 'var(--danger)';
-  const batColor  = v.battery_pct > 50 ? 'var(--accent)' : v.battery_pct > 20 ? 'var(--warn)' : 'var(--danger)';
+  const fuelPct    = Number(v.fuel_pct)    || 0;
+  const batPct     = Number(v.battery_pct) || 0;
+  const fuelColor  = fuelPct > 50 ? 'var(--accent)' : fuelPct > 20 ? 'var(--warn)' : 'var(--danger)';
+  const batColor   = batPct  > 50 ? 'var(--accent)' : batPct  > 20 ? 'var(--warn)' : 'var(--danger)';
+  const dInitials  = (v.driver || 'UN').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
 
   document.getElementById('detail-badge').innerHTML =
     `<span class="badge badge-green" style="font-size:11px;">${v.level} · Lot ${v.lot}</span>`;
 
-  // Driver info lookup
-  const dInfo = MOCK_EMPLOYEES[v.driver] || { phone: v.driver_phone || '—', depot: v.driver_depot || '—' };
-  const dInitials = v.driver.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
-
   document.getElementById('detail-body').innerHTML = `
     <div style="margin-bottom:18px;">
-      <div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;letter-spacing:-.5px;">${v.plate}</div>
-      <div style="font-size:13px;color:var(--muted);margin-top:2px;">${v.variant}</div>
-      <div style="font-size:12px;color:var(--muted);margin-top:4px;">Last updated: ${formatDate(v.check_in)}</div>
+      <div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;letter-spacing:-.5px;">${safe(v.plate)}</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:2px;">${safe(v.variant)}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px;">Checked in: ${v.check_in ? formatDate(v.check_in) : '—'}</div>
     </div>
 
-    <!-- Driver Info -->
     <div class="section-label">Last Driver</div>
     <div class="driver-card">
       <div class="driver-avatar-sm">${dInitials}</div>
       <div style="flex:1;min-width:0;">
-        <div style="font-weight:600;font-size:15px;">${v.driver}</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:1px;">${dInfo.depot}</div>
-        <a href="tel:${dInfo.phone}" style="font-size:12px;color:var(--accent);text-decoration:none;margin-top:2px;display:block;font-weight:600;">${dInfo.phone}</a>
+        <div style="font-weight:600;font-size:15px;">${safe(v.driver)}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:1px;">${safe(v.driver_depot)}</div>
+        <a href="tel:${safe(v.driver_phone,'')}" style="font-size:12px;color:var(--accent);text-decoration:none;margin-top:2px;display:block;font-weight:600;">${safe(v.driver_phone)}</a>
       </div>
     </div>
 
-    <!-- Readings -->
     <div class="section-label">Latest Readings</div>
     <div class="stat-grid" style="margin-bottom:12px;">
-      <div class="stat-cell">
-        <div class="stat-label">Odometer</div>
-        <div class="stat-value">${v.odometer.toLocaleString()} <span class="stat-unit">km</span></div>
-      </div>
-      <div class="stat-cell">
-        <div class="stat-label">Engine Hours</div>
-        <div class="stat-value">${v.engine_hours} <span class="stat-unit">hrs</span></div>
-      </div>
+      <div class="stat-cell"><div class="stat-label">Odometer</div><div class="stat-value">${v.odometer != null ? Number(v.odometer).toLocaleString() : '—'} <span class="stat-unit">km</span></div></div>
+      <div class="stat-cell"><div class="stat-label">Engine Hours</div><div class="stat-value">${safe(v.engine_hours)} <span class="stat-unit">hrs</span></div></div>
     </div>
 
     <div class="card-sm" style="margin-bottom:10px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
         <div style="font-size:12px;color:var(--muted);">Battery (before start)</div>
-        <div style="font-size:12px;color:var(--muted);">${v.battery_v}V</div>
+        <div style="font-size:12px;color:var(--muted);">${safe(v.battery_v)}V</div>
       </div>
       <div style="display:flex;align-items:center;gap:12px;">
-        <div style="font-size:22px;font-weight:700;color:${batColor};font-variant-numeric:tabular-nums;">${v.battery_pct}%</div>
-        <div style="flex:1;"><div class="gauge-bar-wrap"><div class="gauge-bar" style="width:${v.battery_pct}%;background:${batColor};"></div></div></div>
+        <div style="font-size:22px;font-weight:700;color:${batColor};">${batPct}%</div>
+        <div style="flex:1;"><div class="gauge-bar-wrap"><div class="gauge-bar" style="width:${batPct}%;background:${batColor};"></div></div></div>
       </div>
     </div>
 
     <div class="card-sm" style="margin-bottom:12px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
         <div style="font-size:12px;color:var(--muted);">Fuel Level</div>
-        <div style="font-size:12px;color:var(--muted);">${v.fuel_l}L remaining</div>
+        <div style="font-size:12px;color:var(--muted);">${safe(v.fuel_l)}L remaining</div>
       </div>
       <div style="display:flex;align-items:center;gap:12px;">
-        <div style="font-size:22px;font-weight:700;color:${fuelColor};font-variant-numeric:tabular-nums;">${v.fuel_pct}%</div>
-        <div style="flex:1;"><div class="gauge-bar-wrap"><div class="gauge-bar" style="width:${v.fuel_pct}%;background:${fuelColor};"></div></div></div>
+        <div style="font-size:22px;font-weight:700;color:${fuelColor};">${fuelPct}%</div>
+        <div style="flex:1;"><div class="gauge-bar-wrap"><div class="gauge-bar" style="width:${fuelPct}%;background:${fuelColor};"></div></div></div>
       </div>
     </div>
 
     ${renderFireExtCard(v.fire_ext_expiry)}
 
     <div class="section-label">Description / Faults</div>
-    <div class="field">
-      <textarea id="detail-notes" placeholder="Add notes or faults here…" style="min-height:100px;">${v.notes || ''}</textarea>
-    </div>
+    <div class="field"><textarea id="detail-notes" style="min-height:100px;">${v.notes || ''}</textarea></div>
 
     <button class="btn btn-primary btn-full" style="margin-bottom:10px;" onclick="openUpdateModal()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -931,269 +593,244 @@ function renderDetailScreen(v) {
     <button class="btn btn-ghost btn-full" onclick="openHistory('${v.id}')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       View History
-    </button>
-  `;
+    </button>`;
 }
 
-// ── UPDATE MODAL ──
+// ══════════════════════════════════════════════
+// UPDATE MODAL — saves to vehicles + history
+// ══════════════════════════════════════════════
 function openUpdateModal() {
   const v = currentVehicle;
-  document.getElementById('modal-plate-sub').textContent = v.plate + ' · ' + v.variant;
-  document.getElementById('m-odometer').value = v.odometer || '';
-  document.getElementById('m-engine-hours').value = v.engine_hours || '';
-  document.getElementById('m-battery-pct').value = v.battery_pct || '';
-  document.getElementById('m-battery-v').value = v.battery_v || '';
-  document.getElementById('m-fuel-pct').value = v.fuel_pct || '';
-  document.getElementById('m-fuel-l').value = v.fuel_l || '';
-  document.getElementById('m-fire-ext-expiry').value = v.fire_ext_expiry || '';
-  document.getElementById('m-notes').value = v.notes || '';
+  document.getElementById('modal-plate-sub').textContent = `${v.plate} · ${v.variant}`;
+  document.getElementById('m-odometer').value       = v.odometer       ?? '';
+  document.getElementById('m-engine-hours').value   = v.engine_hours   ?? '';
+  document.getElementById('m-battery-pct').value    = v.battery_pct    ?? '';
+  document.getElementById('m-battery-v').value      = v.battery_v      ?? '';
+  document.getElementById('m-fuel-pct').value       = v.fuel_pct       ?? '';
+  document.getElementById('m-fuel-l').value         = v.fuel_l         ?? '';
+  document.getElementById('m-fire-ext-expiry').value= v.fire_ext_expiry ?? '';
+  document.getElementById('m-notes').value          = v.notes          ?? '';
   openModal('update-modal');
 }
 
 async function submitUpdate() {
   const update = {
-    odometer:        parseFloat(document.getElementById('m-odometer').value) || 0,
-    engine_hours:    parseFloat(document.getElementById('m-engine-hours').value) || 0,
-    battery_pct:     parseInt(document.getElementById('m-battery-pct').value) || 0,
-    battery_v:       parseFloat(document.getElementById('m-battery-v').value) || 0,
-    fuel_pct:        parseInt(document.getElementById('m-fuel-pct').value) || 0,
-    fuel_l:          parseFloat(document.getElementById('m-fuel-l').value) || 0,
-    fire_ext_expiry: document.getElementById('m-fire-ext-expiry').value || null,
+    odometer:        parseFloat(document.getElementById('m-odometer').value)     || null,
+    engine_hours:    parseFloat(document.getElementById('m-engine-hours').value) || null,
+    battery_pct:     parseInt(document.getElementById('m-battery-pct').value)    || null,
+    battery_v:       parseFloat(document.getElementById('m-battery-v').value)    || null,
+    fuel_pct:        parseInt(document.getElementById('m-fuel-pct').value)       || null,
+    fuel_l:          parseFloat(document.getElementById('m-fuel-l').value)       || null,
+    fire_ext_expiry: document.getElementById('m-fire-ext-expiry').value          || null,
     notes:           document.getElementById('m-notes').value,
   };
-  // await sb.from('history').insert({ ...update, vehicle_id: currentVehicle.id, created_at: new Date().toISOString() });
-  // await sb.from('vehicles').update(update).eq('id', currentVehicle.id);
-  Object.assign(currentVehicle, update);
-  closeModal('update-modal');
-  renderDetailScreen(currentVehicle);
-  showToast('✓ Record updated');
+
+  try {
+    // Write history record first
+    const historyRow = { ...update, vehicle_id: currentVehicle.id, plate: currentVehicle.plate, driver: currentVehicle.driver, created_at: new Date().toISOString() };
+    const { error: hErr } = await sb.from('history').insert([historyRow]);
+    if (hErr) console.warn('History insert failed:', hErr.message);
+
+    // Update vehicle record
+    const { error: vErr } = await sb.from('vehicles').update(update).eq('id', currentVehicle.id);
+    if (vErr) throw vErr;
+
+    // Sync local state
+    Object.assign(currentVehicle, update);
+    // Also update in allVehicles array
+    const idx = allVehicles.findIndex(v => v.id === currentVehicle.id);
+    if (idx !== -1) allVehicles[idx] = { ...allVehicles[idx], ...update };
+
+    closeModal('update-modal');
+    renderDetailScreen(currentVehicle);
+    showToast('✓ Record updated');
+  } catch (e) {
+    console.error('Update failed:', e);
+    showToast('⚠ Update failed: ' + e.message);
+  }
 }
 
-// ── CHECK-IN MODAL ──
+// ══════════════════════════════════════════════
+// CHECK-IN MODAL — inserts to vehicles table
+// ══════════════════════════════════════════════
 function openCheckinModal() { openModal('checkin-modal'); }
 
 async function submitCheckin() {
-  // 1. Grab all values from the UI
-  const plate    = document.getElementById('ci-plate').value.toUpperCase().trim();
-  const variant  = document.getElementById('ci-variant').value.trim();
-  const driver   = document.getElementById('ci-driver').value.trim();
-  const dPhone   = document.getElementById('ci-driver-phone').value.trim();
-  const dDepot   = document.getElementById('ci-driver-depot').value.trim();
-  const level    = document.getElementById('ci-level').value;
-  const lot      = document.getElementById('ci-lot').value.trim();
-  const odometer = parseFloat(document.getElementById('ci-odometer').value) || 0;
-  const fuel_pct = parseInt(document.getElementById('ci-fuel-pct').value) || 0;
-  const fire_expiry = document.getElementById('ci-fire-expiry').value;
-  const notes    = document.getElementById('ci-notes').value;
+  const plate   = document.getElementById('ci-plate').value.toUpperCase().trim();
+  const variant = document.getElementById('ci-variant').value.trim();
+  const driver  = document.getElementById('ci-driver').value.trim();
+  const dPhone  = document.getElementById('ci-driver-phone').value.trim();
+  const dDepot  = document.getElementById('ci-driver-depot').value.trim();
+  const level   = document.getElementById('ci-level').value;
+  const lot     = document.getElementById('ci-lot').value.trim().toUpperCase();
+  const odometer    = parseFloat(document.getElementById('ci-odometer').value) || null;
+  const fuel_pct    = parseInt(document.getElementById('ci-fuel-pct').value)   || null;
+  const fire_expiry = document.getElementById('ci-fire-expiry').value          || null;
+  const notes       = document.getElementById('ci-notes').value;
 
-  // 2. Validate essential fields
   if (!plate || !level || !lot) {
-      alert("Please fill in the Plate, Level, and Lot fields.");
-      return;
+    showToast('⚠ Plate, Level and Lot are required');
+    return;
   }
 
   try {
-    // 3. Send data to Supabase
-    const { data, error } = await supabaseClient
-      .from('vehicles')
-      .insert([{ 
-        plate: plate, 
-        variant: variant || '—',
-        driver: driver,
-        driver_phone: dPhone,
-        driver_depot: dDepot,
-        level: level,
-        lot: lot,
-        odometer: odometer,
-        fuel_pct: fuel_pct,
-        fire_ext_expiry: fire_expiry || null,
-        notes: notes,
-        check_in: new Date().toISOString()
-      }]);
+    const newRow = {
+      plate, variant: variant || '—', driver, driver_phone: dPhone,
+      driver_depot: dDepot, level, lot, odometer, fuel_pct,
+      fire_ext_expiry: fire_expiry, notes,
+      check_in: new Date().toISOString(),
+    };
 
-    if (error) {
-      console.error("Supabase Insert Error:", error);
-      alert("Error saving to database: " + error.message);
-      return;
-    }
+    const { data, error } = await sb.from('vehicles').insert([newRow]).select();
+    if (error) throw error;
 
-    // 4. Success: Refresh the dashboard to pull the new row from the DB
-    await loadDashboard(); 
-    alert("Vehicle logged successfully!");
-    
-    // 5. Reset form and close modal
-    ['ci-plate','ci-variant','ci-driver','ci-driver-phone','ci-driver-depot','ci-lot','ci-odometer','ci-fuel-pct','ci-notes','ci-fire-expiry'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = '';
-    });
+    // Prepend to local state immediately (no need to reload)
+    if (data && data[0]) allVehicles.unshift(data[0]);
+
     closeModal('checkin-modal');
+    ['ci-plate','ci-variant','ci-driver','ci-driver-phone','ci-driver-depot','ci-lot','ci-odometer','ci-fuel-pct','ci-notes','ci-fire-expiry']
+      .forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
 
-  } catch (err) {
-    console.error("General Submission Error:", err);
-    alert("An unexpected error occurred.");
+    await loadDashboard();
+    showToast(`✓ ${plate} checked in → ${level} Lot ${lot}`);
+  } catch (e) {
+    console.error('Check-in failed:', e);
+    showToast('⚠ Check-in failed: ' + e.message);
   }
 }
-// ── HISTORY ──
+
+// ══════════════════════════════════════════════
+// HISTORY — fetches from history table
+// ══════════════════════════════════════════════
 async function openHistory(vehicleId) {
-  const v = allVehicles.find(x => x.id == vehicleId);
+  const v = allVehicles.find(x => String(x.id) === String(vehicleId));
   document.getElementById('history-plate-title').textContent = v ? v.plate : 'History';
+  document.getElementById('history-list').innerHTML = '<div class="loading"><div class="spinner"></div>Loading…</div>';
   showScreen('history');
-  const records = generateMockHistory(vehicleId);
-  renderHistory(records);
+
+  try {
+    const { data, error } = await sb.from('history').select('*').eq('vehicle_id', vehicleId).order('created_at', { ascending: false });
+    if (error) throw error;
+    renderHistory(data || []);
+  } catch (e) {
+    console.error('History fetch failed:', e);
+    document.getElementById('history-list').innerHTML = '<div class="empty"><p>Could not load history</p></div>';
+  }
 }
 
 function renderHistory(records) {
   const hl = document.getElementById('history-list');
   if (!records.length) {
-    hl.innerHTML = `<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><p>No history records yet</p></div>`;
+    hl.innerHTML = '<div class="empty"><p>No history records yet</p></div>';
     return;
   }
   hl.innerHTML = records.map(r => `
     <div class="history-item">
       <div class="history-item-header">
-        <div style="font-size:13px;font-weight:600;">${formatDate(r.created_at)}</div>
-        <div class="history-date">${r.driver}</div>
+        <div style="font-size:13px;font-weight:600;">${r.created_at ? formatDate(r.created_at) : '—'}</div>
+        <div class="history-date">${r.driver || '—'}</div>
       </div>
       <div class="history-grid">
-        <div class="history-field"><span>Odometer:</span> ${r.odometer?.toLocaleString()} km</div>
-        <div class="history-field"><span>Eng Hrs:</span> ${r.engine_hours} hrs</div>
-        <div class="history-field"><span>Battery:</span> ${r.battery_pct}% · ${r.battery_v}V</div>
-        <div class="history-field"><span>Fuel:</span> ${r.fuel_pct}% · ${r.fuel_l}L</div>
+        <div class="history-field"><span>Odometer:</span> ${r.odometer != null ? Number(r.odometer).toLocaleString() : '—'} km</div>
+        <div class="history-field"><span>Eng Hrs:</span> ${safe(r.engine_hours)} hrs</div>
+        <div class="history-field"><span>Battery:</span> ${safe(r.battery_pct)}% · ${safe(r.battery_v)}V</div>
+        <div class="history-field"><span>Fuel:</span> ${safe(r.fuel_pct)}% · ${safe(r.fuel_l)}L</div>
         ${r.fire_ext_expiry ? `<div class="history-field" style="grid-column:1/-1;"><span>🧯 Ext. Expiry:</span> ${formatDateOnly(r.fire_ext_expiry)} <span style="color:${fireExtStatus(r.fire_ext_expiry).color};font-weight:600;">(${fireExtStatus(r.fire_ext_expiry).label})</span></div>` : ''}
       </div>
       ${r.notes ? `<div style="margin-top:8px;font-size:12px;color:var(--muted);border-top:1px solid var(--border);padding-top:8px;">${r.notes}</div>` : ''}
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
-// ── PARKING OVERVIEW ──
-const LEVEL_META = {
-  Workshop: { label:'Workshop', desc:'Maintenance & service bays', icon:'🔧', totalLots: 25 },
-  L1:       { label:'Level 1',  desc:'Ground level',               icon:'1',  totalLots: 84 },
-  L2:       { label:'Level 2',  desc:'Second level',               icon:'2',  totalLots: 81 },
-  L3:       { label:'Level 3',  desc:'Top level',                  icon:'3',  totalLots: 81 },
-};
-
+// ══════════════════════════════════════════════
+// PARKING OVERVIEW
+// ══════════════════════════════════════════════
 function renderParkingOverview() {
   const counts = { Workshop:0, L1:0, L2:0, L3:0 };
   allVehicles.forEach(v => { if (counts[v.level] !== undefined) counts[v.level]++; });
-
   document.getElementById('parking-zones').innerHTML = Object.keys(LEVEL_META).map(lvl => {
-    const m = LEVEL_META[lvl];
-    const occ = counts[lvl] || 0;
+    const m = LEVEL_META[lvl]; const occ = counts[lvl] || 0;
     return `<div class="parking-zone-btn" onclick="openParkingLevel('${lvl}')">
       <div class="pz-left">
         <div class="pz-icon" style="${lvl==='Workshop'?'background:#FFF3E0;color:#D4860A;':''}">${m.icon}</div>
-        <div>
-          <div class="pz-name">${m.label}</div>
-          <div class="pz-sub">${m.desc} · ${m.totalLots} lots</div>
-        </div>
+        <div><div class="pz-name">${m.label}</div><div class="pz-sub">${m.desc} · ${m.totalLots} lots</div></div>
       </div>
-      <div class="pz-count">
-        <div class="pz-num" style="${lvl==='Workshop'?'color:#D4860A;':''}">${occ}</div>
-        <div class="pz-lbl">/ ${m.totalLots}</div>
-      </div>
+      <div class="pz-count"><div class="pz-num" style="${lvl==='Workshop'?'color:#D4860A;':''}">${occ}</div><div class="pz-lbl">/ ${m.totalLots}</div></div>
     </div>`;
   }).join('');
 }
 
-// ── FLOOR PLAN CONSTANTS ──
-// Each lot is W×H px; gap between cells
-const LW = 34, LH = 22, GAP = 2;
-
-// Build a lookup of occupied lots for a level
+// ══════════════════════════════════════════════
+// FLOOR PLAN — SVG helpers
+// ══════════════════════════════════════════════
 function occupiedLots(level) {
   const map = {};
   allVehicles.filter(v => v.level === level).forEach(v => { map[v.lot] = v; });
   return map;
 }
 
-// Generic lot rect helper
-function makeLotRect(svg, x, y, w, h, label, occupied, isWorkshop, onClick) {
+function makeLotRect(svg, x, y, w, h, label, occupied, _unused, onClick) {
   const ns = 'http://www.w3.org/2000/svg';
   const g = document.createElementNS(ns, 'g');
   g.style.cursor = 'pointer';
-
   const rect = document.createElementNS(ns, 'rect');
   rect.setAttribute('x', x); rect.setAttribute('y', y);
-  rect.setAttribute('width', w); rect.setAttribute('height', h);
-  rect.setAttribute('rx', 3);
+  rect.setAttribute('width', w); rect.setAttribute('height', h); rect.setAttribute('rx', 3);
   rect.setAttribute('fill', occupied ? '#C8DFB0' : '#FFFFFF');
   rect.setAttribute('stroke', occupied ? '#5C7A3E' : '#C8CDB8');
   rect.setAttribute('stroke-width', '1.2');
   g.appendChild(rect);
-
   const txt = document.createElementNS(ns, 'text');
-  txt.setAttribute('x', x + w/2); txt.setAttribute('y', y + h/2 + 1);
-  txt.setAttribute('text-anchor', 'middle'); txt.setAttribute('dominant-baseline', 'middle');
-  txt.setAttribute('font-size', '8'); txt.setAttribute('font-family', 'Inter,sans-serif');
-  txt.setAttribute('font-weight', occupied ? '700' : '500');
-  txt.setAttribute('fill', occupied ? '#3A5A20' : '#6B7560');
+  txt.setAttribute('x', x+w/2); txt.setAttribute('y', y+h/2+1);
+  txt.setAttribute('text-anchor','middle'); txt.setAttribute('dominant-baseline','middle');
+  txt.setAttribute('font-size','8'); txt.setAttribute('font-family','Inter,sans-serif');
+  txt.setAttribute('font-weight', occupied?'700':'500');
+  txt.setAttribute('fill', occupied?'#3A5A20':'#6B7560');
   txt.textContent = label;
   g.appendChild(txt);
-
   g.addEventListener('click', () => onClick(label, occupied ? (allVehicles.find(v=>v.level===currentLevel && v.lot===label)||null) : null, rect));
   svg.appendChild(g);
   return { g, rect };
 }
 
-function makeRoomRect(svg, x, y, w, h, label, fillColor, textColor) {
+function makeRoomRect(svg, x, y, w, h, label, fill, textColor) {
   const ns = 'http://www.w3.org/2000/svg';
   const g = document.createElementNS(ns, 'g');
   const rect = document.createElementNS(ns, 'rect');
-  rect.setAttribute('x', x); rect.setAttribute('y', y);
-  rect.setAttribute('width', w); rect.setAttribute('height', h);
-  rect.setAttribute('rx', 4);
-  rect.setAttribute('fill', fillColor || '#EEF0E8');
-  rect.setAttribute('stroke', '#B8BEB0');
-  rect.setAttribute('stroke-width', '1.2');
+  rect.setAttribute('x',x); rect.setAttribute('y',y); rect.setAttribute('width',w); rect.setAttribute('height',h); rect.setAttribute('rx',4);
+  rect.setAttribute('fill', fill||'#EEF0E8'); rect.setAttribute('stroke','#B8BEB0'); rect.setAttribute('stroke-width','1.2');
   g.appendChild(rect);
-
-  const lines = label.split('\n');
-  const lineH = 9;
-  const startY = y + h/2 - (lines.length - 1) * lineH / 2;
-  lines.forEach((line, i) => {
-    const txt = document.createElementNS(ns, 'text');
-    txt.setAttribute('x', x + w/2); txt.setAttribute('y', startY + i * lineH);
-    txt.setAttribute('text-anchor', 'middle'); txt.setAttribute('dominant-baseline', 'middle');
-    txt.setAttribute('font-size', '7.5'); txt.setAttribute('font-family', 'Inter,sans-serif');
-    txt.setAttribute('font-weight', '600'); txt.setAttribute('fill', textColor || '#5A6050');
-    txt.textContent = line;
-    g.appendChild(txt);
+  const lines = label.split('\n'); const lineH = 9;
+  const startY = y + h/2 - (lines.length-1)*lineH/2;
+  lines.forEach((line,i) => {
+    const t = document.createElementNS(ns,'text');
+    t.setAttribute('x',x+w/2); t.setAttribute('y',startY+i*lineH);
+    t.setAttribute('text-anchor','middle'); t.setAttribute('dominant-baseline','middle');
+    t.setAttribute('font-size','7.5'); t.setAttribute('font-family','Inter,sans-serif');
+    t.setAttribute('font-weight','600'); t.setAttribute('fill',textColor||'#5A6050');
+    t.textContent=line; g.appendChild(t);
   });
   svg.appendChild(g);
 }
 
 function makeDrivewayLabel(svg, x, y, w, h, vertical) {
   const ns = 'http://www.w3.org/2000/svg';
-  const txt = document.createElementNS(ns, 'text');
-  txt.setAttribute('x', x + w/2); txt.setAttribute('y', y + h/2);
-  txt.setAttribute('text-anchor', 'middle'); txt.setAttribute('dominant-baseline', 'middle');
-  txt.setAttribute('font-size', '7'); txt.setAttribute('font-family', 'Inter,sans-serif');
-  txt.setAttribute('fill', '#A0A89A'); txt.setAttribute('letter-spacing', '1');
-  if (vertical) txt.setAttribute('transform', `rotate(-90, ${x + w/2}, ${y + h/2})`);
-  txt.textContent = 'DRIVEWAY';
-  svg.appendChild(txt);
+  const t = document.createElementNS(ns,'text');
+  t.setAttribute('x',x+w/2); t.setAttribute('y',y+h/2);
+  t.setAttribute('text-anchor','middle'); t.setAttribute('dominant-baseline','middle');
+  t.setAttribute('font-size','7'); t.setAttribute('font-family','Inter,sans-serif');
+  t.setAttribute('fill','#A0A89A'); t.setAttribute('letter-spacing','1');
+  if (vertical) t.setAttribute('transform',`rotate(-90,${x+w/2},${y+h/2})`);
+  t.textContent='DRIVEWAY'; svg.appendChild(t);
 }
-
-// ── SELECTED LOT STATE ──
-let selectedLotRect = null;
-let selectedLotOrigFill = '#FFFFFF';
-let selectedLotOrigStroke = '#C8CDB8';
 
 function highlightLot(rect, occupied) {
-  if (selectedLotRect) {
-    selectedLotRect.setAttribute('fill', selectedLotOrigFill);
-    selectedLotRect.setAttribute('stroke', selectedLotOrigStroke);
-  }
+  if (selectedLotRect) { selectedLotRect.setAttribute('fill',selectedLotOrigFill); selectedLotRect.setAttribute('stroke',selectedLotOrigStroke); }
   selectedLotRect = rect;
-  selectedLotOrigFill  = occupied ? '#C8DFB0' : '#FFFFFF';
+  selectedLotOrigFill   = occupied ? '#C8DFB0' : '#FFFFFF';
   selectedLotOrigStroke = occupied ? '#5C7A3E' : '#C8CDB8';
-  rect.setAttribute('fill', '#FFF3CD');
-  rect.setAttribute('stroke', '#D4860A');
+  rect.setAttribute('fill','#FFF3CD'); rect.setAttribute('stroke','#D4860A');
 }
 
-// ── OPEN PARKING LEVEL ──
 function openParkingLevel(level) {
   currentLevel = level;
   const m = LEVEL_META[level];
@@ -1202,395 +839,145 @@ function openParkingLevel(level) {
   document.getElementById('level-sub').textContent = `${occ} occupied · ${m.totalLots - occ} available`;
   document.getElementById('lot-detail-panel').innerHTML = '';
   selectedLotRect = null;
-
   const svg = document.getElementById('floor-plan-svg');
   svg.innerHTML = '';
-
   if (level === 'Workshop') drawWorkshop(svg);
   else if (level === 'L1')  drawL1(svg);
   else if (level === 'L2')  drawL2(svg);
-  else if (level === 'L3')  drawL3(svg);
-
+  else                       drawL3(svg);
   showScreen('parking-level');
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('nav-parking').classList.add('active');
 }
 
-// ────────────────────────────────────────
-// WORKSHOP FLOOR PLAN
-// Layout: driveway on left; A col + B col lots; rooms on left (Spare Store, Innovation Room, Scrap Metal); STES area top; shutters
-// Lots: A1–A11, B1–B11, B12–B14 (beside STES)
-// ────────────────────────────────────────
+// ── WORKSHOP ──
 function drawWorkshop(svg) {
-  // Layout (matching image 3):
-  //  Left strip:  Shutter(top) | Spare Store | Innovation Room | Scrap Metal
-  //  Middle:      driveway column
-  //  Right main:  A col + B col (A1-A11, B1-B11), with STES block above B12-B14
-  //  Far right:   Shutter (vertical, full height)
-  //  Bottom:      Shutter (horizontal, below A/B cols)
-  //
-  // Key fix: STES is compact and B12/B13/B14 align exactly with B11 row spacing.
-
-  const ns = 'http://www.w3.org/2000/svg';
-  const occ = occupiedLots('Workshop');
-
-  // Cell dimensions
-  const CW = 52, CH = 22, VGAP = 3;   // lot cell width, height, vertical gap
-  const ROWS = 11;                      // A1-A11, B1-B11
-  const PAD = 6;
-
-  // X positions
-  const xLeft  = PAD;           // left rooms strip width
-  const leftW  = 58;
-  const xDW    = xLeft + leftW; // driveway x
-  const dwW    = 28;
-  const xA     = xDW + dwW;     // A column x
-  const xB     = xA + CW + 4;   // B column x (small gap between A and B)
-  const shutW  = 22;            // right shutter width
-  const xShut  = xB + CW + 6;  // right shutter x
-
-  // B12-B14 sit above B11. STES is compact and spans those 3 rows + a little padding.
-  // Row 11 (top of B1-B11 block) → row 1 (bottom)
-  // Total height of B1-B11: ROWS*(CH+VGAP) - VGAP
-  // B12,B13,B14 each get CH+VGAP row above that.
-  const bHighCount = 3; // B12, B13, B14
-  const bHighH = bHighCount * (CH + VGAP); // height occupied by B12-B14
-
-  // STES: compact box, same height as B12-B14 block, beside them
-  const stesH = bHighH;
-  const stesW = CW;  // same width as A col, sits beside B12-B14
-
-  const totalH = PAD + bHighH + ROWS*(CH+VGAP) + CH + PAD; // top pad + b12-14 + b1-11 rows + bottom shutter + pad
-  const svgW = xShut + shutW + PAD;
-  const svgH = totalH + 30; // extra for bottom shutter
-
-  svg.setAttribute('viewBox', `0 0 ${svgW} ${svgH}`);
-  svg.setAttribute('width', '100%'); svg.setAttribute('height', 'auto');
-  svg.style.maxWidth = svgW + 'px';
-
-  // Background
-  const bg = document.createElementNS(ns,'rect');
-  bg.setAttribute('x','0'); bg.setAttribute('y','0');
-  bg.setAttribute('width',svgW); bg.setAttribute('height',svgH);
-  bg.setAttribute('rx','6'); bg.setAttribute('fill','#F8F8F4');
-  bg.setAttribute('stroke','#B8BEB0'); bg.setAttribute('stroke-width','1.5');
-  svg.appendChild(bg);
-
-  const handler = (lotId, veh, rect) => { highlightLot(rect, !!veh); selectLotById(lotId, veh); };
-
-  // ── Left rooms strip ──
-  // Shutter at top (just top-left corner, short)
-  const shutTopH = 28;
-  makeRoomRect(svg, xLeft, PAD, leftW, shutTopH, 'SHUTTER', '#FFF3E0', '#B86A00');
-
-  // Spare Store, Innovation Room, Scrap Metal fill from below shutter down
-  const roomsTop = PAD + shutTopH + 4;
-  const roomsAvail = svgH - 34 - roomsTop; // leave room for bottom shutter
-  const roomH1 = Math.floor(roomsAvail * 0.3);
-  const roomH2 = Math.floor(roomsAvail * 0.25);
-  const roomH3 = roomsAvail - roomH1 - roomH2 - 8;
-  makeRoomRect(svg, xLeft, roomsTop,              leftW, roomH1, 'SPARE\nSTORE',      '#EEF0E8', '#5A6050');
-  makeRoomRect(svg, xLeft, roomsTop+roomH1+4,     leftW, roomH2, 'INNOVATION\nROOM',  '#EEF0E8', '#5A6050');
-  makeRoomRect(svg, xLeft, roomsTop+roomH1+roomH2+8, leftW, roomH3, 'SCRAP\nMETAL',  '#EEF0E8', '#5A6050');
-
-  // ── Driveway ──
-  makeDrivewayLabel(svg, xDW, PAD + bHighH + 10, dwW, ROWS*(CH+VGAP), true);
-
-  // ── STES (compact, same height as B12-B14, sits left of B12-B14) ──
-  const stesY = PAD;
-  makeRoomRect(svg, xA, stesY, stesW, stesH - VGAP, 'STES', '#E8F0FF', '#2A4A8A');
-
-  // ── B12, B13, B14 (top to bottom: B14, B13, B12) aligned right of STES ──
-  const bHighStartY = PAD;
-  ['B14','B13','B12'].forEach((lot, i) => {
-    const y = bHighStartY + i * (CH + VGAP);
-    makeLotRect(svg, xB, y, CW, CH, lot, !!occ[lot], false, handler);
-  });
-
-  // ── A1-A11 and B1-B11 (A11 at top, A1 at bottom) ──
-  const mainLotsY = PAD + bHighH;
-  for (let n = 11; n >= 1; n--) {
-    const row = 11 - n; // row 0 = A11/B11 at top, row 10 = A1/B1 at bottom
-    const y = mainLotsY + row * (CH + VGAP);
-    makeLotRect(svg, xA, y, CW, CH, 'A'+n, !!occ['A'+n], false, handler);
-    makeLotRect(svg, xB, y, CW, CH, 'B'+n, !!occ['B'+n], false, handler);
-  }
-
-  // ── Right shutter (vertical) ──
-  makeRoomRect(svg, xShut, PAD + 20, shutW, svgH - 54, 'SHUTTER', '#FFF3E0', '#B86A00');
-
-  // ── Bottom shutter (horizontal, below A/B cols) ──
-  const botY = svgH - 28;
-  makeRoomRect(svg, xDW, botY, CW*2 + 30, 22, 'SHUTTER', '#FFF3E0', '#B86A00');
+  const ns='http://www.w3.org/2000/svg', occ=occupiedLots('Workshop');
+  const CW=52,CH=22,VGAP=3,ROWS=11,PAD=6,leftW=58,dwW=28,shutW=22;
+  const xLeft=PAD,xDW=xLeft+leftW,xA=xDW+dwW,xB=xA+CW+4,xShut=xB+CW+6;
+  const bHighH=3*(CH+VGAP), svgW=xShut+shutW+PAD, svgH=PAD+bHighH+ROWS*(CH+VGAP)+CH+PAD+30;
+  svg.setAttribute('viewBox',`0 0 ${svgW} ${svgH}`); svg.setAttribute('width','100%'); svg.setAttribute('height','auto'); svg.style.maxWidth=svgW+'px';
+  const bg=document.createElementNS(ns,'rect'); bg.setAttribute('x','0');bg.setAttribute('y','0');bg.setAttribute('width',svgW);bg.setAttribute('height',svgH);bg.setAttribute('rx','6');bg.setAttribute('fill','#F8F8F4');bg.setAttribute('stroke','#B8BEB0');bg.setAttribute('stroke-width','1.5');svg.appendChild(bg);
+  const handler=(id,veh,rect)=>{highlightLot(rect,!!veh);selectLotById(id,veh);};
+  const shutTopH=28;
+  makeRoomRect(svg,xLeft,PAD,leftW,shutTopH,'SHUTTER','#FFF3E0','#B86A00');
+  const rTop=PAD+shutTopH+4, rAvail=svgH-34-rTop, rH1=Math.floor(rAvail*.3), rH2=Math.floor(rAvail*.25), rH3=rAvail-rH1-rH2-8;
+  makeRoomRect(svg,xLeft,rTop,leftW,rH1,'SPARE\nSTORE','#EEF0E8','#5A6050');
+  makeRoomRect(svg,xLeft,rTop+rH1+4,leftW,rH2,'INNOVATION\nROOM','#EEF0E8','#5A6050');
+  makeRoomRect(svg,xLeft,rTop+rH1+rH2+8,leftW,rH3,'SCRAP\nMETAL','#EEF0E8','#5A6050');
+  makeDrivewayLabel(svg,xDW,PAD+bHighH+10,dwW,ROWS*(CH+VGAP),true);
+  makeRoomRect(svg,xA,PAD,CW,bHighH-VGAP,'STES','#E8F0FF','#2A4A8A');
+  ['B14','B13','B12'].forEach((lot,i)=>{ makeLotRect(svg,xB,PAD+i*(CH+VGAP),CW,CH,lot,!!occ[lot],false,handler); });
+  const mY=PAD+bHighH;
+  for(let n=11;n>=1;n--){const row=11-n,y=mY+row*(CH+VGAP);makeLotRect(svg,xA,y,CW,CH,'A'+n,!!occ['A'+n],false,handler);makeLotRect(svg,xB,y,CW,CH,'B'+n,!!occ['B'+n],false,handler);}
+  makeRoomRect(svg,xShut,PAD+20,shutW,svgH-54,'SHUTTER','#FFF3E0','#B86A00');
+  makeRoomRect(svg,xDW,svgH-28,CW*2+30,22,'SHUTTER','#FFF3E0','#B86A00');
 }
 
-// ────────────────────────────────────────
-// L1 FLOOR PLAN
-// Cols: A(x1), DRIVEWAY, B+C(x2), DRIVEWAY, D+E(x3), DRIVEWAY, F(x4)
-// Each col: rows 1–15 bottom to top (displayed top to bottom = 15→1)
-// L1 extra: F1–F9, room none
-// ────────────────────────────────────────
-function drawMultiLevel(svg, fCols, roomLabel) {
-  const ns = 'http://www.w3.org/2000/svg';
-  const occ = occupiedLots(currentLevel);
-  // Layout dimensions
-  const CW = 30, CH = 19, CGAP = 2;   // cell width/height/gap
-  const COL_GAP = 14;                  // gap between column groups (driveway)
-  const ROW_GAP = 2;
-  const ROWS = 15;
-  const PAIR_W = CW*2 + CGAP;          // width of a B+C or D+E pair
-  const PAD = 8;
-
-  // Column group x positions
-  const xA  = PAD;
-  const xBC = xA + CW + COL_GAP;
-  const xDE = xBC + PAIR_W + COL_GAP;
-  const xF  = xDE + PAIR_W + COL_GAP;
-
-  const svgH = PAD + ROWS*(CH+ROW_GAP) + PAD + (roomLabel ? 50 : 0) + 16;
-  const svgW = xF + CW + PAD + (roomLabel ? 0 : 0);
-  svg.setAttribute('viewBox', `0 0 ${svgW} ${svgH}`);
-  svg.setAttribute('width', '100%'); svg.setAttribute('height', 'auto');
-  svg.style.maxWidth = svgW + 'px';
-
-  // Background
-  const bg = document.createElementNS(ns,'rect');
-  bg.setAttribute('x','0'); bg.setAttribute('y','0');
-  bg.setAttribute('width',svgW); bg.setAttribute('height',svgH);
-  bg.setAttribute('fill','#F8F8F4'); bg.setAttribute('rx','6');
-  svg.appendChild(bg);
-
-  const handler = (lotId, veh, rect) => { highlightLot(rect, !!veh); selectLotById(lotId, veh); };
-
-  // Driveway labels (vertical)
-  const dwY = PAD + 2;
-  const dwH = ROWS*(CH+ROW_GAP);
-  makeDrivewayLabel(svg, xA + CW + 1, dwY, COL_GAP - 2, dwH, true);
-  makeDrivewayLabel(svg, xBC + PAIR_W + 1, dwY, COL_GAP - 2, dwH, true);
-  makeDrivewayLabel(svg, xDE + PAIR_W + 1, dwY, COL_GAP - 2, dwH, true);
-
-  // Draw rows 15 down to 1 (top = 15, bottom = 1)
-  for (let row = 0; row < ROWS; row++) {
-    const n = ROWS - row;  // lot number (15 at top, 1 at bottom)
-    const y = PAD + row * (CH + ROW_GAP);
-
-    makeLotRect(svg, xA,         y, CW, CH, 'A'+n,  !!occ['A'+n],  false, handler);
-    makeLotRect(svg, xBC,        y, CW, CH, 'B'+n,  !!occ['B'+n],  false, handler);
-    makeLotRect(svg, xBC+CW+CGAP,y, CW, CH, 'C'+n,  !!occ['C'+n],  false, handler);
-    makeLotRect(svg, xDE,        y, CW, CH, 'D'+n,  !!occ['D'+n],  false, handler);
-    makeLotRect(svg, xDE+CW+CGAP,y, CW, CH, 'E'+n,  !!occ['E'+n],  false, handler);
-    // F column - different count per level
-    if (n <= fCols) {
-      makeLotRect(svg, xF, y, CW, CH, 'F'+n, !!occ['F'+n], false, handler);
-    }
-  }
-
-  // Room label at bottom of F column if provided
-  if (roomLabel) {
-    const roomY = PAD + ROWS*(CH+ROW_GAP) + 4;
-    const roomH = svgH - roomY - PAD;
-    if (roomLabel.length === 2) {
-      // Two rooms stacked
-      const midH = (roomH - 4) / 2;
-      makeRoomRect(svg, xF - (svgW - xF - CW - PAD)/2 - 2, roomY, CW + (svgW - xF - CW - PAD)/2 + 2, midH, roomLabel[0], '#EEF5FF', '#2A4A8A');
-      makeRoomRect(svg, xF - (svgW - xF - CW - PAD)/2 - 2, roomY + midH + 4, CW + (svgW - xF - CW - PAD)/2 + 2, midH, roomLabel[1], '#EEF5FF', '#2A4A8A');
-    } else {
-      makeRoomRect(svg, xF - 10, roomY, CW + 20, roomH, roomLabel[0], '#EEF5FF', '#2A4A8A');
-    }
-  }
-}
-
+// ── LEVEL 1 ──
 function drawL1(svg) {
-  // L1: A1-A15, B1-B15, C1-C15, D1-D15, E1-E15, F1-F9
-  // F1-F9 flush to TOP: F9 at top row, F1 at row 9 (rows 10-15 in F col are empty)
-  // Displayed: row 0 (top) = lot 15, row 14 (bottom) = lot 1
-  const ns = 'http://www.w3.org/2000/svg';
-  const occ = occupiedLots('L1');
-  const CW=30, CH=19, CGAP=2, COL_GAP=14, ROWS=15, PAD=8, ROW_GAP=2;
-  const PAIR_W = CW*2+CGAP;
-  const xA=PAD, xBC=xA+CW+COL_GAP, xDE=xBC+PAIR_W+COL_GAP, xF=xDE+PAIR_W+COL_GAP;
-  const svgW = xF+CW+PAD;
-  const svgH = PAD + ROWS*(CH+ROW_GAP) + PAD;
-  svg.setAttribute('viewBox',`0 0 ${svgW} ${svgH}`);
-  svg.setAttribute('width','100%'); svg.setAttribute('height','auto');
-  svg.style.maxWidth = svgW+'px';
-  const bg = document.createElementNS(ns,'rect');
-  bg.setAttribute('x','0'); bg.setAttribute('y','0');
-  bg.setAttribute('width',svgW); bg.setAttribute('height',svgH);
-  bg.setAttribute('fill','#F8F8F4'); bg.setAttribute('rx','6');
-  svg.appendChild(bg);
-  const handler = (lotId, veh, rect) => { highlightLot(rect, !!veh); selectLotById(lotId, veh); };
-  makeDrivewayLabel(svg, xA+CW+1, PAD+2, COL_GAP-2, ROWS*(CH+ROW_GAP), true);
-  makeDrivewayLabel(svg, xBC+PAIR_W+1, PAD+2, COL_GAP-2, ROWS*(CH+ROW_GAP), true);
-  makeDrivewayLabel(svg, xDE+PAIR_W+1, PAD+2, COL_GAP-2, ROWS*(CH+ROW_GAP), true);
-  for (let row=0; row<ROWS; row++) {
-    const n = ROWS - row;  // n=15 at row0(top), n=1 at row14(bottom)
-    const y = PAD + row*(CH+ROW_GAP);
-    makeLotRect(svg, xA,           y, CW, CH, 'A'+n, !!occ['A'+n], false, handler);
-    makeLotRect(svg, xBC,          y, CW, CH, 'B'+n, !!occ['B'+n], false, handler);
-    makeLotRect(svg, xBC+CW+CGAP,  y, CW, CH, 'C'+n, !!occ['C'+n], false, handler);
-    makeLotRect(svg, xDE,          y, CW, CH, 'D'+n, !!occ['D'+n], false, handler);
-    makeLotRect(svg, xDE+CW+CGAP,  y, CW, CH, 'E'+n, !!occ['E'+n], false, handler);
-    // F: flush to top → F9 at row0, F8 at row1 … F1 at row8; rows 9-14 empty
-    // row index for Fn: row = 9 - n  (when n=9: row=0, when n=1: row=8)
-    const fRow = 9 - n;
-    if (fRow >= 0) makeLotRect(svg, xF, PAD + fRow*(CH+ROW_GAP), CW, CH, 'F'+n, !!occ['F'+n], false, handler);
+  const ns='http://www.w3.org/2000/svg', occ=occupiedLots('L1');
+  const CW=30,CH=19,CGAP=2,COL_GAP=14,ROWS=15,PAD=8,ROW_GAP=2,PAIR_W=CW*2+CGAP;
+  const xA=PAD,xBC=xA+CW+COL_GAP,xDE=xBC+PAIR_W+COL_GAP,xF=xDE+PAIR_W+COL_GAP;
+  const svgW=xF+CW+PAD,svgH=PAD+ROWS*(CH+ROW_GAP)+PAD;
+  svg.setAttribute('viewBox',`0 0 ${svgW} ${svgH}`);svg.setAttribute('width','100%');svg.setAttribute('height','auto');svg.style.maxWidth=svgW+'px';
+  const bg=document.createElementNS(ns,'rect');bg.setAttribute('x','0');bg.setAttribute('y','0');bg.setAttribute('width',svgW);bg.setAttribute('height',svgH);bg.setAttribute('fill','#F8F8F4');bg.setAttribute('rx','6');svg.appendChild(bg);
+  const handler=(id,veh,rect)=>{highlightLot(rect,!!veh);selectLotById(id,veh);};
+  makeDrivewayLabel(svg,xA+CW+1,PAD+2,COL_GAP-2,ROWS*(CH+ROW_GAP),true);
+  makeDrivewayLabel(svg,xBC+PAIR_W+1,PAD+2,COL_GAP-2,ROWS*(CH+ROW_GAP),true);
+  makeDrivewayLabel(svg,xDE+PAIR_W+1,PAD+2,COL_GAP-2,ROWS*(CH+ROW_GAP),true);
+  for(let row=0;row<ROWS;row++){
+    const n=ROWS-row,y=PAD+row*(CH+ROW_GAP);
+    makeLotRect(svg,xA,y,CW,CH,'A'+n,!!occ['A'+n],false,handler);
+    makeLotRect(svg,xBC,y,CW,CH,'B'+n,!!occ['B'+n],false,handler);
+    makeLotRect(svg,xBC+CW+CGAP,y,CW,CH,'C'+n,!!occ['C'+n],false,handler);
+    makeLotRect(svg,xDE,y,CW,CH,'D'+n,!!occ['D'+n],false,handler);
+    makeLotRect(svg,xDE+CW+CGAP,y,CW,CH,'E'+n,!!occ['E'+n],false,handler);
+    // F1-F9 flush to top: F9→row0, F1→row8
+    const fRow=9-n; if(fRow>=0) makeLotRect(svg,xF,PAD+fRow*(CH+ROW_GAP),CW,CH,'F'+n,!!occ['F'+n],false,handler);
   }
 }
 
+// ── LEVEL 2 ── F6-F1 flush top; Gunnery Training (top) + PETA Store (bottom) RIGHT of F col
 function drawL2(svg) {
-  // L2: A1-A15, B1-B15, C1-C15, D1-D15, E1-E15 (rows 15 top → 1 bottom)
-  // F col: F6 at top (row 0), F1 at bottom of F (row 5). Rows 6-14 in F col: empty.
-  // Rooms RIGHT of F col, aligned with F lots:
-  //   Gunnery Training: spans rows of F6 down to ~F4 (top portion)
-  //   PETA Store:       spans rows of F3 down to F1  (bottom portion)
-  // Image shows Gunnery Training is taller (~rows 6-9 from top) and PETA Store shorter (~rows 9-14)
-  // We align: room top = F6 top (PAD), room bottom = F1 bottom (PAD + 6*(CH+ROW_GAP) - ROW_GAP)
-  const ns = 'http://www.w3.org/2000/svg';
-  const occ = occupiedLots('L2');
-  const CW = 42;      // parking lot width
-  const CH = 28;      // parking lot height
-  const CGAP = 0;     // no gap between B/C and D/E
-  const COL_GAP = 42; // wide driveway spacing
-  const ROWS = 15;
-  const PAD = 18;
-  const ROW_GAP = 0;  // stacked lots like the drawing
-  const PAIR_W=CW*2+CGAP;
-  const xA=PAD, xBC=xA+CW+COL_GAP, xDE=xBC+PAIR_W+COL_GAP, xF=xDE+PAIR_W+COL_GAP;
-  const roomW=90, roomX=xF+CW+5;
-  const svgW=roomX+roomW+PAD;
-  const svgH=PAD+ROWS*(CH+ROW_GAP)+PAD;
-  svg.setAttribute('viewBox',`0 0 ${svgW} ${svgH}`);
-  svg.setAttribute('width','100%');
-  svg.style.height = 'auto';         //  This is the fixed line
-  svg.style.maxWidth=svgW+'px';
-  const bg=document.createElementNS(ns,'rect');
-  bg.setAttribute('x','0'); bg.setAttribute('y','0');
-  bg.setAttribute('width',svgW); bg.setAttribute('height',svgH);
-  bg.setAttribute('fill','#F8F8F4'); bg.setAttribute('stroke-width','1.5');
-  svg.appendChild(bg);
-  const handler=(lotId,veh,rect)=>{highlightLot(rect,!!veh);selectLotById(lotId,veh);};
+  const ns='http://www.w3.org/2000/svg', occ=occupiedLots('L2');
+  const CW=30,CH=19,CGAP=2,COL_GAP=14,ROWS=15,PAD=8,ROW_GAP=2,PAIR_W=CW*2+CGAP;
+  const xA=PAD,xBC=xA+CW+COL_GAP,xDE=xBC+PAIR_W+COL_GAP,xF=xDE+PAIR_W+COL_GAP;
+  const roomW=54,roomX=xF+CW+4;
+  const svgW=roomX+roomW+PAD,svgH=PAD+ROWS*(CH+ROW_GAP)+PAD;
+  svg.setAttribute('viewBox',`0 0 ${svgW} ${svgH}`);svg.setAttribute('width','100%');svg.setAttribute('height','auto');svg.style.maxWidth=svgW+'px';
+  const bg=document.createElementNS(ns,'rect');bg.setAttribute('x','0');bg.setAttribute('y','0');bg.setAttribute('width',svgW);bg.setAttribute('height',svgH);bg.setAttribute('fill','#F8F8F4');bg.setAttribute('rx','6');svg.appendChild(bg);
+  const handler=(id,veh,rect)=>{highlightLot(rect,!!veh);selectLotById(id,veh);};
   makeDrivewayLabel(svg,xA+CW+1,PAD+2,COL_GAP-2,ROWS*(CH+ROW_GAP),true);
   makeDrivewayLabel(svg,xBC+PAIR_W+1,PAD+2,COL_GAP-2,ROWS*(CH+ROW_GAP),true);
   makeDrivewayLabel(svg,xDE+PAIR_W+1,PAD+2,COL_GAP-2,ROWS*(CH+ROW_GAP),true);
-
-  // F lots flush to TOP: F6 at row0, F5 at row1 … F1 at row5
-  // fRow = 6 - n  (when n=6: fRow=0; when n=1: fRow=5)
-  for (let row=0;row<ROWS;row++) {
-    const n=ROWS-row, y=PAD+row*(CH+ROW_GAP);
-    makeLotRect(svg,xA,          y,CW,CH,'A'+n,!!occ['A'+n],false,handler);
-    makeLotRect(svg,xBC,         y,CW,CH,'B'+n,!!occ['B'+n],false,handler);
-    makeLotRect(svg,xBC+CW+CGAP, y,CW,CH,'C'+n,!!occ['C'+n],false,handler);
-    makeLotRect(svg,xDE,         y,CW,CH,'D'+n,!!occ['D'+n],false,handler);
-    makeLotRect(svg,xDE+CW+CGAP, y,CW,CH,'E'+n,!!occ['E'+n],false,handler);
+  // A–E all 15 rows
+  for(let row=0;row<ROWS;row++){
+    const n=ROWS-row,y=PAD+row*(CH+ROW_GAP);
+    makeLotRect(svg,xA,y,CW,CH,'A'+n,!!occ['A'+n],false,handler);
+    makeLotRect(svg,xBC,y,CW,CH,'B'+n,!!occ['B'+n],false,handler);
+    makeLotRect(svg,xBC+CW+CGAP,y,CW,CH,'C'+n,!!occ['C'+n],false,handler);
+    makeLotRect(svg,xDE,y,CW,CH,'D'+n,!!occ['D'+n],false,handler);
+    makeLotRect(svg,xDE+CW+CGAP,y,CW,CH,'E'+n,!!occ['E'+n],false,handler);
   }
-  // F lots: F6 top → F1 (6 lots starting at PAD)
-  for (let fn=6; fn>=1; fn--) {
-    const fRow = 6 - fn;  // F6→row0, F1→row5
-    const fy = PAD + fRow*(CH+ROW_GAP);
-    makeLotRect(svg,xF,fy,CW,CH,'F'+fn,!!occ['F'+fn],false,handler);
-  }
-
-  // Rooms aligned with F col: top of room = top of F6, bottom = bottom of F1
-  //const roomTop = PAD;
-  //const roomBot = PAD + 6*(CH+ROW_GAP) - ROW_GAP;
-  //const roomTotalH = roomBot - roomTop;
-  // Gunnery Training: top ~60%, PETA Store: bottom ~40%
-  //const gunH = Math.round(roomTotalH * 0.58);
-  //const petaH = roomTotalH - gunH - 3;
-  //makeRoomRect(svg,roomX, roomTop,         roomW, gunH,  'GUNNERY\nTRAINING','#EEF5FF','#2A4A8A');
-  //makeRoomRect(svg,roomX, roomTop+gunH+3,  roomW, petaH, 'PETA\nSTORE',      '#EEF5FF','#2A4A8A');
+  // F6→row0, F1→row5  (flush top)
+  for(let fn=6;fn>=1;fn--){ const fy=PAD+(6-fn)*(CH+ROW_GAP); makeLotRect(svg,xF,fy,CW,CH,'F'+fn,!!occ['F'+fn],false,handler); }
+  // Rooms: RIGHT of F col, vertically aligned with F6 top → F1 bottom
+  const bandTop=PAD, bandBot=PAD+5*(CH+ROW_GAP)+CH, bandH=bandBot-bandTop;
+  const gunH=3*(CH+ROW_GAP)-ROW_GAP;   // spans 3 lot rows (F6,F5,F4)
+  const petaH=bandH-gunH-3;
+  makeRoomRect(svg,roomX,bandTop,      roomW,gunH, 'GUNNERY\nTRAINING','#EEF5FF','#2A4A8A');
+  makeRoomRect(svg,roomX,bandTop+gunH+3,roomW,petaH,'PETA\nSTORE',    '#EEF5FF','#2A4A8A');
 }
 
+// ── LEVEL 3 ── F6-F1 flush top; Armskote (top) + Opstronic Store (bottom) RIGHT of F col
 function drawL3(svg) {
-  // L3 layout (from image):
-  // Same grid as L2 but right column is: F lots | Armskote + Opstronic Store
-  // Stacked VERTICALLY alongside F col (F6 top → F1 bottom):
-  //   [F6] [Armskote        ]
-  //   [F5] [Armskote        ]
-  //   [F4] [Armskote        ]   ← Armskote is top ~half (F6-F4)
-  //   [F3] [Opstronic Store ]
-  //   [F2] [Opstronic Store ]
-  //   [F1] [Opstronic Store ]   ← Opstronic Store is bottom ~half (F3-F1)
-  const ns = 'http://www.w3.org/2000/svg';
-  const occ = occupiedLots('L3');
-  const CW = 42;      // parking lot width
-  const CH = 28;      // parking lot height
-  const CGAP = 0;     // no gap between B/C and D/E
-  const COL_GAP = 42; // wide driveway spacing
-  const ROWS = 15;
-  const PAD = 18;
-  const ROW_GAP = 0;  // stacked lots like the drawing
-  const PAIR_W=CW*2+CGAP;
-  const xA=PAD, xBC=xA+CW+COL_GAP, xDE=xBC+PAIR_W+COL_GAP, xF=xDE+PAIR_W+COL_GAP;
-  const roomGap=4, roomW=90, roomX=xF+CW+roomGap;
-  const svgW=roomX+roomW+PAD;
-  const svgH=PAD+ROWS*(CH+ROW_GAP)+PAD;
-  svg.setAttribute('viewBox',`0 0 ${svgW} ${svgH}`);
-  svg.setAttribute('width','100%'); svg.setAttribute('height','auto');
-  svg.style.maxWidth=svgW+'px';
-  const bg=document.createElementNS(ns,'rect');
-  bg.setAttribute('x','0'); bg.setAttribute('y','0');
-  bg.setAttribute('width',svgW); bg.setAttribute('height',svgH);
-  bg.setAttribute('fill','#F8F8F4'); bg.setAttribute('stroke-width','1.5');
-  svg.appendChild(bg);
-  const handler=(lotId,veh,rect)=>{highlightLot(rect,!!veh);selectLotById(lotId,veh);};
+  const ns='http://www.w3.org/2000/svg', occ=occupiedLots('L3');
+  const CW=30,CH=19,CGAP=2,COL_GAP=14,ROWS=15,PAD=8,ROW_GAP=2,PAIR_W=CW*2+CGAP;
+  const xA=PAD,xBC=xA+CW+COL_GAP,xDE=xBC+PAIR_W+COL_GAP,xF=xDE+PAIR_W+COL_GAP;
+  const roomW=58,roomX=xF+CW+4;
+  const svgW=roomX+roomW+PAD,svgH=PAD+ROWS*(CH+ROW_GAP)+PAD;
+  svg.setAttribute('viewBox',`0 0 ${svgW} ${svgH}`);svg.setAttribute('width','100%');svg.setAttribute('height','auto');svg.style.maxWidth=svgW+'px';
+  const bg=document.createElementNS(ns,'rect');bg.setAttribute('x','0');bg.setAttribute('y','0');bg.setAttribute('width',svgW);bg.setAttribute('height',svgH);bg.setAttribute('fill','#F8F8F4');bg.setAttribute('rx','6');svg.appendChild(bg);
+  const handler=(id,veh,rect)=>{highlightLot(rect,!!veh);selectLotById(id,veh);};
   makeDrivewayLabel(svg,xA+CW+1,PAD+2,COL_GAP-2,ROWS*(CH+ROW_GAP),true);
   makeDrivewayLabel(svg,xBC+PAIR_W+1,PAD+2,COL_GAP-2,ROWS*(CH+ROW_GAP),true);
   makeDrivewayLabel(svg,xDE+PAIR_W+1,PAD+2,COL_GAP-2,ROWS*(CH+ROW_GAP),true);
-
-  // A–E lots (rows 15→1, top to bottom)
-  for (let row=0;row<ROWS;row++) {
-    const n=ROWS-row, y=PAD+row*(CH+ROW_GAP);
-    makeLotRect(svg,xA,          y,CW,CH,'A'+n,!!occ['A'+n],false,handler);
-    makeLotRect(svg,xBC,         y,CW,CH,'B'+n,!!occ['B'+n],false,handler);
-    makeLotRect(svg,xBC+CW+CGAP, y,CW,CH,'C'+n,!!occ['C'+n],false,handler);
-    makeLotRect(svg,xDE,         y,CW,CH,'D'+n,!!occ['D'+n],false,handler);
-    makeLotRect(svg,xDE+CW+CGAP, y,CW,CH,'E'+n,!!occ['E'+n],false,handler);
+  for(let row=0;row<ROWS;row++){
+    const n=ROWS-row,y=PAD+row*(CH+ROW_GAP);
+    makeLotRect(svg,xA,y,CW,CH,'A'+n,!!occ['A'+n],false,handler);
+    makeLotRect(svg,xBC,y,CW,CH,'B'+n,!!occ['B'+n],false,handler);
+    makeLotRect(svg,xBC+CW+CGAP,y,CW,CH,'C'+n,!!occ['C'+n],false,handler);
+    makeLotRect(svg,xDE,y,CW,CH,'D'+n,!!occ['D'+n],false,handler);
+    makeLotRect(svg,xDE+CW+CGAP,y,CW,CH,'E'+n,!!occ['E'+n],false,handler);
   }
-
-  // F lots: F6 at top (row 0) → F1 at row 5, flush to top
-  const F_COUNT = 6;
-  for (let fn=F_COUNT; fn>=1; fn--) {
-    const fRow = F_COUNT - fn;          // F6→0, F5→1, … F1→5
-    const fy = PAD + fRow*(CH+ROW_GAP);
-    makeLotRect(svg,xF,fy,CW,CH,'F'+fn,!!occ['F'+fn],false,handler);
-  }
-
-  // Rooms: vertically alongside F lots (same y-band as F6 top → F1 bottom)
-  //const bandTop = PAD;
-  //const bandBot = PAD + (F_COUNT-1)*(CH+ROW_GAP) + CH;
-  //const bandH   = bandBot - bandTop;
-  // Armskote: top 3 rows (F6,F5,F4); Opstronic Store: bottom 3 rows (F3,F2,F1)
-  //const armH  = 3*(CH+ROW_GAP) - ROW_GAP;
-  //const opsH  = bandH - armH - 3;
-  //makeRoomRect(svg,roomX, bandTop,        roomW, armH, 'ARMSKOTE',        '#EEF5FF','#2A4A8A');
-  //makeRoomRect(svg,roomX, bandTop+armH+3, roomW, opsH, 'OPSTRONIC\nSTORE','#EEF5FF','#2A4A8A');
+  // F6→row0, F1→row5 (flush top)
+  for(let fn=6;fn>=1;fn--){ const fy=PAD+(6-fn)*(CH+ROW_GAP); makeLotRect(svg,xF,fy,CW,CH,'F'+fn,!!occ['F'+fn],false,handler); }
+  // Rooms: RIGHT of F col, vertically aligned with F6 top → F1 bottom
+  const bandTop=PAD, bandBot=PAD+5*(CH+ROW_GAP)+CH, bandH=bandBot-bandTop;
+  const armH=3*(CH+ROW_GAP)-ROW_GAP;   // Armskote spans F6,F5,F4
+  const opsH=bandH-armH-3;
+  makeRoomRect(svg,roomX,bandTop,       roomW,armH,'ARMSKOTE',        '#EEF5FF','#2A4A8A');
+  makeRoomRect(svg,roomX,bandTop+armH+3,roomW,opsH,'OPSTRONIC\nSTORE','#EEF5FF','#2A4A8A');
 }
 
+// ── LOT SELECTION PANEL ──
 function selectLotById(lotId, veh) {
   const panel = document.getElementById('lot-detail-panel');
-  if (!veh) {
-    panel.innerHTML = `<div class="card-sm" style="text-align:center;color:var(--muted);font-size:13px;">Lot <strong>${lotId}</strong> is empty</div>`;
-    return;
-  }
-  const dInfo = MOCK_EMPLOYEES[veh.driver] || { phone: veh.driver_phone||'—', depot: veh.driver_depot||'—' };
-  const dInitials = veh.driver.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+  if (!veh) { panel.innerHTML = `<div class="card-sm" style="text-align:center;color:var(--muted);font-size:13px;">Lot <strong>${lotId}</strong> is empty</div>`; return; }
+  const dInitials = (veh.driver||'UN').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
   panel.innerHTML = `
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;">
-        <div>
-          <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;">${veh.plate}</div>
-          <div style="font-size:12px;color:var(--muted);">${veh.variant}</div>
-        </div>
+        <div><div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;">${veh.plate}</div><div style="font-size:12px;color:var(--muted);">${veh.variant||'—'}</div></div>
         <span class="badge badge-green">Lot ${lotId}</span>
       </div>
       <div class="driver-card" style="margin-bottom:0;">
         <div class="driver-avatar-sm" style="width:34px;height:34px;font-size:12px;">${dInitials}</div>
         <div style="flex:1;min-width:0;">
-          <div style="font-weight:600;font-size:13px;">${veh.driver}</div>
-          <div style="font-size:11px;color:var(--muted);">${dInfo.depot}</div>
-          <a href="tel:${dInfo.phone}" style="font-size:11px;color:var(--accent);text-decoration:none;font-weight:600;">${dInfo.phone}</a>
+          <div style="font-weight:600;font-size:13px;">${safe(veh.driver)}</div>
+          <div style="font-size:11px;color:var(--muted);">${safe(veh.driver_depot)}</div>
+          <a href="tel:${safe(veh.driver_phone,'')}" style="font-size:11px;color:var(--accent);text-decoration:none;font-weight:600;">${safe(veh.driver_phone)}</a>
         </div>
         <button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;" onclick="openVehicleFromParking('${veh.id}')">View</button>
       </div>
@@ -1598,37 +985,39 @@ function selectLotById(lotId, veh) {
 }
 
 function openVehicleFromParking(id) {
-  currentVehicle = allVehicles.find(v => v.id == id);
+  currentVehicle = allVehicles.find(v => String(v.id) === String(id));
   if (!currentVehicle) return;
   renderDetailScreen(currentVehicle);
   showScreen('detail');
 }
 
-// ── PROFILE ──
+// ══════════════════════════════════════════════
+// PROFILE
+// ══════════════════════════════════════════════
 function updateProfileUI() {
   if (!currentUser) return;
-  const initials = currentUser.name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
-  const roleColors = { viewer:'badge-blue', driver:'badge-green', admin:'badge-yellow' };
-  const roleLabels = { viewer:'Viewer', driver:'Driver', admin:'Admin' };
+  const initials = (currentUser.name||'U').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+  const roleMap = { viewer:['badge-blue','Viewer'], driver:['badge-green','Driver'], admin:['badge-yellow','Admin'] };
+  const [cls, lbl] = roleMap[currentUser.role] || ['badge-blue','Unknown'];
   document.getElementById('profile-avatar').textContent = initials;
   document.getElementById('home-user-avatar').textContent = initials;
   document.getElementById('profile-name').textContent = currentUser.name;
-  document.getElementById('profile-role-badge').innerHTML = `<span class="badge ${roleColors[currentUser.role]||'badge-blue'}">${roleLabels[currentUser.role]||currentUser.role}</span>`;
+  document.getElementById('profile-role-badge').innerHTML = `<span class="badge ${cls}">${lbl}</span>`;
   document.getElementById('pv-email').textContent = currentUser.email;
   document.getElementById('pv-phone').textContent = currentUser.phone;
   document.getElementById('pv-depot').textContent = currentUser.depot;
-  document.getElementById('pv-role').innerHTML = `<span class="badge ${roleColors[currentUser.role]||'badge-blue'}">${roleLabels[currentUser.role]||currentUser.role}</span>`;
+  document.getElementById('pv-role').innerHTML = `<span class="badge ${cls}">${lbl}</span>`;
 }
 
 function toggleEditProfile() {
   document.getElementById('profile-view').style.display = 'none';
   document.getElementById('profile-edit').style.display = 'block';
   document.getElementById('edit-profile-btn').style.display = 'none';
-  document.getElementById('pe-name').value = currentUser.name;
+  document.getElementById('pe-name').value  = currentUser.name;
   document.getElementById('pe-email').value = currentUser.email;
   document.getElementById('pe-phone').value = currentUser.phone;
   document.getElementById('pe-depot').value = currentUser.depot;
-  document.getElementById('pe-role').value = currentUser.role;
+  document.getElementById('pe-role').value  = currentUser.role;
 }
 function cancelEditProfile() {
   document.getElementById('profile-view').style.display = 'block';
@@ -1636,118 +1025,91 @@ function cancelEditProfile() {
   document.getElementById('edit-profile-btn').style.display = 'inline-flex';
 }
 async function saveProfile() {
-  currentUser.name  = document.getElementById('pe-name').value;
-  currentUser.email = document.getElementById('pe-email').value;
-  currentUser.phone = document.getElementById('pe-phone').value;
-  currentUser.depot = document.getElementById('pe-depot').value;
-  // await sb.from('employees').update({name,email,phone,depot}).eq('id', currentUser.id);
-  updateProfileUI();
-  cancelEditProfile();
-  showToast('✓ Profile saved');
+  const updates = {
+    name:  document.getElementById('pe-name').value,
+    phone: document.getElementById('pe-phone').value,
+    depot: document.getElementById('pe-depot').value,
+  };
+  try {
+    const { error } = await sb.auth.updateUser({ data: updates });
+    if (error) throw error;
+    Object.assign(currentUser, updates);
+    updateProfileUI();
+    cancelEditProfile();
+    showToast('✓ Profile saved');
+  } catch (e) {
+    showToast('⚠ Save failed: ' + e.message);
+  }
 }
 
-// ── MODAL HELPERS ──
+// ══════════════════════════════════════════════
+// MODALS
+// ══════════════════════════════════════════════
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.modal-overlay').forEach(el => {
   el.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
 });
 
-// ── TOAST ──
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2600);
+// ══════════════════════════════════════════════
+// FIRE EXTINGUISHER
+// ══════════════════════════════════════════════
+function fireExtStatus(d) {
+  if (!d) return { label:'Unknown', color:'var(--muted)' };
+  const days = Math.floor((new Date(d+'T00:00:00') - new Date().setHours(0,0,0,0)) / 86400000);
+  if (days < 0)   return { label:`Expired ${Math.abs(days)}d ago`, color:'var(--danger)' };
+  if (days <= 90) return { label:`Expires in ${days}d`,            color:'var(--warn)' };
+  return { label:`Valid · ${days}d left`, color:'var(--accent)' };
 }
-
-// ── FIRE EXT ──
-function fireExtStatus(expiryDateStr) {
-  if (!expiryDateStr) return { label:'Unknown', color:'var(--muted)', bg:'var(--surface2)', border:'var(--border)' };
-  const today = new Date(); today.setHours(0,0,0,0);
-  const expiry = new Date(expiryDateStr + 'T00:00:00');
-  const daysLeft = Math.floor((expiry - today) / 86400000);
-  if (daysLeft < 0)   return { label:`Expired ${Math.abs(daysLeft)}d ago`, color:'var(--danger)', bg:'rgba(192,57,43,.07)', border:'rgba(192,57,43,.3)' };
-  if (daysLeft <= 90) return { label:`Expires in ${daysLeft}d`, color:'var(--warn)', bg:'rgba(212,134,10,.07)', border:'rgba(212,134,10,.3)' };
-  return { label:`Valid · ${daysLeft}d left`, color:'var(--accent)', bg:'var(--accent-lt)', border:'rgba(92,122,62,.3)' };
-}
-function renderFireExtCard(expiryDateStr) {
-  const s = fireExtStatus(expiryDateStr);
-  const dateDisplay = expiryDateStr ? formatDateOnly(expiryDateStr) : 'Not recorded';
-  return `<div style="background:${s.bg};border:1px solid ${s.border};border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:14px;">
+function renderFireExtCard(d) {
+  const s = fireExtStatus(d);
+  const bg = d ? (fireExtStatus(d).color === 'var(--danger)' ? 'rgba(192,57,43,.07)' : fireExtStatus(d).color === 'var(--warn)' ? 'rgba(212,134,10,.07)' : 'var(--accent-lt)') : 'var(--surface2)';
+  return `<div style="background:${bg};border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:14px;">
     <div style="font-size:26px;line-height:1;flex-shrink:0;">🧯</div>
     <div style="flex:1;min-width:0;">
       <div style="font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.5px;text-transform:uppercase;margin-bottom:3px;">Fire Extinguisher</div>
-      <div style="font-size:15px;font-weight:600;color:var(--text);">Expiry: ${dateDisplay}</div>
+      <div style="font-size:15px;font-weight:600;color:var(--text);">Expiry: ${d ? formatDateOnly(d) : 'Not recorded'}</div>
       <div style="font-size:12px;color:${s.color};font-weight:600;margin-top:2px;">${s.label}</div>
     </div>
   </div>`;
 }
 
-// ── MOCK DATA ──
-//function generateMockVehicles() {
-  //const plates   = ['MID88000','MID87000','MID89000','MID70000','MID79000'];
-  //const variants = ['Hunter AFV','Hunter RCV','Hunter AFV','Bronco TMTV','Bronco'];
-  //const drivers  = ['Bing Han','S Deshan','Tze Bing','Hoon Y Q','Roman'];
-  //const levels   = ['Workshop','L1','L1','L2','L3'];
-  //const lots     = ['A3','B7','C12','D4','E9'];
-  //return plates.map((plate, i) => ({
-  //  id: i+1, plate,
-  //variant: variants[i % variants.length],
-  //  driver:  drivers[i % drivers.length],
-  //  level:   levels[i],
-  //  lot:     lots[i],
-  //  check_in: new Date(Date.now() - Math.random()*86400000*2).toISOString(),
-  //  odometer: Math.floor(30000 + Math.random()*50000),
-  //  engine_hours: parseFloat((500 + Math.random()*2000).toFixed(1)),
-  //  battery_pct: Math.floor(40 + Math.random()*60),
-  //  battery_v: parseFloat((11.5 + Math.random()*2.5).toFixed(1)),
-  //  fuel_pct: Math.floor(10 + Math.random()*90),
-  //  fuel_l: parseFloat((10 + Math.random()*60).toFixed(1)),
-  //  fire_ext_expiry: (() => {
-  //    const offsets = [-60, 30, 60, 180, 365, 400, 500, 600, 700, 800];
-  //    const d = new Date(); d.setDate(d.getDate() + offsets[i % offsets.length]);
-  //    return d.toISOString().slice(0,10);
-    //})(),
-  //  notes: i % 3 === 0 ? 'Check engine light intermittent. Reported to workshop.' : '',
-//  }));
-//}
+// ══════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+}
 
-//function generateMockHistory(vehicleId) {
- // const v = allVehicles.find(x => x.id == vehicleId);
- // const drivers = ['Ahmad Fadzli','Ravi Kumar','John Tan'];
- // return Array.from({length:6}, (_, i) => ({
- //   id: i+1, vehicle_id: vehicleId,
- //   driver: drivers[i % drivers.length],
- //   created_at: new Date(Date.now() - (i+1)*86400000*3).toISOString(),
- //   odometer: (v?.odometer||40000) - (i+1)*300,
- //   engine_hours: parseFloat(((v?.engine_hours||1000) - (i+1)*8).toFixed(1)),
- //   battery_pct: Math.floor(50 + Math.random()*40),
- //   battery_v: parseFloat((11.8 + Math.random()*2).toFixed(1)),
- //   fuel_pct: Math.floor(20 + Math.random()*80),
- //   fuel_l: parseFloat((15 + Math.random()*55).toFixed(1)),
- //   fire_ext_expiry: v?.fire_ext_expiry || new Date(Date.now()+86400000*200).toISOString().slice(0,10),
- //   notes: i === 1 ? 'Topped up fuel. AC making noise — monitoring.' : '',
- // }));
-//}
-
-// ── HELPERS ──
+// ══════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════
 function timeAgo(iso) {
+  if (!iso) return '—';
   const diff = Date.now() - new Date(iso);
   const m = Math.floor(diff/60000);
+  if (m < 1)  return 'just now';
   if (m < 60) return m+'m ago';
   const h = Math.floor(m/60);
   if (h < 24) return h+'h ago';
   return Math.floor(h/24)+'d ago';
 }
 function formatDate(iso) {
-  return new Date(iso).toLocaleString('en-SG', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  return new Date(iso).toLocaleString('en-SG', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
 }
 function formatDateOnly(iso) {
-  return new Date(iso+'T00:00:00').toLocaleDateString('en-SG', {day:'numeric',month:'short',year:'numeric'});
+  return new Date(iso+'T00:00:00').toLocaleDateString('en-SG', { day:'numeric', month:'short', year:'numeric' });
 }
 
+// ══════════════════════════════════════════════
+// START
+// ══════════════════════════════════════════════
 init();
 </script>
 </body>
 </html>
+
