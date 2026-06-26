@@ -771,7 +771,7 @@ function openUpdateModal() {
     } else {
       console.warn(`Element with ID '${id}' not found in HTML!`);
     }
-  }
+  
 
   // Use this for all fields
   safeSet('up-plate', v.plate);
@@ -805,8 +805,6 @@ function openUpdateModal() {
       plateSub.textContent = `${v.plate} · ${v.variant}`;
   }
 
-  openModal('update-modal');
-}
   const v = currentVehicle;
   
   // Existing header
