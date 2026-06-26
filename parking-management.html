@@ -440,42 +440,6 @@ async function init() {
     document.getElementById('app').style.display = 'flex';
   }
 }
-async function loadDashboard() {
-  try {
-    const { data, error } = await sb.from('vehicles').select('*').order('check_in', { ascending: false });
-    if (error) throw error;
-    allVehicles = data || [];
-  } catch (e) {
-    console.error('Failed to load vehicles:', e);
-    showToast('⚠ Could not load vehicle data');
-    allVehicles = [];
-  }
-
-  // Counts
-  const counts = { Workshop:0, L1:0, L2:0, L3:0 };
-  allVehicles.forEach(v => { if (counts[v.level] !== undefined) counts[v.level]++; });
-  document.getElementById('total-count').textContent = allVehicles.length;
-  document.getElementById('chip-ws').textContent = counts.Workshop;
-  document.getElementById('chip-l1').textContent = counts.L1;
-  document.getElementById('chip-l2').textContent = counts.L2;
-  document.getElementById('chip-l3').textContent = counts.L3;
-
-  // Recent list (top 4)
-  const recent = allVehicles.slice(0, 4);
-  document.getElementById('recent-list').innerHTML = recent.length
-    ? recent.map(renderVehItem).join('')
-    : '<div class="empty"><p>No vehicles checked in yet</p></div>';
-
-  // Refresh vehicle search list
-  renderVehicleList(allVehicles);
-
-  // Refresh parking overview if it's already been rendered
-  renderParkingOverview();
-}
-
-// ══════════════════════════════════════════════
-// NAVIGATION
-// ══════════════════════════════════════════════
 function goTab(tab) {
   if (!['home','search','parking','profile'].includes(tab)) return;
   currentTab = tab;
