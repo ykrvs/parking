@@ -909,7 +909,7 @@ async function driveOut(vehicleId) {
     if (!v) throw new Error('Vehicle not found in local state');
 
     const checkOutTime = new Date().toISOString();
-const histRow = {
+let histRow = {
     ...vehicleData,
     check_in: v.check_in,
   check_out: checkOutTime, 
@@ -917,10 +917,14 @@ const histRow = {
 };
 
     const { error: hErr } = await sb.from('history').insert([histRow]);
-
+    if (hErr) {
+        console.error("History insert failed:", hErr);
+        alert("History logging failed: " + hErr.message);
+        return;
+    }
     // Build the full driveout history row —
     // current user overwrites driver/depot/phone as the person checking out
-    const histRow = {
+    histRow = {
       // Vehicle identity
       vehicle_id:      v.id,
       plate:           v.plate,
@@ -948,12 +952,17 @@ const histRow = {
       created_at:      checkOutTime,
     };
 
-    const { error: hErr } = await sb.from('history').insert([histRow]);
-    if (hErr) throw new Error('History insert failed: ' + hErr.message);
-
-    // Remove from vehicles table
+// 3. Delete from vehicles table
     const { error: dErr } = await sb.from('vehicles').delete().eq('id', vehicleId);
-    if (dErr) throw new Error('Vehicle delete failed: ' + dErr.message);
+    if (dErr) {
+        console.error("Vehicle delete failed:", dErr);
+        return;
+    }
+
+    // 4. Update UI
+    allVehicles = allVehicles.filter(x => String(x.id) !== String(vehicleId));
+    await loadDashboard();
+    showToast("Vehicle moved to history");
 
     // Remove from local state
     allVehicles = allVehicles.filter(x => String(x.id) !== String(vehicleId));
