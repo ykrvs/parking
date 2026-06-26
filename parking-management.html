@@ -403,7 +403,12 @@
       </div>
     </div>
 
-    <div class="field"><label>Notes</label><textarea id="up-notes" style="min-height:60px;"></textarea></div>
+    <div class="section-label">Description / Faults</div>
+<div class="field">
+  <textarea id="detail-notes" style="min-height:100px; background-color: #f9f9f9; cursor: not-allowed;" readonly>
+    ${v.notes || ''}
+  </textarea>
+</div>
     
     <div style="display:flex;gap:10px;margin-top:4px;">
       <button class="btn btn-ghost" style="flex:1;" onclick="closeModal('update-modal')">Cancel</button>
@@ -705,7 +710,6 @@ function renderDetailScreen(v) {
       <div class="stat-cell"><div class="stat-label">Engine Hours</div><div class="stat-value">${safe(v.engine_hours)} <span class="stat-unit">hrs</span></div></div>
     </div>
 
-    // Inside your vehicle card rendering function:
 <div class="card-sm" style="margin-bottom:10px;">
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
     <div style="font-size:12px; font-weight:600;">Starter</div>
