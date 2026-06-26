@@ -962,26 +962,39 @@ function drawL1(svg) {
 }
 
 // ── LEVEL 2 ── F6-F1 flush top; Gunnery Training (top) + PETA Store (bottom) RIGHT of F col
+// ── LEVEL 2 ── F6-F1 flush top; Gunnery Training & PETA Store below F1
 function drawL2(svg) {
   const ns='http://www.w3.org/2000/svg', occ=occupiedLots('L2');
   const CW=30,CH=19,CGAP=2,COL_GAP=14,ROWS=15,PAD=8,ROW_GAP=2,PAIR_W=CW*2+CGAP;
   const xA=PAD,xBC=xA+CW+COL_GAP,xDE=xBC+PAIR_W+COL_GAP,xF=xDE+PAIR_W+COL_GAP;
+  
   // Rooms sit below F1, aligned to the F column
-const roomX = xF;
-const roomW = 60;
-const roomTop = PAD + 6 * (CH + ROW_GAP) + 4;
-const gunH = 2 * (CH + ROW_GAP) - ROW_GAP;
-const petaH = 2 * (CH + ROW_GAP) - ROW_GAP;
+  const roomX = xF;
+  const roomW = 60;
+  const roomTop = PAD + 6 * (CH + ROW_GAP) + 4;
+  const gunH = 2 * (CH + ROW_GAP) - ROW_GAP;
+  const petaH = 2 * (CH + ROW_GAP) - ROW_GAP;
 
-makeRoomRect(svg, roomX, roomTop, roomW, gunH, 'GUNNERY\nTRAINING', '#EEF5FF', '#2A4A8A');
-makeRoomRect(svg, roomX, roomTop + gunH + 3, roomW, petaH, 'PETA\nSTORE', '#EEF5FF', '#2A4A8A');
   const svgW = Math.max(xF + CW + PAD, roomX + roomW + PAD);
-  svg.setAttribute('viewBox',`0 0 ${svgW} ${svgH}`);svg.setAttribute('width','100%');svg.setAttribute('height','auto');svg.style.maxWidth=svgW+'px';
-  const bg=document.createElementNS(ns,'rect');bg.setAttribute('x','0');bg.setAttribute('y','0');bg.setAttribute('width',svgW);bg.setAttribute('height',svgH);bg.setAttribute('fill','#F8F8F4');bg.setAttribute('rx','6');svg.appendChild(bg);
+  const svgH = PAD+ROWS*(CH+ROW_GAP)+PAD;
+  
+  svg.setAttribute('viewBox',`0 0 ${svgW} ${svgH}`);
+  svg.setAttribute('width','100%');
+  svg.setAttribute('height','auto');
+  svg.style.maxWidth=svgW+'px';
+  
+  const bg=document.createElementNS(ns,'rect');
+  bg.setAttribute('x','0');bg.setAttribute('y','0');
+  bg.setAttribute('width',svgW);bg.setAttribute('height',svgH);
+  bg.setAttribute('fill','#F8F8F4');bg.setAttribute('rx','6');
+  svg.appendChild(bg);
+  
   const handler=(id,veh,rect)=>{highlightLot(rect,!!veh);selectLotById(id,veh);};
+  
   makeDrivewayLabel(svg,xA+CW+1,PAD+2,COL_GAP-2,ROWS*(CH+ROW_GAP),true);
   makeDrivewayLabel(svg,xBC+PAIR_W+1,PAD+2,COL_GAP-2,ROWS*(CH+ROW_GAP),true);
   makeDrivewayLabel(svg,xDE+PAIR_W+1,PAD+2,COL_GAP-2,ROWS*(CH+ROW_GAP),true);
+  
   // A–E all 15 rows
   for(let row=0;row<ROWS;row++){
     const n=ROWS-row,y=PAD+row*(CH+ROW_GAP);
@@ -991,37 +1004,51 @@ makeRoomRect(svg, roomX, roomTop + gunH + 3, roomW, petaH, 'PETA\nSTORE', '#EEF5
     makeLotRect(svg,xDE,y,CW,CH,'D'+n,!!occ['D'+n],false,handler);
     makeLotRect(svg,xDE+CW+CGAP,y,CW,CH,'E'+n,!!occ['E'+n],false,handler);
   }
+  
   // F6→row0, F1→row5  (flush top)
-  for(let fn=6;fn>=1;fn--){ const fy=PAD+(6-fn)*(CH+ROW_GAP); makeLotRect(svg,xF,fy,CW,CH,'F'+fn,!!occ['F'+fn],false,handler); }
-  // Rooms: RIGHT of F col, vertically aligned with F6 top → F1 bottom
-  const bandTop=PAD, bandBot=PAD+5*(CH+ROW_GAP)+CH, bandH=bandBot-bandTop;
-  const gunH=3*(CH+ROW_GAP)-ROW_GAP;   // spans 3 lot rows (F6,F5,F4)
-  const petaH=bandH-gunH-3;
-  makeRoomRect(svg,roomX,bandTop,      roomW,gunH, 'GUNNERY\nTRAINING','#EEF5FF','#2A4A8A');
-  makeRoomRect(svg,roomX,bandTop+gunH+3,roomW,petaH,'PETA\nSTORE',    '#EEF5FF','#2A4A8A');
+  for(let fn=6;fn>=1;fn--){ 
+    const fy=PAD+(6-fn)*(CH+ROW_GAP); 
+    makeLotRect(svg,xF,fy,CW,CH,'F'+fn,!!occ['F'+fn],false,handler); 
+  }
+  
+  // Draw Rooms (Only declared and drawn once!)
+  makeRoomRect(svg, roomX, roomTop, roomW, gunH, 'GUNNERY\nTRAINING', '#EEF5FF', '#2A4A8A');
+  makeRoomRect(svg, roomX, roomTop + gunH + 3, roomW, petaH, 'PETA\nSTORE', '#EEF5FF', '#2A4A8A');
 }
 
-// ── LEVEL 3 ── F6-F1 flush top; Armskote (top) + Opstronic Store (bottom) RIGHT of F col
+// ── LEVEL 3 ── F6-F1 flush top; Armskote & Opstronic Store below F1
 function drawL3(svg) {
   const ns='http://www.w3.org/2000/svg', occ=occupiedLots('L3');
   const CW=30,CH=19,CGAP=2,COL_GAP=14,ROWS=15,PAD=8,ROW_GAP=2,PAIR_W=CW*2+CGAP;
   const xA=PAD,xBC=xA+CW+COL_GAP,xDE=xBC+PAIR_W+COL_GAP,xF=xDE+PAIR_W+COL_GAP;
+  
   // Rooms sit below F1, aligned to the F column
-const roomX = xF;
-const roomW = 60;
-const roomTop = PAD + 6 * (CH + ROW_GAP) + 4;
-const armH = 2 * (CH + ROW_GAP) - ROW_GAP;
-const opsH = 2 * (CH + ROW_GAP) - ROW_GAP;
+  const roomX = xF;
+  const roomW = 60;
+  const roomTop = PAD + 6 * (CH + ROW_GAP) + 4;
+  const armH = 2 * (CH + ROW_GAP) - ROW_GAP;
+  const opsH = 2 * (CH + ROW_GAP) - ROW_GAP;
 
-makeRoomRect(svg, roomX, roomTop, roomW, armH, 'ARMSKOTE', '#EEF5FF', '#2A4A8A');
-makeRoomRect(svg, roomX, roomTop + armH + 3, roomW, opsH, 'OPSTRONIC\nSTORE', '#EEF5FF', '#2A4A8A');
   const svgW = Math.max(xF + CW + PAD, roomX + roomW + PAD);
-  svg.setAttribute('viewBox',`0 0 ${svgW} ${svgH}`);svg.setAttribute('width','100%');svg.setAttribute('height','auto');svg.style.maxWidth=svgW+'px';
-  const bg=document.createElementNS(ns,'rect');bg.setAttribute('x','0');bg.setAttribute('y','0');bg.setAttribute('width',svgW);bg.setAttribute('height',svgH);bg.setAttribute('fill','#F8F8F4');bg.setAttribute('rx','6');svg.appendChild(bg);
+  const svgH = PAD+ROWS*(CH+ROW_GAP)+PAD;
+  
+  svg.setAttribute('viewBox',`0 0 ${svgW} ${svgH}`);
+  svg.setAttribute('width','100%');
+  svg.setAttribute('height','auto');
+  svg.style.maxWidth=svgW+'px';
+  
+  const bg=document.createElementNS(ns,'rect');
+  bg.setAttribute('x','0');bg.setAttribute('y','0');
+  bg.setAttribute('width',svgW);bg.setAttribute('height',svgH);
+  bg.setAttribute('fill','#F8F8F4');bg.setAttribute('rx','6');
+  svg.appendChild(bg);
+  
   const handler=(id,veh,rect)=>{highlightLot(rect,!!veh);selectLotById(id,veh);};
+  
   makeDrivewayLabel(svg,xA+CW+1,PAD+2,COL_GAP-2,ROWS*(CH+ROW_GAP),true);
   makeDrivewayLabel(svg,xBC+PAIR_W+1,PAD+2,COL_GAP-2,ROWS*(CH+ROW_GAP),true);
   makeDrivewayLabel(svg,xDE+PAIR_W+1,PAD+2,COL_GAP-2,ROWS*(CH+ROW_GAP),true);
+  
   for(let row=0;row<ROWS;row++){
     const n=ROWS-row,y=PAD+row*(CH+ROW_GAP);
     makeLotRect(svg,xA,y,CW,CH,'A'+n,!!occ['A'+n],false,handler);
@@ -1030,14 +1057,16 @@ makeRoomRect(svg, roomX, roomTop + armH + 3, roomW, opsH, 'OPSTRONIC\nSTORE', '#
     makeLotRect(svg,xDE,y,CW,CH,'D'+n,!!occ['D'+n],false,handler);
     makeLotRect(svg,xDE+CW+CGAP,y,CW,CH,'E'+n,!!occ['E'+n],false,handler);
   }
+  
   // F6→row0, F1→row5 (flush top)
-  for(let fn=6;fn>=1;fn--){ const fy=PAD+(6-fn)*(CH+ROW_GAP); makeLotRect(svg,xF,fy,CW,CH,'F'+fn,!!occ['F'+fn],false,handler); }
-  // Rooms: RIGHT of F col, vertically aligned with F6 top → F1 bottom
-  const bandTop=PAD, bandBot=PAD+5*(CH+ROW_GAP)+CH, bandH=bandBot-bandTop;
-  const armH=3*(CH+ROW_GAP)-ROW_GAP;   // Armskote spans F6,F5,F4
-  const opsH=bandH-armH-3;
-  makeRoomRect(svg,roomX,bandTop,       roomW,armH,'ARMSKOTE',        '#EEF5FF','#2A4A8A');
-  makeRoomRect(svg,roomX,bandTop+armH+3,roomW,opsH,'OPSTRONIC\nSTORE','#EEF5FF','#2A4A8A');
+  for(let fn=6;fn>=1;fn--){ 
+    const fy=PAD+(6-fn)*(CH+ROW_GAP); 
+    makeLotRect(svg,xF,fy,CW,CH,'F'+fn,!!occ['F'+fn],false,handler); 
+  }
+  
+  // Draw Rooms (Only declared and drawn once!)
+  makeRoomRect(svg, roomX, roomTop, roomW, armH, 'ARMSKOTE', '#EEF5FF', '#2A4A8A');
+  makeRoomRect(svg, roomX, roomTop + armH + 3, roomW, opsH, 'OPSTRONIC\nSTORE', '#EEF5FF', '#2A4A8A');
 }
 
 // ── LOT SELECTION PANEL ──
