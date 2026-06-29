@@ -130,34 +130,23 @@
   </div>
 <!-- ═══ Turret ESC ═══ -->
     
-    <div class="screen" id="screen-turret-select">
-  <div class="topbar">
-    <button class="back-btn" onclick="goTab('home')">Back</button>
-    <div class="topbar-title">Select Vehicle for ESC</div>
-  </div>
-  <div class="scroll-body">
-    <div class="section-label">Parked Vehicles</div>
-    <div id="turret-vehicle-selector-list">
-      </div>
-  </div>
-</div>
    <div class="screen" id="screen-turret-esc">
   <div class="header">
     <button class="icon-btn" onclick="goTab('home')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
     </button>
-    <div class="header-title" id="turret-vehicle-title">Turret ESC Checklist</div>
+    <div class="header-title">Turret ESC Checklist</div>
   </div>
 
   <div class="scroll-body" style="padding: 16px;">
     <div class="card-sm" style="margin-bottom: 20px;">
-      <div style="font-weight:700; color:var(--accent);">Vehicle ID: <span id="turret-active-plate">-</span></div>
+      <label style="font-weight:700; color:var(--accent);">Select Vehicle:</label>
+      <select id="turret-vehicle-select" style="width:100%; padding:8px; margin-top:5px; border-radius:4px;">
+        <option value="">-- Choose a vehicle --</option>
+      </select>
     </div>
 
-    <div id="turret-checklist-container">
-      </div>
-
-    <button class="btn-main" onclick="saveTurretChecklist()" style="margin-top:20px; width:100%;">
+    <button class="btn-main" onclick="saveTurretChecklist()" style="width:100%;">
       Submit Checklist
     </button>
   </div>
