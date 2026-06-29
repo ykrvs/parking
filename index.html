@@ -111,7 +111,7 @@
       <div id="recent-list"><div class="loading"><div class="spinner"></div>Loading…</div></div>
     </div>
   </div>
-  
+
 
   <!-- ═══ SEARCH ═══ -->
   <div id="screen-search" class="screen">
@@ -132,8 +132,7 @@
     <div class="header-title">Turret ESC</div>
   </div>
 <!-- ═══ Turret ESC ═══ -->
-    
-   <div class="screen" id="screen-turret-esc">
+    <div class="screen" id="screen-turret-esc">
   <div class="header">
     <button class="icon-btn" onclick="goTab('home')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
@@ -149,11 +148,52 @@
       </select>
     </div>
 
-    <button class="btn-main" onclick="saveTurretChecklist()" style="width:100%;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+      <label><input type="checkbox" id="chk-ics"> ICS</label>
+      <label><input type="checkbox" id="chk-gsu"> GSU</label>
+      <label><input type="checkbox" id="chk-wim"> WIM</label>
+      <label><input type="checkbox" id="chk-trav_actuator"> Trav Actuator</label>
+      <label><input type="checkbox" id="chk-elev_actuator"> Elev Actuator</label>
+      <label><input type="checkbox" id="chk-gcu"> GCU</label>
+      <label><input type="checkbox" id="chk-mdcu"> MDCU</label>
+      <label><input type="checkbox" id="chk-psu"> PSU</label>
+      <label><input type="checkbox" id="chk-gun_gyro"> Gun Gyro</label>
+      <label><input type="checkbox" id="chk-conv_ass"> Conv Ass</label>
+      <label><input type="checkbox" id="chk-boost_box_ass"> Boost Box Ass</label>
+      <label><input type="checkbox" id="chk-slip_ring"> Slip Ring</label>
+      <label><input type="checkbox" id="chk-turr_estop"> Turr E-stop</label>
+      <label><input type="checkbox" id="chk-upplink_echute"> Upplink Echute</label>
+      <label><input type="checkbox" id="chk-upplink_splate"> Upplink Splate</label>
+      <label><input type="checkbox" id="chk-lowlink_splate"> Lowlink Splate</label>
+      <label><input type="checkbox" id="chk-lowlink_echute"> Lowlink Echute</label>
+      <label><input type="checkbox" id="chk-uppflex_chute"> Uppflex Chute</label>
+      <label><input type="checkbox" id="chk-lowflex_chute"> Lowflex Chute</label>
+      <label><input type="checkbox" id="chk-lws_comp"> LWS Comp</label>
+    </div>
+
+    <div style="margin-bottom: 10px;">
+      <label>SCU (Integer):</label>
+      <input type="number" id="chk-scu" class="input-field" style="width:100%;" placeholder="0">
+    </div>
+    <div style="margin-bottom: 10px;">
+      <label>DCU (Integer):</label>
+      <input type="number" id="chk-dcu" class="input-field" style="width:100%;" placeholder="0">
+    </div>
+    <div style="margin-bottom: 10px;">
+      <label>Fault List:</label>
+      <textarea id="chk-fault_list" style="width:100%; height:80px;"></textarea>
+    </div>
+    <div style="margin-bottom: 20px;">
+      <label>Notes:</label>
+      <textarea id="chk-notes" style="width:100%; height:80px;"></textarea>
+    </div>
+
+    <button class="btn-main" onclick="saveTurretChecklist()" style="width:100%; padding: 12px;">
       Submit Checklist
     </button>
   </div>
 </div>
+   
   <!-- ═══ VEHICLE DETAIL ═══ -->
   <div id="screen-detail" class="screen">
     <div class="topbar">
