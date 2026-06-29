@@ -318,6 +318,12 @@ function openUpdateModal() {
 
 async function submitUpdate() {
   const update = {
+    plate:        document.getElementById('up-plate').value.trim()       || null,
+    variant:      document.getElementById('up-variant').value.trim()     || null,
+    driver:       document.getElementById('up-driver').value.trim()      || null,
+    driver_phone: document.getElementById('up-driver-phone').value.trim()|| null,
+    driver_depot: document.getElementById('up-driver-depot').value.trim()|| null,
+    lot:          document.getElementById('up-lot').value.trim()         || null,
     odometer:        parseFloat(document.getElementById('up-odometer').value)       || null,
     engine_hours:    parseFloat(document.getElementById('up-engine-hours').value)   || null,
     // NEW DUAL-BATTERY FIELDS
