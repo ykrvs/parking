@@ -117,14 +117,24 @@ async function loadDashboard() {
 // ══════════════════════════════════════════════
 function goTab(tab) {
   closeSidebar();
-  if (!['home','search','parking','profile','driveout-history'].includes(tab)) return;
+  if (!['home', 'search', 'parking', 'profile', 'driveout-history'].includes(tab)) return;
+  
   currentTab = tab;
+
+  // 1. Handle Screens
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + tab).classList.add('active');
+
+  // 2. Handle Navigation Buttons
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  
+  // This line handles your request:
   document.getElementById('nav-' + tab)?.classList.add('active');
-  // Load driveout history data when that tab is opened
-  if (tab === 'driveout-history') loadDriveoutHistory();
+
+  // 3. Load data if needed
+  if (tab === 'driveout-history') {
+    loadDriveoutHistory();
+  }
 }
 
 function showScreen(id) {
