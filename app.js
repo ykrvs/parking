@@ -117,17 +117,16 @@ async function loadDashboard() {
 // ══════════════════════════════════════════════
 function goTab(tab) {
   closeSidebar();
-  
-  // You MUST include 'turret-select' and 'turret-esc' here
-  const allowedTabs = [
-    'home', 'search', 'parking', 'profile', 
-    'driveout-history', 'turret-select', 'turret-esc'
-  ];
-  
-  if (!allowedTabs.includes(tab)) return;
+  if (!['home','search','parking','profile','driveout-history','turret-esc'].includes(tab)) return;
   
   currentTab = tab;
-  // ... rest of your existing logic
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + tab).classList.add('active');
+
+  // Trigger population when this specific tab opens
+  if (tab === 'turret-esc') {
+    populateTurretDropdown();
+  }
 }
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -427,25 +426,47 @@ async function submitCheckin() {
 }
 
 // Add 'turret-select' to your goTab allowed list if needed
-function openTurretSelector() {
-    const list = document.getElementById('turret-vehicle-selector-list');
-    list.innerHTML = ''; // Clear existing
+// Call this function whenever you open the 'turret-esc' tab
+function populateTurretDropdown() {
+    const select = document.getElementById('turret-vehicle-select');
+    select.innerHTML = '<option value="">-- Choose a vehicle --</option>'; // Reset
 
-    // Filter to show only vehicles currently in the 'vehicles' table
     allVehicles.forEach(v => {
-        const item = document.createElement('div');
-        item.className = 'card-sm';
-        item.style.marginBottom = '10px';
-        item.style.cursor = 'pointer';
-        item.innerHTML = `
-            <div style="font-weight:600;">${v.plate}</div>
-            <div style="font-size:12px;color:var(--muted);">${v.variant || 'No Model'}</div>
-        `;
-        item.onclick = () => openTurretChecklist(v.id); // Triggers the checklist
-        list.appendChild(item);
+        const opt = document.createElement('option');
+        opt.value = v.id;
+        opt.textContent = `${v.plate} (${v.variant || 'No Model'})`;
+        select.appendChild(opt);
     });
+}
 
-    goTab('turret-select');
+// Update your save function to grab the vehicle info from the dropdown
+async function saveTurretChecklist() {
+    const select = document.getElementById('turret-vehicle-select');
+    const vehicleId = select.value;
+    
+    if (!vehicleId) {
+        showToast("⚠ Please select a vehicle first");
+        return;
+    }
+
+    // Find vehicle details for the plate
+    const v = allVehicles.find(x => String(x.id) === String(vehicleId));
+    
+    const data = {
+        vehicle_id: vehicleId,
+        plate: v.plate,
+        user_name: currentUser?.name || 'Unknown',
+        // ... (all your other boolean fields here)
+    };
+
+    const { error } = await sb.from('turret_esc_logs').insert([data]);
+    
+    if (error) {
+        showToast('⚠ Error: ' + error.message);
+    } else {
+        showToast('✓ Turret Checklist Submitted');
+        goTab('home');
+    }
 }
 async function submitTurretChecklist(vehicleId, plate) {
   // Get all values from the DOM
@@ -498,46 +519,7 @@ async function submitTurretChecklist(vehicleId, plate) {
   }
 }
 
-async function saveTurretChecklist() {
-    const data = {
-        vehicle_id: currentVehicle.id, // Ensure currentVehicle is set
-        plate: currentVehicle.plate,
-        user_name: currentUser?.name || 'Staff',
-        ics: document.getElementById('chk-ics').checked,
-        gsu: document.getElementById('chk-gsu').checked,
-        wim: document.getElementById('chk-wim').checked,
-        trav_actuator: document.getElementById('chk-trav_actuator').checked,
-        elev_actuator: document.getElementById('chk-elev_actuator').checked,
-        gcu: document.getElementById('chk-gcu').checked,
-        mdcu: document.getElementById('chk-mdcu').checked,
-        psu: document.getElementById('chk-psu').checked,
-        gun_gyro: document.getElementById('chk-gun_gyro').checked,
-        conv_ass: document.getElementById('chk-conv_ass').checked,
-        boost_box_ass: document.getElementById('chk-boost_box_ass').checked,
-        slip_ring: document.getElementById('chk-slip_ring').checked,
-        turr_estop: document.getElementById('chk-turr_estop').checked,
-        upplink_echute: document.getElementById('chk-upplink_echute').checked,
-        upplink_splate: document.getElementById('chk-upplink_splate').checked,
-        lowlink_splate: document.getElementById('chk-lowlink_splate').checked,
-        lowlink_echute: document.getElementById('chk-lowlink_echute').checked,
-        uppflex_chute: document.getElementById('chk-uppflex_chute').checked,
-        lowflex_chute: document.getElementById('chk-lowflex_chute').checked,
-        lws_comp: document.getElementById('chk-lws_comp').checked,
-        scu: parseInt(document.getElementById('chk-scu').value) || 0,
-        dcu: parseInt(document.getElementById('chk-dcu').value) || 0,
-        fault_list: document.getElementById('chk-fault_list').value,
-        notes: document.getElementById('chk-notes').value
-    };
 
-    const { error } = await sb.from('turret_esc_logs').insert([data]);
-    
-    if (error) {
-        showToast('⚠ Error: ' + error.message);
-    } else {
-        showToast('✓ Turret Checklist Submitted');
-        goTab('home');
-    }
-}
 // ══════════════════════════════════════════════
 // HISTORY — fetches from history table
 // ══════════════════════════════════════════════
