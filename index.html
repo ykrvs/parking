@@ -121,7 +121,35 @@
       <div id="vehicle-list"><div class="loading"><div class="spinner"></div>Loading…</div></div>
     </div>
   </div>
+  <div class="screen" id="screen-turret-esc">
+  <div class="header">
+    <button class="icon-btn" onclick="goTab('home')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div class="header-title">Turret ESC</div>
+  </div>
+<!-- ═══ Turret ESC ═══ -->
+  <div class="screen" id="screen-turret-esc">
+  <div class="header">
+    <button class="icon-btn" onclick="goTab('home')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div class="header-title" id="turret-vehicle-title">Turret ESC Checklist</div>
+  </div>
 
+  <div class="scroll-body" style="padding: 16px;">
+    <div class="card-sm" style="margin-bottom: 20px;">
+      <div style="font-weight:700; color:var(--accent);">Vehicle ID: <span id="turret-active-plate">-</span></div>
+    </div>
+
+    <div id="turret-checklist-container">
+      </div>
+
+    <button class="btn-main" onclick="saveTurretChecklist()" style="margin-top:20px; width:100%;">
+      Submit Checklist
+    </button>
+  </div>
+</div>
   <!-- ═══ VEHICLE DETAIL ═══ -->
   <div id="screen-detail" class="screen">
     <div class="topbar">
