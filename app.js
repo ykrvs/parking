@@ -116,14 +116,29 @@ async function loadDashboard() {
 // NAVIGATION
 // ══════════════════════════════════════════════
 function goTab(tab) {
-  closeSidebar();
-  if (!['home','search','parking','profile','driveout-history','turret-esc'].includes(tab)) return;
+  closeSidebar(); // Ensure this function is defined!
+  
+  // 1. ADD THE TAB TO THIS LIST
+  const allowed = ['home', 'search', 'parking', 'profile', 'driveout-history', 'turret-esc'];
+  
+  if (!allowed.includes(tab)) {
+    console.warn("Tab not allowed:", tab); // This will tell you if it's blocked
+    return;
+  }
   
   currentTab = tab;
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('screen-' + tab).classList.add('active');
+  
+  // 2. CHECK IF THE SCREEN EXISTS
+  const screen = document.getElementById('screen-' + tab);
+  if (!screen) {
+    console.error("Screen element not found: " + 'screen-' + tab);
+    return;
+  }
 
-  // Trigger population when this specific tab opens
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  screen.classList.add('active');
+
+  // 3. POPULATE IF IT'S THE TURRET TAB
   if (tab === 'turret-esc') {
     populateTurretDropdown();
   }
