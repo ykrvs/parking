@@ -134,10 +134,8 @@ function goTab(tab) {
     console.error("Screen element not found: " + 'screen-' + tab);
     return;
   }
-
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   screen.classList.add('active');
-
   // 3. POPULATE IF IT'S THE TURRET TAB
   if (tab === 'turret-esc') {
     populateTurretDropdown();
@@ -147,6 +145,7 @@ function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + id).classList.add('active');
 }
+this is my current function for gotab can you update it for me
 
 function goBack() {
   showScreen('search');
