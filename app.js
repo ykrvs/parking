@@ -117,26 +117,18 @@ async function loadDashboard() {
 // ══════════════════════════════════════════════
 function goTab(tab) {
   closeSidebar();
-  if (!['home', 'search', 'parking', 'profile', 'driveout-history'].includes(tab)) return;
+  
+  // You MUST include 'turret-select' and 'turret-esc' here
+  const allowedTabs = [
+    'home', 'search', 'parking', 'profile', 
+    'driveout-history', 'turret-select', 'turret-esc'
+  ];
+  
+  if (!allowedTabs.includes(tab)) return;
   
   currentTab = tab;
-
-  // 1. Handle Screens
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('screen-' + tab).classList.add('active');
-
-  // 2. Handle Navigation Buttons
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  
-  // This line handles your request:
-  document.getElementById('nav-' + tab)?.classList.add('active');
-
-  // 3. Load data if needed
-  if (tab === 'driveout-history') {
-    loadDriveoutHistory();
-  }
+  // ... rest of your existing logic
 }
-
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + id).classList.add('active');
