@@ -380,7 +380,13 @@ async function submitCheckin() {
   const odometer    = parseFloat(document.getElementById('ci-odometer').value) || null;
   const fuel_pct    = parseInt(document.getElementById('ci-fuel-pct').value)   || null;
   const fire_expiry = document.getElementById('ci-fire-expiry').value          || null;
-  const notes       = document.getElementById('ci-notes').value;
+  const notes       = document.getElementById('ci-notes').value;               || null;
+  const enginehours = document.getElementById('ci-engine-hours').value.trim(); || null;
+  const starterv = document.getElementById('ci-batt-starter-v').value.trim(); || null;
+  const starterpct = document.getElementById('ci-batt-starter-pct').value.trim(); || null;
+  const auxv= document.getElementById('ci-batt-aux-v').value.trim();           || null;
+  const auxpct= document.getElementById('ci-batt-aux-pct').value.trim();       || null;
+  const fuell = document.getElementById('ci-fuel-l').value.trim();             || null;
   if (!plate || !level || !lot) {
     showToast('⚠ Plate, Level and Lot are required');
     return;
