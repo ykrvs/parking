@@ -581,7 +581,7 @@ function drawWorkshop(svg) {
   const CW=52,CH=22,VGAP=3,ROWS=11,PAD=6,leftW=58,dwW=28,shutW=22;
   const xLeft=PAD,xDW=xLeft+leftW,xA=xDW+dwW,xB=xA+CW+4,xShut=xB+CW+6;
   const bHighH=3*(CH+VGAP), svgW=xShut+shutW+PAD, svgH=PAD+bHighH+ROWS*(CH+VGAP)+CH+PAD+30;
-  svg.setAttribute('viewBox',`0 0 ${svgW} ${svgH}`); svg.setAttribute('width','100%'); svg.setAttribute('height','auto'); svg.style.maxWidth=svgW+'px';
+  svg.setAttribute('viewBox',`0 0 ${svgW} ${svgH}`); svg.setAttribute('width','100%'); svg.style.height='auto'; svg.style.maxWidth=svgW+'px';
   const bg=document.createElementNS(ns,'rect'); bg.setAttribute('x','0');bg.setAttribute('y','0');bg.setAttribute('width',svgW);bg.setAttribute('height',svgH);bg.setAttribute('rx','6');bg.setAttribute('fill','#F8F8F4');bg.setAttribute('stroke','#B8BEB0');bg.setAttribute('stroke-width','1.5');svg.appendChild(bg);
   const handler=(id,veh,rect)=>{highlightLot(rect,!!veh);selectLotById(id,veh);};
   const shutTopH=28;
@@ -605,7 +605,7 @@ function drawL1(svg) {
   const CW=30,CH=19,CGAP=2,COL_GAP=14,ROWS=15,PAD=8,ROW_GAP=2,PAIR_W=CW*2+CGAP;
   const xA=PAD,xBC=xA+CW+COL_GAP,xDE=xBC+PAIR_W+COL_GAP,xF=xDE+PAIR_W+COL_GAP;
   const svgW=xF+CW+PAD,svgH=PAD+ROWS*(CH+ROW_GAP)+PAD;
-  svg.setAttribute('viewBox',`0 0 ${svgW} ${svgH}`);svg.setAttribute('width','100%');svg.setAttribute('height','auto');svg.style.maxWidth=svgW+'px';
+  svg.setAttribute('viewBox',`0 0 ${svgW} ${svgH}`);svg.setAttribute('width','100%');svg.style.height='auto';svg.style.maxWidth=svgW+'px';
   const bg=document.createElementNS(ns,'rect');bg.setAttribute('x','0');bg.setAttribute('y','0');bg.setAttribute('width',svgW);bg.setAttribute('height',svgH);bg.setAttribute('fill','#F8F8F4');bg.setAttribute('rx','6');svg.appendChild(bg);
   const handler=(id,veh,rect)=>{highlightLot(rect,!!veh);selectLotById(id,veh);};
   makeDrivewayLabel(svg,xA+CW+1,PAD+2,COL_GAP-2,ROWS*(CH+ROW_GAP),true);
@@ -646,7 +646,7 @@ function drawL2(svg) {
   
   svg.setAttribute('viewBox',`0 0 ${svgW} ${svgH}`);
   svg.setAttribute('width','100%');
-  svg.setAttribute('height','auto');
+  svg.style.height='auto';
   svg.style.maxWidth=svgW+'px';
   
   const bg=document.createElementNS(ns,'rect');
@@ -703,7 +703,7 @@ function drawL3(svg) {
   
   svg.setAttribute('viewBox',`0 0 ${svgW} ${svgH}`);
   svg.setAttribute('width','100%');
-  svg.setAttribute('height','auto');
+  svg.style.height='auto';
   svg.style.maxWidth=svgW+'px';
   
   const bg=document.createElementNS(ns,'rect');
@@ -921,36 +921,19 @@ async function driveOut(vehicleId) {
     if (!v) throw new Error('Vehicle not found in local state');
 
     const checkOutTime = new Date().toISOString();
-let histRow = {
-    //vehicleData,
-    check_in: v.check_in,
-  check_out: checkOutTime, 
-  created_at: checkOutTime
-};
 
-    const { error: hErr } = await sb.from('history').insert([histRow]);
-    if (hErr) {
-        console.error("History insert failed:", hErr);
-        alert("History logging failed: " + hErr.message);
-        return;
-    }
-    // Build the full driveout history row —
-    // current user overwrites driver/depot/phone as the person checking out
-    histRow = {
-      // Vehicle identity
+    // 1. Build the FULL history row with all telemetry + current user as checkout driver
+    const histRow = {
       vehicle_id:      v.id,
       plate:           v.plate,
       variant:         v.variant,
       level:           v.level,
       lot:             v.lot,
-      // Check-in / check-out timestamps
       check_in:        v.check_in,
       check_out:       checkOutTime,
-      // Last driver = the user performing the drive-out
-      driver:          currentUser?.name         || v.driver,
-      driver_phone:    currentUser?.phone        || v.driver_phone,
-      driver_depot:    currentUser?.depot        || v.driver_depot,
-      // All telemetry from most recent vehicle state
+      driver:          currentUser?.name        || v.driver,
+      driver_phone:    currentUser?.phone       || v.driver_phone,
+      driver_depot:    currentUser?.depot       || v.driver_depot,
       odometer:        v.odometer,
       engine_hours:    v.engine_hours,
       starter_v:       v.starter_v,
@@ -964,21 +947,21 @@ let histRow = {
       created_at:      checkOutTime,
     };
 
-// 3. Delete from vehicles table
+    // 2. Insert the complete record to history
+    const { error: hErr } = await sb.from('history').insert([histRow]);
+    if (hErr) throw new Error('History insert failed: ' + hErr.message);
+
+    // 3. Delete from vehicles table
     const { error: dErr } = await sb.from('vehicles').delete().eq('id', vehicleId);
-    if (dErr) {
-        console.error("Vehicle delete failed:", dErr);
-        return;
-    }
+    if (dErr) throw new Error('Vehicle delete failed: ' + dErr.message);
 
-    // 4. Update UI
+    // 4. Remove from local state (before loadDashboard so counts are correct)
     allVehicles = allVehicles.filter(x => String(x.id) !== String(vehicleId));
+
+    // 5. Refresh dashboard counts + lists
     await loadDashboard();
-    showToast("Vehicle moved to history");
 
-    // Remove from local state
-    allVehicles = allVehicles.filter(x => String(x.id) !== String(vehicleId));
-await loadDashboard();
+    // 6. Navigate back to search tab
     goBack();
     showToast('✓ ' + v.plate + ' has been checked out');
   } catch(e) {
