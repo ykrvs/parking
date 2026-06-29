@@ -433,7 +433,27 @@ async function submitCheckin() {
     showToast('⚠ Check-in failed: ' + e.message);
   }
 }
+async function submitTurretChecklist(vehicleId, plate) {
+  const data = {
+    vehicle_id: vehicleId,
+    plate: plate,
+    user_name: currentUser?.name || 'Unknown',
+    // Example: reading from checkbox IDs
+    ics: document.getElementById('chk-ics').checked,
+    gsu: document.getElementById('chk-gsu').checked,
+    // ... repeat for all boolean fields ...
+    notes: document.getElementById('chk-notes').value,
+    fault_list: document.getElementById('chk-faults').value
+  };
 
+  const { error } = await sb.from('turret_esc_logs').insert([data]);
+  if (error) {
+    showToast('⚠ Failed to save checklist: ' + error.message);
+  } else {
+    showToast('✓ Checklist saved');
+    closeModal('turret-esc-modal');
+  }
+}
 // ══════════════════════════════════════════════
 // HISTORY — fetches from history table
 // ══════════════════════════════════════════════
