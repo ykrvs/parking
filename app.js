@@ -433,6 +433,28 @@ async function submitCheckin() {
     showToast('⚠ Check-in failed: ' + e.message);
   }
 }
+
+// Add 'turret-select' to your goTab allowed list if needed
+function openTurretSelector() {
+    const list = document.getElementById('turret-vehicle-selector-list');
+    list.innerHTML = ''; // Clear existing
+
+    // Filter to show only vehicles currently in the 'vehicles' table
+    allVehicles.forEach(v => {
+        const item = document.createElement('div');
+        item.className = 'card-sm';
+        item.style.marginBottom = '10px';
+        item.style.cursor = 'pointer';
+        item.innerHTML = `
+            <div style="font-weight:600;">${v.plate}</div>
+            <div style="font-size:12px;color:var(--muted);">${v.variant || 'No Model'}</div>
+        `;
+        item.onclick = () => openTurretChecklist(v.id); // Triggers the checklist
+        list.appendChild(item);
+    });
+
+    goTab('turret-select');
+}
 async function submitTurretChecklist(vehicleId, plate) {
   // Get all values from the DOM
   const data = {
