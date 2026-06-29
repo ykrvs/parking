@@ -916,7 +916,7 @@ async function driveOut(vehicleId) {
 
     const checkOutTime = new Date().toISOString();
 let histRow = {
-    ...vehicleData,
+    //vehicleData,
     check_in: v.check_in,
   check_out: checkOutTime, 
   created_at: checkOutTime
