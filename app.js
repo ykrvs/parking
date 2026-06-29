@@ -514,65 +514,43 @@ function openTurretChecklist(vehicleId) {
 async function saveTurretChecklist() {
   const select = document.getElementById('turret-vehicle-select');
   const vehicleId = select.value;
-
   if (!vehicleId) {
     showToast("⚠ Please select a vehicle first");
     return;
   }
-
   const v = allVehicles.find(x => String(x.id) === String(vehicleId));
   if (!v) {
     showToast("⚠ Vehicle not found");
     return;
   }
 
+  // Safe getters — return null instead of crashing if element is missing
+  const chk  = id => document.getElementById(id)?.checked   ?? null;
+  const num  = id => { const el = document.getElementById(id); return el ? (parseInt(el.value) || 0) : null; };
+  const txt  = id => document.getElementById(id)?.value     ?? null;
+
   const data = {
     vehicle_id: vehicleId,
-    plate: v.plate,
-    user_name: currentUser?.name || 'Unknown',
+    plate:      v.plate,
+    user_name:  currentUser?.name || 'Unknown',
 
     // Boolean fields
-    ics:              document.getElementById('chk-ics').checked,
-    gsu:              document.getElementById('chk-gsu').checked,
-    wim:              document.getElementById('chk-wim').checked,
-    trav_actuator:    document.getElementById('chk-trav_actuator').checked,
-    elev_actuator:    document.getElementById('chk-elev_actuator').checked,
-    gcu:              document.getElementById('chk-gcu').checked,
-    mdcu:             document.getElementById('chk-mdcu').checked,
-    psu:              document.getElementById('chk-psu').checked,
-    gun_gyro:         document.getElementById('chk-gun_gyro').checked,
-    conv_ass:         document.getElementById('chk-conv_ass').checked,
-    boost_box_ass:    document.getElementById('chk-boost_box_ass').checked,
-    slip_ring:        document.getElementById('chk-slip_ring').checked,
-    turr_estop:       document.getElementById('chk-turr_estop').checked,
-    upplink_echute:   document.getElementById('chk-upplink_echute').checked,
-    upplink_splate:   document.getElementById('chk-upplink_splate').checked,
-    lowlink_splate:   document.getElementById('chk-lowlink_splate').checked,
-    lowlink_echute:   document.getElementById('chk-lowlink_echute').checked,
-    uppflex_chute:    document.getElementById('chk-uppflex_chute').checked,
-    lowflex_chute:    document.getElementById('chk-lowflex_chute').checked,
-    lws_comp:         document.getElementById('chk-lws_comp').checked,
-
-    // Integer fields
-    scu: parseInt(document.getElementById('chk-scu').value) || 0,
-    dcu: parseInt(document.getElementById('chk-dcu').value) || 0,
-
-    // Text fields
-    fault_list: document.getElementById('chk-fault_list').value,
-    notes:      document.getElementById('chk-notes').value,
-  };
-
-  const { error } = await sb.from('turret_esc_logs').insert([data]);
-
-  if (error) {
-    console.error("Turret checklist error:", error);
-    showToast('⚠ Failed to save: ' + error.message);
-  } else {
-    showToast('✓ Checklist submitted successfully');
-    goTab('home');
-  }
-}
-
+    ics:            chk('chk-ics'),
+    gsu:            chk('chk-gsu'),
+    wim:            chk('chk-wim'),
+    trav_actuator:  chk('chk-trav_actuator'),
+    elev_actuator:  chk('chk-elev_actuator'),
+    gcu:            chk('chk-gcu'),
+    mdcu:           chk('chk-mdcu'),
+    psu:            chk('chk-psu'),
+    gun_gyro:       chk('chk-gun_gyro'),
+    conv_ass:       chk('chk-conv_ass'),
+    boost_box_ass:  chk('chk-boost_box_ass'),
+    slip_ring:      chk('chk-slip_ring'),
+    turr_estop:     chk('chk-turr_estop'),
+    upplink_echute: chk('chk-upplink_echute'),
+    upplink_splate: chk('chk-upplink_splate'),
+    lowlink_splate:
 function renderHistory(records) {
   const hl = document.getElementById('history-list');
   if (!records.length) {
