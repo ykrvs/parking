@@ -452,7 +452,36 @@ async function openHistory(vehicleId) {
     document.getElementById('history-list').innerHTML = '<div class="empty"><p>Could not load history</p></div>';
   }
 }
+function openTurretChecklist(vehicleId) {
+    const v = allVehicles.find(x => String(x.id) === String(vehicleId));
+    if (!v) return;
 
+    // Set the header details
+    document.getElementById('turret-active-plate').textContent = v.plate;
+    
+    // Generate checklist items
+    const container = document.getElementById('turret-checklist-container');
+    container.innerHTML = `
+      <div class="field"><input type="checkbox" id="esc1"> <label for="esc1">Turret E-Stop Engaged</label></div>
+      <div class="field"><input type="checkbox" id="esc2"> <label for="esc2">Controls Neutralized</label></div>
+      <div class="field"><input type="checkbox" id="esc3"> <label for="esc3">Warning Lights Active</label></div>
+    `;
+
+    goTab('turret-esc');
+}
+
+async function saveTurretChecklist() {
+    // Collect values from the checkboxes
+    const data = {
+        esc1: document.getElementById('esc1').checked,
+        esc2: document.getElementById('esc2').checked,
+        esc3: document.getElementById('esc3').checked,
+        // Add your database logic here to save to Supabase
+    };
+    
+    showToast("Checklist submitted successfully");
+    goTab('home');
+}
 function renderHistory(records) {
   const hl = document.getElementById('history-list');
   if (!records.length) {
