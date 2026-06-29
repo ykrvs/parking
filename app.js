@@ -1044,15 +1044,47 @@ async function logout() {
 // ══════════════════════════════════════════════
 // DRIVE OUT — removes vehicle from active list
 // ══════════════════════════════════════════════
-async function driveOut(vehicleId) {
-  if (!confirm('Mark this vehicle as driven out? It will be removed from active parking.')) return;
-  try {
-    const v = allVehicles.find(x => String(x.id) === String(vehicleId));
-    if (!v) throw new Error('Vehicle not found in local state');
+// ══════════════════════════════════════════════
+// DRIVE OUT — removes vehicle from active list
+// ══════════════════════════════════════════════
+function driveOut(vehicleId) {
+  const v = allVehicles.find(x => String(x.id) === String(vehicleId));
+  if (!v) { showToast('⚠ Vehicle not found'); return; }
 
+  // Show inline confirmation instead of confirm() which is blocked on mobile
+  const panel = document.getElementById('lot-detail-panel') || document.getElementById('detail-body');
+  const confirmHtml = `
+    <div class="card" style="border:1px solid rgba(192,57,43,.3);background:rgba(192,57,43,.05);margin-top:12px;" id="driveout-confirm-panel">
+      <div style="font-weight:700;color:var(--danger);margin-bottom:6px;">⚠ Confirm Drive-Out</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:14px;">
+        <strong>${v.plate}</strong> will be removed from active parking and logged to history.
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-ghost" style="flex:1;" onclick="document.getElementById('driveout-confirm-panel').remove()">Cancel</button>
+        <button class="btn" style="flex:1;background:var(--danger);color:#fff;font-weight:600;" onclick="confirmDriveOut('${v.id}')">Yes, Drive Out</button>
+      </div>
+    </div>`;
+
+  // Remove any existing confirm panel then append
+  const existing = document.getElementById('driveout-confirm-panel');
+  if (existing) existing.remove();
+  document.getElementById('detail-body').insertAdjacentHTML('beforeend', confirmHtml);
+}
+
+async function confirmDriveOut(vehicleId) {
+  const v = allVehicles.find(x => String(x.id) === String(vehicleId));
+  if (!v) { showToast('⚠ Vehicle not found'); return; }
+
+  // Remove confirm panel immediately so user can't double-tap
+  const panel = document.getElementById('driveout-confirm-panel');
+  if (panel) panel.remove();
+
+  showToast('Processing drive-out…');
+
+  try {
     const checkOutTime = new Date().toISOString();
 
-    // 1. Build the FULL history row with all telemetry + current user as checkout driver
+    // 1. Build full history row
     const histRow = {
       vehicle_id:      v.id,
       plate:           v.plate,
@@ -1061,9 +1093,9 @@ async function driveOut(vehicleId) {
       lot:             v.lot,
       check_in:        v.check_in,
       check_out:       checkOutTime,
-      driver:          currentUser?.name        || v.driver,
-      driver_phone:    currentUser?.phone       || v.driver_phone,
-      driver_depot:    currentUser?.depot       || v.driver_depot,
+      driver:          currentUser?.name     || v.driver,
+      driver_phone:    currentUser?.phone    || v.driver_phone,
+      driver_depot:    currentUser?.depot    || v.driver_depot,
       odometer:        v.odometer,
       engine_hours:    v.engine_hours,
       starter_v:       v.starter_v,
@@ -1077,24 +1109,25 @@ async function driveOut(vehicleId) {
       created_at:      checkOutTime,
     };
 
-    // 2. Insert the complete record to history
+    // 2. Insert to history
     const { error: hErr } = await sb.from('history').insert([histRow]);
     if (hErr) throw new Error('History insert failed: ' + hErr.message);
 
-    // 3. Delete from vehicles table
+    // 3. Delete from vehicles (frees the lot)
     const { error: dErr } = await sb.from('vehicles').delete().eq('id', vehicleId);
     if (dErr) throw new Error('Vehicle delete failed: ' + dErr.message);
 
-    // 4. Remove from local state (before loadDashboard so counts are correct)
+    // 4. Update local state
     allVehicles = allVehicles.filter(x => String(x.id) !== String(vehicleId));
 
-    // 5. Refresh dashboard counts + lists
+    // 5. Refresh dashboard
     await loadDashboard();
 
-    // 6. Navigate back to search tab
+    // 6. Go back and confirm
     goBack();
-    showToast('✓ ' + v.plate + ' has been checked out');
-  } catch(e) {
+    showToast('✓ ' + v.plate + ' has been driven out');
+
+  } catch (e) {
     console.error('Drive-out failed:', e);
     showToast('⚠ Drive-out failed: ' + e.message);
   }
