@@ -1912,7 +1912,7 @@ export default function Home() {
 
             {/* Interactive SVG Layout */}
             <div className="bg-white rounded-xl border border-zinc-200 p-4 sm:p-6 shadow-sm space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100 pb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100">
                 <div>
                   <h3 className="font-bold text-zinc-800">
                     Parking Map — {selectedLevelConfig?.label ?? "Not configured"}
@@ -1939,7 +1939,7 @@ export default function Home() {
               </div>
 
               {/* Scrollable Map Area */}
-              <div className="mx-auto w-full max-w-[300px] overflow-x-auto select-none bg-zinc-50 border border-zinc-100 rounded-lg p-2 flex justify-center">
+              <div className="mx-auto w-full max-w-85 select-none bg-zinc-50 border border-zinc-100 rounded-lg p-2 flex justify-center">
                                 {isLoadingParkingConfig ? (
                   <p className="py-10 text-center text-sm font-medium text-zinc-500">
                     Loading parking layout...
@@ -2042,7 +2042,7 @@ export default function Home() {
               {/* Lot occupancy detail card */}
               <div
                 id="lot-detail-panel"
-                className="mt-2 min-h-20 flex items-center justify-center"
+                className="min-h-20 flex items-center justify-center"
               >
                 {selectedLot ? (
                   selectedLotVehicle ? (
