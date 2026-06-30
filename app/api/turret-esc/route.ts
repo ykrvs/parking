@@ -20,6 +20,21 @@ async function requireTechnician(openid: string) {
   return null;
 }
 
+function parseNonNegativeInteger(value: unknown, label: string) {
+  if (value === null || value === undefined || value === "") return null;
+
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new Error(`${label} must be a non-negative integer`);
+  }
+
+  return parsed;
+}
+
+function isValidationError(error: unknown) {
+  return error instanceof Error && error.message.includes("must be");
+}
+
 export async function GET(request: NextRequest) {
   const session = await getRequestSession(request);
 
@@ -86,8 +101,8 @@ export async function POST(request: NextRequest) {
       uppflex_chute: body.uppflex_chute === true,
       lowflex_chute: body.lowflex_chute === true,
       lws_comp: body.lws_comp === true,
-      scu: body.scu !== null && body.scu !== undefined ? parseInt(body.scu, 10) : null,
-      dcu: body.dcu !== null && body.dcu !== undefined ? parseInt(body.dcu, 10) : null,
+      scu: parseNonNegativeInteger(body.scu, "SCU"),
+      dcu: parseNonNegativeInteger(body.dcu, "DCU"),
       fault_list: body.fault_list || null,
       notes: body.notes || null,
       created_at: new Date().toISOString(),
@@ -96,6 +111,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, log: data });
   } catch (err) {
     console.error("Failed to save turret checklist:", err);
-    return NextResponse.json({ error: err instanceof Error ? err.message : "Failed to save checklist" }, { status: 500 });
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Failed to save checklist" },
+      { status: isValidationError(err) ? 400 : 500 },
+    );
   }
 }

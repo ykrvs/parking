@@ -40,7 +40,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Calendar as DatePickerCalendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useAuth } from "@/hooks/useAuth";
+import defaultParkingConfig from "@/lib/parking-config.json";
 import { cn } from "@/lib/utils";
 
 // Static Data
@@ -123,279 +130,35 @@ type AdminUserRecord = {
   depot?: string | null;
 };
 
-const DEFAULT_PARKING_LEVELS: ParkingLevelConfig[] = [
-  {
-    id: "level-1",
-    label: "Level 1",
-    desc: "Block 210 level 1 bay layout.",
-    icon: "L1",
-    layout: {
-      columns: [
-        {
-          type: "lots",
-          id: "a",
-          lots: [
-            "A15",
-            "A14",
-            "A13",
-            "A12",
-            "A11",
-            "A10",
-            "A9",
-            "A8",
-            "A7",
-            "A6",
-            "A5",
-            "A4",
-            "A3",
-            "A2",
-            "A1",
-          ],
-        },
-        {
-          type: "lots",
-          id: "b",
-          lots: [
-            "B15",
-            "B14",
-            "B13",
-            "B12",
-            "B11",
-            "B10",
-            "B9",
-            "B8",
-            "B7",
-            "B6",
-            "B5",
-            "B4",
-            "B3",
-            "B2",
-            "B1",
-          ],
-        },
-        {
-          type: "lots",
-          id: "c",
-          lots: [
-            "C15",
-            "C14",
-            "C13",
-            "C12",
-            "C11",
-            "C10",
-            "C9",
-            "C8",
-            "C7",
-            "C6",
-            "C5",
-            "C4",
-            "C3",
-            "C2",
-            "C1",
-          ],
-        },
-        { type: "driveway", id: "driveway-west", label: "DRIVEWAY" },
-        {
-          type: "lots",
-          id: "d",
-          lots: [
-            "D15",
-            "D14",
-            "D13",
-            "D12",
-            "D11",
-            "D10",
-            "D9",
-            "D8",
-            "D7",
-            "D6",
-            "D5",
-            "D4",
-            "D3",
-            "D2",
-            "D1",
-          ],
-        },
-        {
-          type: "lots",
-          id: "e",
-          lots: [
-            "E15",
-            "E14",
-            "E13",
-            "E12",
-            "E11",
-            "E10",
-            "E9",
-            "E8",
-            "E7",
-            "E6",
-            "E5",
-            "E4",
-            "E3",
-            "E2",
-            "E1",
-          ],
-        },
-        { type: "driveway", id: "driveway-east", label: "DRIVEWAY" },
-        {
-          type: "lots",
-          id: "f",
-          lots: ["F9", "F8", "F7", "F6", "F5", "F4", "F3", "F2", "F1"],
-        },
-      ],
-    },
-  },
-  {
-    id: "level-2",
-    label: "Level 2",
-    desc: "Block 210 level 2 bay layout with training and store areas.",
-    icon: "L2",
-    layout: {
-      columns: [
-        {
-          type: "lots",
-          id: "a",
-          lots: [
-            "A15",
-            "A14",
-            "A13",
-            "A12",
-            "A11",
-            "A10",
-            "A9",
-            "A8",
-            "A7",
-            "A6",
-            "A5",
-            "A4",
-            "A3",
-            "A2",
-            "A1",
-          ],
-        },
-        { type: "driveway", id: "driveway-a-b", label: "DRIVEWAY" },
-        {
-          type: "lots",
-          id: "b",
-          lots: [
-            "B15",
-            "B14",
-            "B13",
-            "B12",
-            "B11",
-            "B10",
-            "B9",
-            "B8",
-            "B7",
-            "B6",
-            "B5",
-            "B4",
-            "B3",
-            "B2",
-            "B1",
-          ],
-        },
-        {
-          type: "lots",
-          id: "c",
-          lots: [
-            "C15",
-            "C14",
-            "C13",
-            "C12",
-            "C11",
-            "C10",
-            "C9",
-            "C8",
-            "C7",
-            "C6",
-            "C5",
-            "C4",
-            "C3",
-            "C2",
-            "C1",
-          ],
-        },
-        { type: "driveway", id: "driveway-c-d", label: "DRIVEWAY" },
-        {
-          type: "lots",
-          id: "d",
-          lots: [
-            "D15",
-            "D14",
-            "D13",
-            "D12",
-            "D11",
-            "D10",
-            "D9",
-            "D8",
-            "D7",
-            "D6",
-            "D5",
-            "D4",
-            "D3",
-            "D2",
-            "D1",
-          ],
-        },
-        {
-          type: "lots",
-          id: "e",
-          lots: [
-            "E15",
-            "E14",
-            "E13",
-            "E12",
-            "E11",
-            "E10",
-            "E9",
-            "E8",
-            "E7",
-            "E6",
-            "E5",
-            "E4",
-            "E3",
-            "E2",
-            "E1",
-          ],
-        },
-        { type: "driveway", id: "driveway-e-f", label: "DRIVEWAY" },
-        {
-          type: "mixed",
-          id: "f-and-areas",
-          cells: [
-            { type: "lot", id: "F6" },
-            { type: "lot", id: "F5" },
-            { type: "lot", id: "F4" },
-            { type: "lot", id: "F3" },
-            { type: "lot", id: "F2" },
-            { type: "lot", id: "F1" },
-            {
-              type: "area",
-              id: "gunnery-training",
-              label: "GUNNERY\nTRAINING",
-              rowSpan: 4,
-            },
-            {
-              type: "area",
-              id: "peta-store",
-              label: "PETA\nSTORE",
-              rowSpan: 5,
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    id: "level-3",
-    label: "Level 3",
-    desc: "Default parking layout. Replace in Supabase when the real lots are confirmed.",
-    icon: "L3",
-    lots: ["A1", "A2", "A3", "A4", "A5", "A6", "B1", "B2", "B3", "B4", "B5", "B6"],
-  },
-];
+function RequiredMark() {
+  return (
+    <span className="ml-0.5 text-red-600" aria-label="required">
+      *
+    </span>
+  );
+}
+
+function parseDateInput(dateStr: string) {
+  if (!dateStr) return undefined;
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) return undefined;
+
+  return new Date(
+    parseInt(parts[0], 10),
+    parseInt(parts[1], 10) - 1,
+    parseInt(parts[2], 10),
+  );
+}
+
+function toDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+const DEFAULT_PARKING_LEVELS = defaultParkingConfig.levels as ParkingLevelConfig[];
 
 function getLevelLots(level?: ParkingLevelConfig) {
   if (!level) return [];
@@ -510,16 +273,27 @@ export default function Home() {
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [isCheckingProfile, setIsCheckingProfile] = useState<boolean>(false);
   const [profile, setProfile] = useState<any>(null);
-  const [parkingLevels, setParkingLevels] =
-    useState<ParkingLevelConfig[]>(DEFAULT_PARKING_LEVELS);
+  const [parkingLevels, setParkingLevels] = useState<ParkingLevelConfig[]>(
+    DEFAULT_PARKING_LEVELS,
+  );
   const [isLoadingParkingConfig, setIsLoadingParkingConfig] = useState(false);
-  const [safetyMessages, setSafetyMessages] = useState<SafetyMessageRecord[]>([]);
+  const [safetyMessages, setSafetyMessages] = useState<SafetyMessageRecord[]>(
+    [],
+  );
   const [safetyIndex, setSafetyIndex] = useState(0);
   const [adminUsers, setAdminUsers] = useState<AdminUserRecord[]>([]);
   const [adminSafetyMessages, setAdminSafetyMessages] = useState<
     SafetyMessageRecord[]
   >([]);
   const [isLoadingAdmin, setIsLoadingAdmin] = useState(false);
+  const [adminActiveTab, setAdminActiveTab] = useState<"users" | "safety">(
+    "users",
+  );
+  const [adminUserSearch, setAdminUserSearch] = useState("");
+  const [adminDraftAdmins, setAdminDraftAdmins] = useState<
+    Record<string, boolean>
+  >({});
+  const [isSavingAdminUsers, setIsSavingAdminUsers] = useState(false);
 
   // Dashboard vehicle data state
   const [vehicles, setVehicles] = useState<any[]>([]);
@@ -729,7 +503,10 @@ export default function Home() {
         : DEFAULT_PARKING_LEVELS;
 
       setParkingLevels(levels);
-      if (levels.length > 0 && !levels.some((level) => level.id === selectedLevel)) {
+      if (
+        levels.length > 0 &&
+        !levels.some((level) => level.id === selectedLevel)
+      ) {
         setSelectedLevel(levels[0].id);
       }
       if (levels.length > 0 && !levels.some((level) => level.id === ciLevel)) {
@@ -808,7 +585,9 @@ export default function Home() {
 
   useEffect(() => {
     const activeCount =
-      safetyMessages.length > 0 ? safetyMessages.length : SAFETY_MESSAGES.length;
+      safetyMessages.length > 0
+        ? safetyMessages.length
+        : SAFETY_MESSAGES.length;
 
     if (activeCount <= 1) return;
 
@@ -818,6 +597,22 @@ export default function Home() {
 
     return () => window.clearInterval(interval);
   }, [safetyMessages.length]);
+
+  useEffect(() => {
+    if (!profile) return;
+
+    setCiDriver((current) => current || profile.name || "");
+    setCiDriverPhone((current) => current || profile.phone || "");
+    setCiDriverUnit(
+      (current) => current || profile.unit || profile.depot || "",
+    );
+  }, [profile]);
+
+  useEffect(() => {
+    setAdminDraftAdmins(
+      Object.fromEntries(adminUsers.map((user) => [user.id, user.is_admin])),
+    );
+  }, [adminUsers]);
 
   if (auth.isLoading || !auth.isAuthenticated) {
     return <LoginGate isLoading={auth.isLoading} onLogin={auth.login} />;
@@ -863,9 +658,13 @@ export default function Home() {
     }
   });
   const selectedLevelConfig =
-    parkingLevels.find((level) => level.id === selectedLevel) ?? parkingLevels[0];
+    parkingLevels.find((level) => level.id === selectedLevel) ??
+    parkingLevels[0];
   const selectedLevelLots = getLevelLots(selectedLevelConfig);
   const profileUnit = profile?.unit || profile?.depot || "";
+  const fireExpiryYear = new Date().getFullYear();
+  const fireExpiryCalendarStart = new Date(fireExpiryYear - 1, 0);
+  const fireExpiryCalendarEnd = new Date(fireExpiryYear + 20, 11);
 
   // Handle open vehicle details
   const handleOpenVehicle = async (vehicle: any) => {
@@ -913,7 +712,8 @@ export default function Home() {
       parkingLevels.find((parkingLevel) => parkingLevel.id === level) ??
       parkingLevels.find(
         (parkingLevel) =>
-          normalizeParkingValue(parkingLevel.id) === normalizeParkingValue(level),
+          normalizeParkingValue(parkingLevel.id) ===
+          normalizeParkingValue(level),
       );
     const map: Record<string, any> = {};
     vehicles
@@ -922,6 +722,34 @@ export default function Home() {
         map[normalizeParkingValue(v.lot)] = v;
       });
     return map;
+  };
+
+  const ciLevelConfig =
+    parkingLevels.find((parkingLevel) => parkingLevel.id === ciLevel) ??
+    parkingLevels[0];
+  const ciLevelLots = getLevelLots(ciLevelConfig);
+  const ciOccupiedLots = occupiedLotsMap(ciLevel);
+  const updateLevelConfig = selectedVehicle
+    ? parkingLevels.find((parkingLevel) =>
+        vehicleMatchesLevel(selectedVehicle, parkingLevel),
+      )
+    : undefined;
+  const updateLevelLots = Array.from(
+    new Set([
+      ...(updateLevelConfig ? getLevelLots(updateLevelConfig) : []),
+      ...(selectedVehicle?.lot ? [selectedVehicle.lot] : []),
+    ]),
+  );
+  const updateOccupiedLots = selectedVehicle
+    ? occupiedLotsMap(selectedVehicle.level)
+    : {};
+
+  const openCheckinModal = () => {
+    setCiDriver(profile.name || "");
+    setCiDriverPhone(profile.phone || "");
+    setCiDriverUnit(profileUnit);
+    setFormError(null);
+    setIsCheckingIn(true);
   };
 
   const handleLotClick = (lotId: string, occupiedVeh: any) => {
@@ -936,6 +764,10 @@ export default function Home() {
       setFormError("Plate, Level and Lot are required");
       return;
     }
+    if (!/^\d+$/.test(ciPlate)) {
+      setFormError("Licence plate must contain numbers only");
+      return;
+    }
 
     setIsSubmitting(true);
     setFormError(null);
@@ -943,9 +775,9 @@ export default function Home() {
     const payload = {
       plate: ciPlate,
       variant: ciVariant,
-      driver: ciDriver || profile.name,
-      driver_phone: ciDriverPhone || profile.phone,
-      driver_unit: ciDriverUnit || profileUnit,
+      driver: profile.name,
+      driver_phone: profile.phone,
+      driver_unit: profileUnit,
       level: ciLevel,
       lot: ciLot,
       odometer: ciOdometer || null,
@@ -970,9 +802,7 @@ export default function Home() {
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || "Check-in failed");
 
-      triggerToast(
-        `✓ ${ciPlate.toUpperCase()} checked in → ${ciLevel} Lot ${ciLot}`,
-      );
+      triggerToast(`✓ MID${ciPlate} checked in → ${ciLevel} Lot ${ciLot}`);
       setIsCheckingIn(false);
 
       // Clear inputs
@@ -1051,6 +881,7 @@ export default function Home() {
         vehicle_id: selectedVehicle.id,
         plate: selectedVehicle.plate,
         variant: upVariant || selectedVehicle.variant,
+        driver_id: selectedVehicle.driver_id || null,
         driver: upDriver || selectedVehicle.driver,
         driver_phone: upDriverPhone || selectedVehicle.driver_phone,
         driver_unit:
@@ -1132,6 +963,7 @@ export default function Home() {
           level: selectedVehicle.level,
           lot: selectedVehicle.lot,
           check_in: selectedVehicle.check_in,
+          driver_id: profile.id || selectedVehicle.driver_id || null,
           driver: profile.name || selectedVehicle.driver,
           driver_phone: profile.phone || selectedVehicle.driver_phone,
           driver_unit:
@@ -1188,6 +1020,10 @@ export default function Home() {
     );
     if (!matchedVeh) {
       triggerToast("⚠ Vehicle not found");
+      return;
+    }
+    if ((escScu && Number(escScu) < 0) || (escDcu && Number(escDcu) < 0)) {
+      triggerToast("⚠ SCU and DCU must be non-negative");
       return;
     }
 
@@ -1265,22 +1101,47 @@ export default function Home() {
     }
   };
 
-  const handleToggleAdmin = async (targetId: string, isAdmin: boolean) => {
+  const handleSaveAdminUsers = async () => {
+    const changedUsers = adminUsers.filter(
+      (user) =>
+        adminDraftAdmins[user.id] !== undefined &&
+        adminDraftAdmins[user.id] !== user.is_admin,
+    );
+
+    if (!changedUsers.length) {
+      triggerToast("No admin changes to save");
+      return;
+    }
+
+    setIsSavingAdminUsers(true);
     try {
-      const res = await fetch("/api/admin/users", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ targetId, isAdmin }),
-      });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error || "Admin update failed");
+      const updatedUsers = await Promise.all(
+        changedUsers.map(async (user) => {
+          const res = await fetch("/api/admin/users", {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              targetId: user.id,
+              isAdmin: adminDraftAdmins[user.id] === true,
+            }),
+          });
+          const d = await res.json();
+          if (!res.ok) throw new Error(d.error || "Admin update failed");
+          return d.user as AdminUserRecord;
+        }),
+      );
 
       setAdminUsers((users) =>
-        users.map((user) => (user.id === targetId ? d.user : user)),
+        users.map(
+          (user) =>
+            updatedUsers.find((updated) => updated.id === user.id) ?? user,
+        ),
       );
-      triggerToast("Admin access updated");
+      triggerToast("Admin changes saved");
     } catch (err: any) {
       triggerToast(`Admin update failed: ${err.message}`);
+    } finally {
+      setIsSavingAdminUsers(false);
     }
   };
 
@@ -1414,6 +1275,19 @@ export default function Home() {
       (r.variant || "")
         .toLowerCase()
         .includes(driveoutSearchQuery.toLowerCase()),
+  );
+  const adminSearch = adminUserSearch.toLowerCase();
+  const filteredAdminUsers = adminUsers.filter(
+    (user) =>
+      (user.name || "").toLowerCase().includes(adminSearch) ||
+      (user.rank || "").toLowerCase().includes(adminSearch) ||
+      (user.unit || user.depot || "").toLowerCase().includes(adminSearch) ||
+      (user.phone || "").toLowerCase().includes(adminSearch),
+  );
+  const hasAdminUserChanges = adminUsers.some(
+    (user) =>
+      adminDraftAdmins[user.id] !== undefined &&
+      adminDraftAdmins[user.id] !== user.is_admin,
   );
 
   // SVG dynamic layout helpers
@@ -1737,7 +1611,7 @@ export default function Home() {
               </h2>
               <Button
                 type="button"
-                onClick={() => setIsCheckingIn(true)}
+                onClick={openCheckinModal}
                 className="bg-red-600 hover:bg-red-700 h-9 text-sm"
               >
                 <Plus className="size-4 mr-1.5" />
@@ -1902,7 +1776,8 @@ export default function Home() {
                         {level.label}
                       </div>
                       <p className="text-[10px] text-zinc-500 font-medium mt-0.5">
-                        {occ}/{level.totalLots ?? getLevelLots(level).length} lots
+                        {occ}/{level.totalLots ?? getLevelLots(level).length}{" "}
+                        lots
                       </p>
                     </div>
                   </div>
@@ -1915,10 +1790,12 @@ export default function Home() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100">
                 <div>
                   <h3 className="font-bold text-zinc-800">
-                    Parking Map — {selectedLevelConfig?.label ?? "Not configured"}
+                    Parking Map —{" "}
+                    {selectedLevelConfig?.label ?? "Not configured"}
                   </h3>
                   <p className="text-xs text-zinc-500 font-medium">
-                    {selectedLevelConfig?.desc ?? "Load layout configuration from Supabase."}
+                    {selectedLevelConfig?.desc ??
+                      "Load layout configuration from Supabase."}
                   </p>
                 </div>
 
@@ -1940,7 +1817,7 @@ export default function Home() {
 
               {/* Scrollable Map Area */}
               <div className="mx-auto w-full max-w-85 select-none bg-zinc-50 border border-zinc-100 rounded-lg p-2 flex justify-center">
-                                {isLoadingParkingConfig ? (
+                {isLoadingParkingConfig ? (
                   <p className="py-10 text-center text-sm font-medium text-zinc-500">
                     Loading parking layout...
                   </p>
@@ -2063,7 +1940,9 @@ export default function Home() {
                           <span className="font-bold text-zinc-800">
                             {selectedLotVehicle.driver}
                           </span>
-                          &nbsp;·&nbsp; {selectedLotVehicle.driver_unit || selectedLotVehicle.driver_depot}
+                          &nbsp;·&nbsp;{" "}
+                          {selectedLotVehicle.driver_unit ||
+                            selectedLotVehicle.driver_depot}
                         </div>
                       </div>
                       <Button
@@ -2109,6 +1988,7 @@ export default function Home() {
             <div className="space-y-2">
               <label className="text-sm font-semibold text-zinc-700">
                 Select Platform
+                <RequiredMark />
               </label>
               <select
                 value={escVehicleId}
@@ -2168,6 +2048,7 @@ export default function Home() {
                 </label>
                 <input
                   type="number"
+                  min="0"
                   value={escScu}
                   onChange={(e) => setEscScu(e.target.value)}
                   placeholder="0"
@@ -2180,6 +2061,7 @@ export default function Home() {
                 </label>
                 <input
                   type="number"
+                  min="0"
                   value={escDcu}
                   onChange={(e) => setEscDcu(e.target.value)}
                   placeholder="0"
@@ -2335,7 +2217,9 @@ export default function Home() {
                 </div>
                 <div className="flex items-center justify-between py-2 border-b border-zinc-50">
                   <span className="text-zinc-500 font-medium">Unit</span>
-                  <span className="font-semibold">{profile.unit || profile.depot || "—"}</span>
+                  <span className="font-semibold">
+                    {profile.unit || profile.depot || "—"}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between py-2 border-b border-zinc-50">
                   <span className="text-zinc-500 font-medium">Role</span>
@@ -2380,6 +2264,7 @@ export default function Home() {
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-zinc-700">
                     Phone
+                    <RequiredMark />
                   </label>
                   <input
                     type="tel"
@@ -2391,6 +2276,7 @@ export default function Home() {
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-zinc-700">
                     Unit
+                    <RequiredMark />
                   </label>
                   <input
                     type="text"
@@ -2404,6 +2290,7 @@ export default function Home() {
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-zinc-700">
                       Rank
+                      <RequiredMark />
                     </label>
                     <select
                       value={peRank}
@@ -2421,6 +2308,7 @@ export default function Home() {
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-zinc-700">
                       ORD date
+                      <RequiredMark />
                     </label>
                     <input
                       type="date"
@@ -2469,135 +2357,204 @@ export default function Home() {
         {activeTab === "admin" && profile.is_admin && (
           <div className="space-y-6">
             <div className="bg-white rounded-xl border border-zinc-200 p-6 shadow-sm space-y-4">
-              <div>
-                <h3 className="text-lg font-bold">Admin</h3>
-                <p className="text-xs text-zinc-500 font-medium">
-                  Manage admin access and scheduled safety messages.
-                </p>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="text-lg font-bold">Admin</h3>
+                  <p className="text-xs text-zinc-500 font-medium">
+                    Manage users and scheduled safety messages.
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-1 rounded-lg border border-zinc-200 bg-zinc-50 p-1 text-sm font-semibold">
+                  {[
+                    { id: "users", label: "Users" },
+                    { id: "safety", label: "Safety" },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() =>
+                        setAdminActiveTab(tab.id as "users" | "safety")
+                      }
+                      className={cn(
+                        "rounded-md px-4 py-2 transition",
+                        adminActiveTab === tab.id
+                          ? "bg-white text-red-700 shadow-xs"
+                          : "text-zinc-600 hover:text-zinc-900",
+                      )}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <form
-                onSubmit={handleCreateSafetyMessage}
-                className="grid gap-3 border-t border-zinc-100 pt-4"
-              >
-                <label className="text-sm font-semibold text-zinc-700">
-                  Safety message
-                </label>
-                <textarea
-                  value={newSafetyMessage}
-                  onChange={(e) => setNewSafetyMessage(e.target.value)}
-                  required
-                  className="min-h-20 rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-red-600 focus:ring-3 focus:ring-red-600/15"
-                />
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-zinc-500">
-                      Starts
-                    </label>
+              {adminActiveTab === "users" && (
+                <div className="space-y-4 border-t border-zinc-100 pt-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <input
-                      type="datetime-local"
-                      value={newSafetyStartsAt}
-                      onChange={(e) => setNewSafetyStartsAt(e.target.value)}
-                      className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
+                      type="search"
+                      value={adminUserSearch}
+                      onChange={(e) => setAdminUserSearch(e.target.value)}
+                      placeholder="Search users by name, rank, unit or phone"
+                      className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600 sm:max-w-sm"
                     />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-zinc-500">
-                      Ends
-                    </label>
-                    <input
-                      type="datetime-local"
-                      value={newSafetyEndsAt}
-                      onChange={(e) => setNewSafetyEndsAt(e.target.value)}
-                      className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
-                    />
-                  </div>
-                </div>
-                <Button
-                  type="submit"
-                  className="w-full bg-red-600 hover:bg-red-700 sm:w-fit"
-                >
-                  <Plus className="size-4 mr-1" />
-                  Add message
-                </Button>
-              </form>
-            </div>
-
-            <div className="grid gap-6 lg:grid-cols-2">
-              <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-sm space-y-3">
-                <h4 className="text-sm font-bold uppercase tracking-wider text-zinc-500">
-                  Users
-                </h4>
-                {isLoadingAdmin ? (
-                  <p className="py-6 text-center text-sm text-zinc-500">
-                    Loading admin data...
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {adminUsers.map((user) => (
-                      <div
-                        key={user.id}
-                        className="flex items-center justify-between gap-3 rounded-lg border border-zinc-100 p-3"
+                    <div className="flex items-center gap-2">
+                      {hasAdminUserChanges && (
+                        <span className="text-xs font-semibold text-amber-700">
+                          Unsaved changes
+                        </span>
+                      )}
+                      <Button
+                        type="button"
+                        onClick={handleSaveAdminUsers}
+                        disabled={!hasAdminUserChanges || isSavingAdminUsers}
+                        className="bg-red-600 hover:bg-red-700"
                       >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-bold text-zinc-900">
-                            {user.rank ? `${user.rank} ` : ""}
-                            {user.name}
-                          </p>
-                          <p className="truncate text-xs text-zinc-500">
-                            {user.unit || user.depot || "No unit"} ·{" "}
+                        {isSavingAdminUsers ? "Saving..." : "Save"}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {isLoadingAdmin ? (
+                    <p className="py-6 text-center text-sm text-zinc-500">
+                      Loading admin data...
+                    </p>
+                  ) : (
+                    <div className="overflow-hidden rounded-lg border border-zinc-200">
+                      <div className="grid grid-cols-[1.5fr_1fr_auto] gap-3 bg-zinc-50 px-3 py-2 text-xs font-bold uppercase tracking-wider text-zinc-500">
+                        <span>User</span>
+                        <span>Role</span>
+                        <span className="text-right">Admin</span>
+                      </div>
+                      {filteredAdminUsers.map((user) => (
+                        <div
+                          key={user.id}
+                          className="grid grid-cols-[1.5fr_1fr_auto] items-center gap-3 border-t border-zinc-100 px-3 py-3"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-bold text-zinc-900">
+                              {user.rank ? `${user.rank} ` : ""}
+                              {user.name}
+                            </p>
+                            <p className="truncate text-xs text-zinc-500">
+                              {user.phone || "No phone"} ·{" "}
+                              {user.unit || user.depot || "No unit"}
+                            </p>
+                          </div>
+                          <span className="text-xs font-semibold text-zinc-600">
                             {user.is_technician ? "Technician" : "Combatant"}
-                          </p>
-                        </div>
-                        <label className="flex shrink-0 items-center gap-2 text-xs font-semibold text-zinc-600">
-                          Admin
+                          </span>
                           <input
                             type="checkbox"
-                            className="size-4 accent-red-700"
-                            checked={user.is_admin}
+                            aria-label={`Set admin access for ${user.name}`}
+                            className="ml-auto size-4 accent-red-700"
+                            checked={adminDraftAdmins[user.id] === true}
                             disabled={user.id === profile.id}
                             onChange={(e) =>
-                              handleToggleAdmin(user.id, e.target.checked)
+                              setAdminDraftAdmins((draft) => ({
+                                ...draft,
+                                [user.id]: e.target.checked,
+                              }))
                             }
                           />
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-sm space-y-3">
-                <h4 className="text-sm font-bold uppercase tracking-wider text-zinc-500">
-                  Safety Schedule
-                </h4>
-                <div className="space-y-2">
-                  {adminSafetyMessages.map((message) => (
-                    <div
-                      key={message.id}
-                      className="rounded-lg border border-zinc-100 p-3"
-                    >
-                      <p className="text-sm font-medium text-zinc-800">
-                        {message.message}
-                      </p>
-                      <p className="mt-1 text-[11px] font-semibold text-zinc-500">
-                        {message.starts_at
-                          ? format(new Date(message.starts_at), "dd MMM yyyy HH:mm")
-                          : "Always on"}{" "}
-                        to{" "}
-                        {message.ends_at
-                          ? format(new Date(message.ends_at), "dd MMM yyyy HH:mm")
-                          : "no end"}
-                      </p>
+                        </div>
+                      ))}
+                      {!filteredAdminUsers.length && (
+                        <p className="border-t border-zinc-100 py-6 text-center text-sm text-zinc-500">
+                          No users found.
+                        </p>
+                      )}
                     </div>
-                  ))}
-                  {!adminSafetyMessages.length && (
-                    <p className="py-6 text-center text-sm text-zinc-500">
-                      No safety messages added yet.
-                    </p>
                   )}
                 </div>
-              </div>
+              )}
+
+              {adminActiveTab === "safety" && (
+                <div className="grid gap-6 border-t border-zinc-100 pt-4 lg:grid-cols-2">
+                  <form
+                    onSubmit={handleCreateSafetyMessage}
+                    className="space-y-3"
+                  >
+                    <label className="text-sm font-semibold text-zinc-700">
+                      Safety message
+                      <RequiredMark />
+                    </label>
+                    <textarea
+                      value={newSafetyMessage}
+                      onChange={(e) => setNewSafetyMessage(e.target.value)}
+                      required
+                      className="min-h-20 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-red-600 focus:ring-3 focus:ring-red-600/15"
+                    />
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-zinc-500">
+                          Starts
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={newSafetyStartsAt}
+                          onChange={(e) => setNewSafetyStartsAt(e.target.value)}
+                          className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-zinc-500">
+                          Ends
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={newSafetyEndsAt}
+                          onChange={(e) => setNewSafetyEndsAt(e.target.value)}
+                          className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      type="submit"
+                      className="w-full bg-red-600 hover:bg-red-700 sm:w-fit"
+                    >
+                      <Plus className="size-4 mr-1" />
+                      Add message
+                    </Button>
+                  </form>
+
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-bold uppercase tracking-wider text-zinc-500">
+                      Safety Schedule
+                    </h4>
+                    {adminSafetyMessages.map((message) => (
+                      <div
+                        key={message.id}
+                        className="rounded-lg border border-zinc-100 p-3"
+                      >
+                        <p className="text-sm font-medium text-zinc-800">
+                          {message.message}
+                        </p>
+                        <p className="mt-1 text-[11px] font-semibold text-zinc-500">
+                          {message.starts_at
+                            ? format(
+                                new Date(message.starts_at),
+                                "dd MMM yyyy HH:mm",
+                              )
+                            : "Always on"}{" "}
+                          to{" "}
+                          {message.ends_at
+                            ? format(
+                                new Date(message.ends_at),
+                                "dd MMM yyyy HH:mm",
+                              )
+                            : "no end"}
+                        </p>
+                      </div>
+                    ))}
+                    {!adminSafetyMessages.length && (
+                      <p className="py-6 text-center text-sm text-zinc-500">
+                        No safety messages added yet.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -2654,11 +2611,13 @@ export default function Home() {
                     {selectedVehicle.driver}
                   </p>
                   <p className="text-xs text-zinc-500 font-semibold">
-                    {selectedVehicle.driver_unit || selectedVehicle.driver_depot}
+                    {selectedVehicle.driver_unit ||
+                      selectedVehicle.driver_depot}
                   </p>
                   {selectedVehicle.driver_phone && (
                     <a
-                      href={`tel:${selectedVehicle.driver_phone}`}
+                      target="_blank"
+                      href={`https://wa.me/+65${selectedVehicle.driver_phone}`}
                       className="text-xs text-red-600 font-bold mt-1 inline-block hover:underline"
                     >
                       {selectedVehicle.driver_phone}
@@ -2801,85 +2760,89 @@ export default function Home() {
 
             {/* Latest Turret ESC Section */}
             {profile.is_technician && (
-            <div className="space-y-2">
-              <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                Latest Turret ESC Checklist
-              </h3>
-              {latestEsc ? (
-                <div className="border border-zinc-200 rounded-xl p-4 bg-zinc-50/25 space-y-3">
-                  <div className="text-[11px] text-zinc-500 font-medium">
-                    Submitted by{" "}
-                    <strong className="text-zinc-800">
-                      {latestEsc.user_name}
-                    </strong>{" "}
-                    &nbsp;·&nbsp; {formatLocalTime(latestEsc.created_at)}
-                  </div>
+              <div className="space-y-2">
+                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                  Latest Turret ESC Checklist
+                </h3>
+                {latestEsc ? (
+                  <div className="border border-zinc-200 rounded-xl p-4 bg-zinc-50/25 space-y-3">
+                    <div className="text-[11px] text-zinc-500 font-medium">
+                      Submitted by{" "}
+                      <strong className="text-zinc-800">
+                        {latestEsc.user_name}
+                      </strong>{" "}
+                      &nbsp;·&nbsp; {formatLocalTime(latestEsc.created_at)}
+                    </div>
 
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
-                    {[
-                      ["ICS", latestEsc.ics],
-                      ["GSU", latestEsc.gsu],
-                      ["WIM", latestEsc.wim],
-                      ["Trav Actuator", latestEsc.trav_actuator],
-                      ["Elev Actuator", latestEsc.elev_actuator],
-                      ["GCU", latestEsc.gcu],
-                      ["MDCU", latestEsc.mdcu],
-                      ["PSU", latestEsc.psu],
-                      ["Gun Gyro", latestEsc.gun_gyro],
-                      ["Conv Ass", latestEsc.conv_ass],
-                      ["Boost Box Ass", latestEsc.boost_box_ass],
-                      ["Slip Ring", latestEsc.slip_ring],
-                      ["Turr E-stop", latestEsc.turr_estop],
-                      ["Upplink Echute", latestEsc.upplink_echute],
-                      ["Upplink Splate", latestEsc.upplink_splate],
-                      ["Lowlink Splate", latestEsc.lowlink_splate],
-                      ["Lowlink Echute", latestEsc.lowlink_echute],
-                      ["Uppflex Chute", latestEsc.uppflex_chute],
-                      ["Lowflex Chute", latestEsc.lowflex_chute],
-                      ["LWS Comp", latestEsc.lws_comp],
-                    ].map(([lbl, val]) => (
-                      <div
-                        key={lbl as string}
-                        className="flex justify-between items-center py-1 border-b border-zinc-100/50"
-                      >
-                        <span className="text-zinc-500 font-medium">{lbl}</span>
-                        {val === null || val === undefined ? (
-                          <span className="text-zinc-400">—</span>
-                        ) : val ? (
-                          <span className="text-emerald-600 font-extrabold">
-                            ✓
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
+                      {[
+                        ["ICS", latestEsc.ics],
+                        ["GSU", latestEsc.gsu],
+                        ["WIM", latestEsc.wim],
+                        ["Trav Actuator", latestEsc.trav_actuator],
+                        ["Elev Actuator", latestEsc.elev_actuator],
+                        ["GCU", latestEsc.gcu],
+                        ["MDCU", latestEsc.mdcu],
+                        ["PSU", latestEsc.psu],
+                        ["Gun Gyro", latestEsc.gun_gyro],
+                        ["Conv Ass", latestEsc.conv_ass],
+                        ["Boost Box Ass", latestEsc.boost_box_ass],
+                        ["Slip Ring", latestEsc.slip_ring],
+                        ["Turr E-stop", latestEsc.turr_estop],
+                        ["Upplink Echute", latestEsc.upplink_echute],
+                        ["Upplink Splate", latestEsc.upplink_splate],
+                        ["Lowlink Splate", latestEsc.lowlink_splate],
+                        ["Lowlink Echute", latestEsc.lowlink_echute],
+                        ["Uppflex Chute", latestEsc.uppflex_chute],
+                        ["Lowflex Chute", latestEsc.lowflex_chute],
+                        ["LWS Comp", latestEsc.lws_comp],
+                      ].map(([lbl, val]) => (
+                        <div
+                          key={lbl as string}
+                          className="flex justify-between items-center py-1 border-b border-zinc-100/50"
+                        >
+                          <span className="text-zinc-500 font-medium">
+                            {lbl}
                           </span>
-                        ) : (
-                          <span className="text-red-600 font-extrabold">✗</span>
-                        )}
+                          {val === null || val === undefined ? (
+                            <span className="text-zinc-400">—</span>
+                          ) : val ? (
+                            <span className="text-emerald-600 font-extrabold">
+                              ✓
+                            </span>
+                          ) : (
+                            <span className="text-red-600 font-extrabold">
+                              ✗
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {latestEsc.scu !== null && (
+                      <div className="text-xs font-semibold text-zinc-700 mt-2">
+                        SCU: {latestEsc.scu} &nbsp;·&nbsp; DCU: {latestEsc.dcu}
                       </div>
-                    ))}
+                    )}
+
+                    {latestEsc.fault_list && (
+                      <div className="text-xs font-bold text-red-700 bg-red-50 p-2.5 rounded-lg border border-red-100">
+                        Faults: {latestEsc.fault_list}
+                      </div>
+                    )}
+
+                    {latestEsc.notes && (
+                      <p className="text-xs italic text-zinc-500 border-t border-zinc-100 pt-2">
+                        {latestEsc.notes}
+                      </p>
+                    )}
                   </div>
-
-                  {latestEsc.scu !== null && (
-                    <div className="text-xs font-semibold text-zinc-700 mt-2">
-                      SCU: {latestEsc.scu} &nbsp;·&nbsp; DCU: {latestEsc.dcu}
-                    </div>
-                  )}
-
-                  {latestEsc.fault_list && (
-                    <div className="text-xs font-bold text-red-700 bg-red-50 p-2.5 rounded-lg border border-red-100">
-                      Faults: {latestEsc.fault_list}
-                    </div>
-                  )}
-
-                  {latestEsc.notes && (
-                    <p className="text-xs italic text-zinc-500 border-t border-zinc-100 pt-2">
-                      {latestEsc.notes}
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-6 text-sm font-semibold text-zinc-400 bg-zinc-50 border border-dashed border-zinc-200 rounded-lg">
-                  No checklists submitted yet for this vehicle.
-                </div>
-              )}
-            </div>
+                ) : (
+                  <div className="text-center py-6 text-sm font-semibold text-zinc-400 bg-zinc-50 border border-dashed border-zinc-200 rounded-lg">
+                    No checklists submitted yet for this vehicle.
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Description/Faults notes */}
@@ -3084,11 +3047,13 @@ export default function Home() {
                     {selectedDriveout.driver}
                   </p>
                   <p className="text-xs text-zinc-500 font-semibold">
-                    {selectedDriveout.driver_unit || selectedDriveout.driver_depot}
+                    {selectedDriveout.driver_unit ||
+                      selectedDriveout.driver_depot}
                   </p>
                   {selectedDriveout.driver_phone && (
                     <a
-                      href={`tel:${selectedDriveout.driver_phone}`}
+                      target="_blank"
+                      href={`https://wa.me/+65${selectedDriveout.driver_phone}`}
                       className="text-xs text-red-600 font-bold mt-1 inline-block hover:underline"
                     >
                       {selectedDriveout.driver_phone}
@@ -3265,7 +3230,7 @@ export default function Home() {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="overflow-y-auto p-6 flex-1 space-y-4">
+            <CardContent className="overflow-y-auto px-6 flex-1 space-y-4">
               <form onSubmit={handleCheckinSubmit} className="space-y-4">
                 {formError && (
                   <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
@@ -3277,15 +3242,23 @@ export default function Home() {
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-zinc-700">
                       Licence Plate
+                      <RequiredMark />
                     </label>
                     <input
                       type="text"
                       value={ciPlate}
-                      onChange={(e) => setCiPlate(e.target.value)}
-                      placeholder="e.g. MID87XXX"
+                      onChange={(e) =>
+                        setCiPlate(e.target.value.replace(/\D/g, ""))
+                      }
+                      placeholder="e.g. 87000"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       required
-                      className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600 focus:ring-3 focus:ring-red-600/15 uppercase"
+                      className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600 focus:ring-3 focus:ring-red-600/15"
                     />
+                    <p className="text-[10px] font-medium text-zinc-500">
+                      Enter numbers only. MID is added automatically.
+                    </p>
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-zinc-700">
@@ -3304,13 +3277,14 @@ export default function Home() {
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-zinc-700">
                     Driver Name
+                    <RequiredMark />
                   </label>
                   <input
                     type="text"
                     value={ciDriver}
-                    onChange={(e) => setCiDriver(e.target.value)}
+                    readOnly
                     placeholder="Full name"
-                    className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
+                    className="h-10 w-full cursor-not-allowed rounded-md border border-zinc-200 bg-zinc-50 px-3 text-sm outline-none text-zinc-600"
                   />
                 </div>
 
@@ -3318,25 +3292,27 @@ export default function Home() {
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-zinc-700">
                       Driver Phone
+                      <RequiredMark />
                     </label>
                     <input
                       type="tel"
                       value={ciDriverPhone}
-                      onChange={(e) => setCiDriverPhone(e.target.value)}
+                      readOnly
                       placeholder="+65 9XXX XXXX"
-                      className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
+                      className="h-10 w-full cursor-not-allowed rounded-md border border-zinc-200 bg-zinc-50 px-3 text-sm outline-none text-zinc-600"
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-zinc-700">
                       Driver Unit
+                      <RequiredMark />
                     </label>
                     <input
                       type="text"
                       value={ciDriverUnit}
-                      onChange={(e) => setCiDriverUnit(e.target.value)}
+                      readOnly
                       placeholder="e.g. 11FMD"
-                      className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
+                      className="h-10 w-full cursor-not-allowed rounded-md border border-zinc-200 bg-zinc-50 px-3 text-sm outline-none text-zinc-600"
                     />
                   </div>
                 </div>
@@ -3345,10 +3321,14 @@ export default function Home() {
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-zinc-700">
                       Level
+                      <RequiredMark />
                     </label>
                     <select
                       value={ciLevel}
-                      onChange={(e) => setCiLevel(e.target.value)}
+                      onChange={(e) => {
+                        setCiLevel(e.target.value);
+                        setCiLot("");
+                      }}
                       className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
                     >
                       <option value="" disabled>
@@ -3364,15 +3344,33 @@ export default function Home() {
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-zinc-700">
                       Lot No.
+                      <RequiredMark />
                     </label>
-                    <input
-                      type="text"
+                    <select
                       value={ciLot}
                       onChange={(e) => setCiLot(e.target.value)}
-                      placeholder="e.g. A5"
                       required
-                      className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600 uppercase"
-                    />
+                      className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
+                    >
+                      <option value="" disabled>
+                        Select lot
+                      </option>
+                      {ciLevelLots.map((lot) => {
+                        const occupiedVehicle =
+                          ciOccupiedLots[normalizeParkingValue(lot)];
+
+                        return (
+                          <option
+                            key={lot}
+                            value={lot}
+                            disabled={Boolean(occupiedVehicle)}
+                          >
+                            {lot}
+                            {occupiedVehicle ? " (occupied)" : ""}
+                          </option>
+                        );
+                      })}
+                    </select>
                   </div>
                 </div>
 
@@ -3383,6 +3381,7 @@ export default function Home() {
                     </label>
                     <input
                       type="number"
+                      min="0"
                       value={ciOdometer}
                       onChange={(e) => setCiOdometer(e.target.value)}
                       placeholder="e.g. 50000"
@@ -3395,6 +3394,7 @@ export default function Home() {
                     </label>
                     <input
                       type="number"
+                      min="0"
                       step="0.1"
                       value={ciEngineHours}
                       onChange={(e) => setCiEngineHours(e.target.value)}
@@ -3411,6 +3411,7 @@ export default function Home() {
                   <div className="grid grid-cols-2 gap-4">
                     <input
                       type="number"
+                      min="0"
                       step="0.1"
                       value={ciBattStarterV}
                       onChange={(e) => setCiBattStarterV(e.target.value)}
@@ -3419,6 +3420,8 @@ export default function Home() {
                     />
                     <input
                       type="number"
+                      min="0"
+                      max="100"
                       value={ciBattStarterPct}
                       onChange={(e) => setCiBattStarterPct(e.target.value)}
                       placeholder="Percentage %"
@@ -3434,6 +3437,7 @@ export default function Home() {
                   <div className="grid grid-cols-2 gap-4">
                     <input
                       type="number"
+                      min="0"
                       step="0.1"
                       value={ciBattAuxV}
                       onChange={(e) => setCiBattAuxV(e.target.value)}
@@ -3442,6 +3446,8 @@ export default function Home() {
                     />
                     <input
                       type="number"
+                      min="0"
+                      max="100"
                       value={ciBattAuxPct}
                       onChange={(e) => setCiBattAuxPct(e.target.value)}
                       placeholder="Percentage %"
@@ -3461,6 +3467,7 @@ export default function Home() {
                       </label>
                       <input
                         type="number"
+                        min="0"
                         value={ciFuelL}
                         onChange={(e) => setCiFuelL(e.target.value)}
                         placeholder="e.g. 1140"
@@ -3473,6 +3480,8 @@ export default function Home() {
                       </label>
                       <input
                         type="number"
+                        min="0"
+                        max="100"
                         value={ciFuelPct}
                         onChange={(e) => setCiFuelPct(e.target.value)}
                         placeholder="e.g. 100"
@@ -3486,12 +3495,41 @@ export default function Home() {
                   <label className="text-xs font-semibold text-zinc-700">
                     🧯 Fire Extinguisher Expiry Date
                   </label>
-                  <input
-                    type="date"
-                    value={ciFireExpiry}
-                    onChange={(e) => setCiFireExpiry(e.target.value)}
-                    className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className={cn(
+                          "h-10 w-full justify-between rounded-md border-zinc-200 bg-white px-3 text-left text-sm font-normal hover:bg-zinc-50 focus:border-red-600 focus:ring-3 focus:ring-red-600/15",
+                          !ciFireExpiry && "text-muted-foreground",
+                        )}
+                      >
+                        <span>
+                          {ciFireExpiry
+                            ? format(parseDateInput(ciFireExpiry)!, "dd MMM yyyy")
+                            : "Select date"}
+                        </span>
+                        <Calendar className="size-4 text-zinc-400" aria-hidden="true" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-auto p-0 bg-white border border-zinc-200 shadow-md rounded-md"
+                      align="start"
+                    >
+                      <DatePickerCalendar
+                        mode="single"
+                        selected={parseDateInput(ciFireExpiry)}
+                        captionLayout="dropdown"
+                        navLayout="after"
+                        startMonth={fireExpiryCalendarStart}
+                        endMonth={fireExpiryCalendarEnd}
+                        onSelect={(date) => {
+                          setCiFireExpiry(date ? toDateInputValue(date) : "");
+                        }}
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 <div className="space-y-1">
@@ -3636,12 +3674,36 @@ export default function Home() {
                     <label className="text-xs font-semibold text-zinc-700">
                       Lot No.
                     </label>
-                    <input
-                      type="text"
+                    <select
                       value={upLot}
                       onChange={(e) => setUpLot(e.target.value)}
-                      className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600 uppercase"
-                    />
+                      className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
+                    >
+                      <option value="" disabled>
+                        Select lot
+                      </option>
+                      {updateLevelLots.map((lot) => {
+                        const occupiedVehicle =
+                          updateOccupiedLots[normalizeParkingValue(lot)];
+                        const isCurrentVehicle =
+                          occupiedVehicle?.id === selectedVehicle.id;
+
+                        return (
+                          <option
+                            key={lot}
+                            value={lot}
+                            disabled={
+                              Boolean(occupiedVehicle) && !isCurrentVehicle
+                            }
+                          >
+                            {lot}
+                            {occupiedVehicle && !isCurrentVehicle
+                              ? " (occupied)"
+                              : ""}
+                          </option>
+                        );
+                      })}
+                    </select>
                   </div>
                 </div>
 
@@ -3652,6 +3714,7 @@ export default function Home() {
                     </label>
                     <input
                       type="number"
+                      min="0"
                       value={upOdometer}
                       onChange={(e) => setUpOdometer(e.target.value)}
                       className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
@@ -3663,6 +3726,7 @@ export default function Home() {
                     </label>
                     <input
                       type="number"
+                      min="0"
                       step="0.1"
                       value={upEngineHours}
                       onChange={(e) => setUpEngineHours(e.target.value)}
@@ -3678,6 +3742,7 @@ export default function Home() {
                   <div className="grid grid-cols-2 gap-4">
                     <input
                       type="number"
+                      min="0"
                       step="0.1"
                       value={upBattStarterV}
                       onChange={(e) => setUpBattStarterV(e.target.value)}
@@ -3686,6 +3751,8 @@ export default function Home() {
                     />
                     <input
                       type="number"
+                      min="0"
+                      max="100"
                       value={upBattStarterPct}
                       onChange={(e) => setUpBattStarterPct(e.target.value)}
                       placeholder="Percentage %"
@@ -3701,6 +3768,7 @@ export default function Home() {
                   <div className="grid grid-cols-2 gap-4">
                     <input
                       type="number"
+                      min="0"
                       step="0.1"
                       value={upBattAuxV}
                       onChange={(e) => setUpBattAuxV(e.target.value)}
@@ -3709,6 +3777,8 @@ export default function Home() {
                     />
                     <input
                       type="number"
+                      min="0"
+                      max="100"
                       value={upBattAuxPct}
                       onChange={(e) => setUpBattAuxPct(e.target.value)}
                       placeholder="Percentage %"
@@ -3728,6 +3798,7 @@ export default function Home() {
                       </label>
                       <input
                         type="number"
+                        min="0"
                         value={upFuelL}
                         onChange={(e) => setUpFuelL(e.target.value)}
                         className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
@@ -3739,6 +3810,8 @@ export default function Home() {
                       </label>
                       <input
                         type="number"
+                        min="0"
+                        max="100"
                         value={upFuelPct}
                         onChange={(e) => setUpFuelPct(e.target.value)}
                         className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
@@ -3751,12 +3824,41 @@ export default function Home() {
                   <label className="text-xs font-semibold text-zinc-700">
                     🧯 Fire Extinguisher Expiry Date
                   </label>
-                  <input
-                    type="date"
-                    value={upFireExpiry}
-                    onChange={(e) => setUpFireExpiry(e.target.value)}
-                    className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className={cn(
+                          "h-10 w-full justify-between rounded-md border-zinc-200 bg-white px-3 text-left text-sm font-normal hover:bg-zinc-50 focus:border-red-600 focus:ring-3 focus:ring-red-600/15",
+                          !upFireExpiry && "text-muted-foreground",
+                        )}
+                      >
+                        <span>
+                          {upFireExpiry
+                            ? format(parseDateInput(upFireExpiry)!, "dd MMM yyyy")
+                            : "Select date"}
+                        </span>
+                        <Calendar className="size-4 text-zinc-400" aria-hidden="true" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-auto p-0 bg-white border border-zinc-200 shadow-md rounded-md"
+                      align="start"
+                    >
+                      <DatePickerCalendar
+                        mode="single"
+                        selected={parseDateInput(upFireExpiry)}
+                        captionLayout="dropdown"
+                        navLayout="after"
+                        startMonth={fireExpiryCalendarStart}
+                        endMonth={fireExpiryCalendarEnd}
+                        onSelect={(date) => {
+                          setUpFireExpiry(date ? toDateInputValue(date) : "");
+                        }}
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 <div className="space-y-1">
@@ -3837,6 +3939,3 @@ export default function Home() {
     </div>
   );
 }
-
-
-

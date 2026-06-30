@@ -1,7 +1,56 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getRequestSession } from "@/lib/api-auth";
-import { updateVehicle, deleteVehicle, insertHistory } from "@/lib/supabase/server";
+import { updateVehicle, moveOutVehicle, insertHistory } from "@/lib/supabase/server";
+
+const NUMERIC_FIELDS = [
+  ["odometer", "Odometer"],
+  ["engine_hours", "Engine hours"],
+  ["starter_v", "Starter voltage"],
+  ["aux_v", "Auxiliary voltage"],
+  ["fuel_l", "Fuel litres"],
+] as const;
+
+const PERCENTAGE_FIELDS = [
+  ["starter_pct", "Starter percentage"],
+  ["aux_pct", "Auxiliary percentage"],
+  ["fuel_pct", "Fuel percentage"],
+] as const;
+
+function parseNonNegativeNumber(value: unknown, label: string) {
+  if (value === null || value === undefined || value === "") return null;
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new Error(`${label} must be a non-negative number`);
+  }
+
+  return parsed;
+}
+
+function parsePercentage(value: unknown, label: string) {
+  const parsed = parseNonNegativeNumber(value, label);
+  if (parsed !== null && parsed > 100) {
+    throw new Error(`${label} must be 100 or below`);
+  }
+
+  return parsed === null ? null : Math.trunc(parsed);
+}
+
+function validateVehicleNumbers(row: Record<string, unknown> | undefined) {
+  if (!row) return;
+
+  NUMERIC_FIELDS.forEach(([field, label]) => {
+    if (field in row) row[field] = parseNonNegativeNumber(row[field], label);
+  });
+  PERCENTAGE_FIELDS.forEach(([field, label]) => {
+    if (field in row) row[field] = parsePercentage(row[field], label);
+  });
+}
+
+function isValidationError(error: unknown) {
+  return error instanceof Error && error.message.includes("must be");
+}
 
 export async function PATCH(
   request: NextRequest,
@@ -18,6 +67,8 @@ export async function PATCH(
   try {
     const body = await request.json();
     const { historyRow, ...updateData } = body;
+    validateVehicleNumbers(updateData);
+    validateVehicleNumbers(historyRow);
 
     if (historyRow) {
       await insertHistory({
@@ -30,7 +81,10 @@ export async function PATCH(
     return NextResponse.json({ success: true, vehicle: data });
   } catch (err) {
     console.error("Update vehicle failed:", err);
-    return NextResponse.json({ error: err instanceof Error ? err.message : "Update failed" }, { status: 500 });
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Update failed" },
+      { status: isValidationError(err) ? 400 : 500 },
+    );
   }
 }
 
@@ -58,8 +112,8 @@ export async function DELETE(
       });
     }
 
-    await deleteVehicle(id);
-    return NextResponse.json({ success: true });
+    const vehicle = await moveOutVehicle(id);
+    return NextResponse.json({ success: true, vehicle });
   } catch (err) {
     console.error("Drive out failed:", err);
     return NextResponse.json({ error: err instanceof Error ? err.message : "Drive out failed" }, { status: 500 });

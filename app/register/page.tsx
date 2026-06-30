@@ -110,6 +110,14 @@ const parseLocalDate = (dateStr: string) => {
   );
 };
 
+function RequiredMark() {
+  return (
+    <span className="ml-0.5 text-red-600" aria-label="required">
+      *
+    </span>
+  );
+}
+
 export default function RegisterPage() {
   const auth = useAuth();
   const router = useRouter();
@@ -244,6 +252,10 @@ export default function RegisterPage() {
   }
 
   const selectedDate = parseLocalDate(ordDate);
+  const currentYear = new Date().getFullYear();
+  const selectedYear = selectedDate?.getFullYear() ?? currentYear;
+  const ordCalendarStart = new Date(Math.min(currentYear - 5, selectedYear), 0);
+  const ordCalendarEnd = new Date(Math.max(currentYear + 15, selectedYear), 11);
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-zinc-100 px-6 py-12">
@@ -273,6 +285,7 @@ export default function RegisterPage() {
               <label className="flex items-center gap-2 text-sm font-medium">
                 <IdCard className="size-4 text-red-700" aria-hidden="true" />
                 Rank
+                <RequiredMark />
               </label>
               <Select value={rank} onValueChange={setRank}>
                 <SelectTrigger className="w-full h-10 bg-white border-zinc-200 focus:border-red-600 focus:ring-3 focus:ring-red-600/15 justify-between">
@@ -306,6 +319,7 @@ export default function RegisterPage() {
                   aria-hidden="true"
                 />
                 ORD date
+                <RequiredMark />
               </label>
               <Popover>
                 <PopoverTrigger asChild>
@@ -335,6 +349,10 @@ export default function RegisterPage() {
                   <Calendar
                     mode="single"
                     selected={selectedDate}
+                    captionLayout="dropdown"
+                    navLayout="after"
+                    startMonth={ordCalendarStart}
+                    endMonth={ordCalendarEnd}
                     onSelect={(date) => {
                       if (date) {
                         const year = date.getFullYear();
@@ -358,6 +376,7 @@ export default function RegisterPage() {
                 <label className="flex items-center gap-2 text-sm font-medium">
                   <Phone className="size-4 text-red-700" aria-hidden="true" />
                   Phone
+                  <RequiredMark />
                 </label>
                 <input
                   type="tel"
@@ -371,6 +390,7 @@ export default function RegisterPage() {
                 <label className="flex items-center gap-2 text-sm font-medium">
                   <IdCard className="size-4 text-red-700" aria-hidden="true" />
                   Unit
+                  <RequiredMark />
                 </label>
                 <input
                   type="text"

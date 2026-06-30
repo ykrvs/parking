@@ -360,6 +360,7 @@ export async function getVehicles() {
   const { data, error } = await supabase
     .from("vehicles")
     .select("*")
+    .not("lot", "is", null)
     .order("check_in", { ascending: false });
   if (error) throw error;
   return data || [];
@@ -419,6 +420,19 @@ export async function deleteVehicle(id: string) {
   const { error } = await supabase.from("vehicles").delete().eq("id", id);
   if (error) throw error;
   return { success: true };
+}
+
+export async function moveOutVehicle(id: string) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from("vehicles")
+    .update({ lot: null })
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 }
 
 export async function getHistory(vehicleId?: string, onlyCheckouts: boolean = false) {
