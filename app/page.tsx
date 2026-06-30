@@ -1939,13 +1939,13 @@ export default function Home() {
               </div>
 
               {/* Scrollable Map Area */}
-              <div className="w-full overflow-x-auto select-none bg-zinc-50 border border-zinc-100 rounded-lg p-2 flex justify-center">
+              <div className="mx-auto w-full max-w-[300px] overflow-x-auto select-none bg-zinc-50 border border-zinc-100 rounded-lg p-2 flex justify-center">
                                 {isLoadingParkingConfig ? (
                   <p className="py-10 text-center text-sm font-medium text-zinc-500">
                     Loading parking layout...
                   </p>
                 ) : selectedLevelConfig ? (
-                  <div className="inline-flex min-w-max gap-1.5 rounded-lg bg-white/70 p-3">
+                  <div className="inline-flex w-fit gap-1 rounded-lg bg-white/70 p-2">
                     {(selectedLevelConfig.layout?.columns?.length
                       ? selectedLevelConfig.layout.columns
                       : [
@@ -1962,7 +1962,7 @@ export default function Home() {
                         return (
                           <div
                             key={columnKey}
-                            className="flex min-h-full w-5 items-center justify-center rounded-md bg-zinc-50 text-[10px] font-bold tracking-[0.18em] text-zinc-400"
+                            className="flex min-h-full w-4 items-center justify-center rounded-md bg-zinc-50 text-[9px] font-bold tracking-[0.12em] text-zinc-400"
                           >
                             <span className="[writing-mode:vertical-rl] rotate-180">
                               {column.label || "DRIVEWAY"}
@@ -1972,7 +1972,7 @@ export default function Home() {
                       }
 
                       if (column.type === "spacer") {
-                        return <div key={columnKey} className="w-4" />;
+                        return <div key={columnKey} className="w-3" />;
                       }
 
                       const cells =
@@ -1986,7 +1986,7 @@ export default function Home() {
                       return (
                         <div
                           key={columnKey}
-                          className="grid auto-rows-[1.75rem] gap-1.5 self-start sm:auto-rows-[2rem]"
+                          className="grid auto-rows-[1.5rem] gap-1 self-start"
                         >
                           {cells.map((cell, cellIndex) => {
                             const cellKey = `${columnKey}-${cell.id}-${cellIndex}`;
@@ -1998,7 +1998,7 @@ export default function Home() {
                                   style={{
                                     gridRow: `span ${cell.rowSpan ?? 1}`,
                                   }}
-                                  className="flex w-12 flex-col items-center justify-center rounded-md border border-sky-200 bg-sky-50 px-1 text-center text-[10px] font-extrabold leading-tight text-sky-800 sm:w-14 sm:text-[11px]"
+                                  className="flex w-8 flex-col items-center justify-center rounded-md border border-sky-200 bg-sky-50 px-0.5 text-center text-[8px] font-extrabold leading-tight text-sky-800"
                                 >
                                   {cell.label.split("\n").map((line) => (
                                     <span key={line}>{line}</span>
@@ -2016,7 +2016,7 @@ export default function Home() {
                                 type="button"
                                 onClick={() => handleLotClick(lot, vehicle)}
                                 className={cn(
-                                  "h-full w-12 rounded-md border text-[11px] font-bold transition-colors sm:w-14",
+                                  "h-full w-8 rounded-md border text-[10px] font-bold transition-colors",
                                   vehicle
                                     ? "border-emerald-700 bg-emerald-100 text-emerald-900"
                                     : "border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50",
