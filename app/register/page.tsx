@@ -80,6 +80,22 @@ const RANK_CATEGORIES = [
       "OCT",
     ],
   },
+  {
+    label: "Military Experts",
+    ranks: [
+      "ME1T",
+      "ME1",
+      "ME2",
+      "ME3",
+      "ME4T",
+      "ME4A",
+      "ME4",
+      "ME5",
+      "ME6",
+      "ME7",
+      "ME8",
+    ],
+  },
 ];
 
 // Timezone-safe parser for YYYY-MM-DD strings
