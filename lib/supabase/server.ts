@@ -174,6 +174,16 @@ function toLegacyUnitPayload(payload: Record<string, any>) {
   return legacyPayload;
 }
 
+function withoutLegacyPlate(payload: Record<string, any>) {
+  const nextPayload: Record<string, any> = { ...payload };
+  delete nextPayload.plate;
+  return nextPayload;
+}
+
+function withVehiclePlate(record: Record<string, any>) {
+  return { ...record, plate: record.id ?? record.vehicle_id ?? record.plate };
+}
+
 export async function upsertSgidUser({ openid, name }: SgidUser) {
   const supabase = getSupabaseAdmin();
 
@@ -351,7 +361,7 @@ export async function setUserAdmin(actorId: string, targetId: string, isAdmin: b
   }
 
   if (error) throw error;
-  return data;
+  return data ? withVehiclePlate(data) : data;
 }
 
 export async function getVehicles() {
@@ -363,22 +373,23 @@ export async function getVehicles() {
     .not("lot", "is", null)
     .order("check_in", { ascending: false });
   if (error) throw error;
-  return data || [];
+  return (data || []).map(withVehiclePlate);
 }
 
 export async function checkinVehicle(vehicleData: any) {
   const supabase = getSupabaseAdmin();
   if (!supabase) return null;
+  const vehiclePayload = withoutLegacyPlate(vehicleData);
   let { data, error } = await supabase
     .from("vehicles")
-    .insert([vehicleData])
+    .upsert([vehiclePayload], { onConflict: "id" })
     .select()
     .single();
 
   if (error && error.message.toLowerCase().includes("driver_unit")) {
     const retry = await supabase
       .from("vehicles")
-      .insert([toLegacyUnitPayload(vehicleData)])
+      .upsert([toLegacyUnitPayload(vehiclePayload)], { onConflict: "id" })
       .select()
       .single();
     data = retry.data;
@@ -386,7 +397,7 @@ export async function checkinVehicle(vehicleData: any) {
   }
 
   if (error) throw error;
-  return data;
+  return data ? withVehiclePlate(data) : data;
 }
 
 export async function updateVehicle(id: string, updateData: any) {
@@ -432,7 +443,7 @@ export async function moveOutVehicle(id: string) {
     .select()
     .single();
   if (error) throw error;
-  return data;
+  return data ? withVehiclePlate(data) : data;
 }
 
 export async function getHistory(vehicleId?: string, onlyCheckouts: boolean = false) {
@@ -447,22 +458,23 @@ export async function getHistory(vehicleId?: string, onlyCheckouts: boolean = fa
   }
   const { data, error } = await query.order("created_at", { ascending: false });
   if (error) throw error;
-  return data || [];
+  return (data || []).map(withVehiclePlate);
 }
 
 export async function insertHistory(historyData: any) {
   const supabase = getSupabaseAdmin();
   if (!supabase) return null;
+  const historyPayload = withoutLegacyPlate(historyData);
   let { data, error } = await supabase
     .from("history")
-    .insert([historyData])
+    .insert([historyPayload])
     .select()
     .single();
 
   if (error && error.message.toLowerCase().includes("driver_unit")) {
     const retry = await supabase
       .from("history")
-      .insert([toLegacyUnitPayload(historyData)])
+      .insert([toLegacyUnitPayload(historyPayload)])
       .select()
       .single();
     data = retry.data;
@@ -470,7 +482,7 @@ export async function insertHistory(historyData: any) {
   }
 
   if (error) throw error;
-  return data;
+  return data ? withVehiclePlate(data) : data;
 }
 
 export async function getLatestTurretEscLog(vehicleId: string) {
@@ -484,19 +496,20 @@ export async function getLatestTurretEscLog(vehicleId: string) {
     .limit(1)
     .maybeSingle();
   if (error) throw error;
-  return data;
+  return data ? withVehiclePlate(data) : data;
 }
 
 export async function insertTurretEscLog(logData: any) {
   const supabase = getSupabaseAdmin();
   if (!supabase) return null;
+  const logPayload = withoutLegacyPlate(logData);
   const { data, error } = await supabase
     .from("turret_esc_logs")
-    .insert([logData])
+    .insert([logPayload])
     .select()
     .single();
   if (error) throw error;
-  return data;
+  return data ? withVehiclePlate(data) : data;
 }
 
 export async function getParkingConfig() {

@@ -73,13 +73,12 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    if (!body.vehicle_id || !body.plate) {
-      return NextResponse.json({ error: "vehicle_id and plate are required" }, { status: 400 });
+    if (!body.vehicle_id) {
+      return NextResponse.json({ error: "vehicle_id is required" }, { status: 400 });
     }
 
     const data = await insertTurretEscLog({
       vehicle_id: body.vehicle_id,
-      plate: body.plate,
       user_name: session.name || "Unknown",
       ics: body.ics === true,
       gsu: body.gsu === true,

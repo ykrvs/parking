@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
+import { RequiredMark } from "@/components/dashboard/required-mark";
 import {
   Popover,
   PopoverContent,
@@ -109,14 +110,6 @@ const parseLocalDate = (dateStr: string) => {
     parseInt(parts[2], 10),
   );
 };
-
-function RequiredMark() {
-  return (
-    <span className="ml-0.5 text-red-600" aria-label="required">
-      *
-    </span>
-  );
-}
 
 export default function RegisterPage() {
   const auth = useAuth();

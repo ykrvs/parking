@@ -26,8 +26,7 @@ begin
 end $$;
 
 create table if not exists public.vehicles (
-  id uuid primary key default gen_random_uuid(),
-  plate text not null,
+  id text primary key,
   variant text null,
   driver text null,
   driver_id text null references public.users(id) on delete set null,
@@ -35,15 +34,15 @@ create table if not exists public.vehicles (
   driver_unit text null,
   level text not null,
   lot text null,
-  odometer numeric null,
-  engine_hours numeric null,
-  starter_v numeric null,
-  starter_pct integer null,
-  aux_v numeric null,
-  aux_pct integer null,
-  fuel_l numeric null,
-  fuel_pct integer null,
-  fire_ext_expiry date null,
+  odometer numeric not null,
+  engine_hours numeric not null,
+  starter_v numeric not null,
+  starter_pct integer not null,
+  aux_v numeric not null,
+  aux_pct integer not null,
+  fuel_l numeric not null,
+  fuel_pct integer not null,
+  fire_ext_expiry date not null,
   notes text null,
   check_in timestamp with time zone not null default now(),
   created_at timestamp with time zone not null default now()
@@ -54,11 +53,12 @@ create unique index if not exists vehicles_level_lot_active_key
 on public.vehicles (level, lot)
 where lot is not null;
 
-create index if not exists vehicles_plate_idx on public.vehicles (plate);
+drop index if exists vehicles_plate_idx;
 create index if not exists vehicles_check_in_idx on public.vehicles (check_in desc);
 alter table public.vehicles add column if not exists driver_unit text null;
 alter table public.vehicles add column if not exists driver_id text null references public.users(id) on delete set null;
 alter table public.vehicles alter column lot drop not null;
+alter table public.vehicles alter column id drop default;
 do $$
 begin
   if exists (
@@ -76,8 +76,7 @@ end $$;
 
 create table if not exists public.history (
   id uuid primary key default gen_random_uuid(),
-  vehicle_id uuid null,
-  plate text not null,
+  vehicle_id text null,
   variant text null,
   level text null,
   lot text null,
@@ -124,8 +123,7 @@ end $$;
 
 create table if not exists public.turret_esc_logs (
   id uuid primary key default gen_random_uuid(),
-  vehicle_id uuid not null,
-  plate text not null,
+  vehicle_id text not null,
   user_name text not null,
   ics boolean not null default false,
   gsu boolean not null default false,
@@ -157,32 +155,114 @@ create table if not exists public.turret_esc_logs (
 create index if not exists turret_esc_logs_vehicle_id_idx
 on public.turret_esc_logs (vehicle_id, created_at desc);
 
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'vehicles'
+      and column_name = 'id'
+      and data_type = 'uuid'
+  ) then
+    if exists (
+      select 1
+      from public.vehicles
+      group by plate
+      having count(*) > 1
+    ) then
+      raise exception 'Cannot migrate vehicles.id to MID plate because duplicate vehicle plates exist in public.vehicles';
+    end if;
+
+    create temporary table if not exists vehicle_id_migration_map
+    on commit drop
+    as
+    select id::text as old_id, plate as new_id
+    from public.vehicles;
+
+    alter table public.vehicles alter column id drop default;
+    alter table public.vehicles
+      alter column id type text
+      using plate;
+
+    if exists (
+      select 1
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'history'
+        and column_name = 'vehicle_id'
+        and data_type = 'uuid'
+    ) then
+      alter table public.history
+        alter column vehicle_id type text
+        using vehicle_id::text;
+
+      update public.history history
+      set vehicle_id = migration.new_id
+      from vehicle_id_migration_map migration
+      where history.vehicle_id = migration.old_id;
+    end if;
+
+    if exists (
+      select 1
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'turret_esc_logs'
+        and column_name = 'vehicle_id'
+        and data_type = 'uuid'
+    ) then
+      alter table public.turret_esc_logs
+        alter column vehicle_id type text
+        using vehicle_id::text;
+
+      update public.turret_esc_logs logs
+      set vehicle_id = migration.new_id
+      from vehicle_id_migration_map migration
+      where logs.vehicle_id = migration.old_id;
+    end if;
+  end if;
+end $$;
+
+alter table public.history
+  alter column vehicle_id type text
+  using vehicle_id::text;
+
+alter table public.turret_esc_logs
+  alter column vehicle_id type text
+  using vehicle_id::text;
+
+alter table public.vehicles drop column if exists plate;
+alter table public.history drop column if exists plate;
+alter table public.turret_esc_logs drop column if exists plate;
+
 alter table public.vehicles drop constraint if exists vehicles_non_negative_values;
 alter table public.vehicles
   add constraint vehicles_non_negative_values
   check (
-    (odometer is null or odometer >= 0) and
-    (engine_hours is null or engine_hours >= 0) and
-    (starter_v is null or starter_v >= 0) and
-    (starter_pct is null or (starter_pct >= 0 and starter_pct <= 100)) and
-    (aux_v is null or aux_v >= 0) and
-    (aux_pct is null or (aux_pct >= 0 and aux_pct <= 100)) and
-    (fuel_l is null or fuel_l >= 0) and
-    (fuel_pct is null or (fuel_pct >= 0 and fuel_pct <= 100))
+    odometer >= 0 and
+    engine_hours >= 0 and
+    starter_v >= 0 and
+    starter_pct >= 0 and starter_pct <= 100 and
+    aux_v >= 0 and
+    aux_pct >= 0 and aux_pct <= 100 and
+    fuel_l >= 0 and
+    fuel_pct >= 0 and fuel_pct <= 100 and
+    fire_ext_expiry is not null
   ) not valid;
 
 alter table public.history drop constraint if exists history_non_negative_values;
 alter table public.history
   add constraint history_non_negative_values
   check (
-    (odometer is null or odometer >= 0) and
-    (engine_hours is null or engine_hours >= 0) and
-    (starter_v is null or starter_v >= 0) and
-    (starter_pct is null or (starter_pct >= 0 and starter_pct <= 100)) and
-    (aux_v is null or aux_v >= 0) and
-    (aux_pct is null or (aux_pct >= 0 and aux_pct <= 100)) and
-    (fuel_l is null or fuel_l >= 0) and
-    (fuel_pct is null or (fuel_pct >= 0 and fuel_pct <= 100))
+    odometer >= 0 and
+    engine_hours >= 0 and
+    starter_v >= 0 and
+    starter_pct >= 0 and starter_pct <= 100 and
+    aux_v >= 0 and
+    aux_pct >= 0 and aux_pct <= 100 and
+    fuel_l >= 0 and
+    fuel_pct >= 0 and fuel_pct <= 100 and
+    fire_ext_expiry is not null
   ) not valid;
 
 alter table public.turret_esc_logs drop constraint if exists turret_esc_logs_non_negative_values;

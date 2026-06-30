@@ -41,15 +41,30 @@ function validateVehicleNumbers(row: Record<string, unknown> | undefined) {
   if (!row) return;
 
   NUMERIC_FIELDS.forEach(([field, label]) => {
-    if (field in row) row[field] = parseNonNegativeNumber(row[field], label);
+    if (field in row) {
+      const parsed = parseNonNegativeNumber(row[field], label);
+      if (parsed === null) throw new Error(`${label} is required`);
+      row[field] = parsed;
+    }
   });
   PERCENTAGE_FIELDS.forEach(([field, label]) => {
-    if (field in row) row[field] = parsePercentage(row[field], label);
+    if (field in row) {
+      const parsed = parsePercentage(row[field], label);
+      if (parsed === null) throw new Error(`${label} is required`);
+      row[field] = parsed;
+    }
   });
+
+  if ("fire_ext_expiry" in row && !row.fire_ext_expiry) {
+    throw new Error("Fire extinguisher expiry date is required");
+  }
 }
 
 function isValidationError(error: unknown) {
-  return error instanceof Error && error.message.includes("must be");
+  return (
+    error instanceof Error &&
+    (error.message.includes("must be") || error.message.includes("is required"))
+  );
 }
 
 export async function PATCH(

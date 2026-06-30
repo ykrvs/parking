@@ -17,7 +17,9 @@ function parseNonNegativeNumber(value: unknown, label: string) {
 function isValidationError(error: unknown) {
   return (
     error instanceof Error &&
-    (error.message.includes("must be") || error.message.includes("Licence plate"))
+    (error.message.includes("must be") ||
+      error.message.includes("is required") ||
+      error.message.includes("Licence plate"))
   );
 }
 
@@ -28,6 +30,24 @@ function parsePercentage(value: unknown, label: string) {
   }
 
   return parsed === null ? null : Math.trunc(parsed);
+}
+
+function parseRequiredNonNegativeNumber(value: unknown, label: string) {
+  const parsed = parseNonNegativeNumber(value, label);
+  if (parsed === null) {
+    throw new Error(`${label} is required`);
+  }
+
+  return parsed;
+}
+
+function parseRequiredPercentage(value: unknown, label: string) {
+  const parsed = parsePercentage(value, label);
+  if (parsed === null) {
+    throw new Error(`${label} is required`);
+  }
+
+  return parsed;
 }
 
 export async function GET(request: NextRequest) {
@@ -65,8 +85,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Licence plate must contain numbers only" }, { status: 400 });
     }
 
+    const plate = `MID${plateNumber}`;
+
     const data = await checkinVehicle({
-      plate: `MID${plateNumber}`,
+      id: plate,
       variant: body.variant?.trim() || "—",
       driver_id: session.openid,
       driver: body.driver?.trim() || "—",
@@ -74,15 +96,17 @@ export async function POST(request: NextRequest) {
       driver_unit: body.driver_unit?.trim() || "—",
       level: body.level,
       lot: body.lot.toUpperCase().trim(),
-      odometer: parseNonNegativeNumber(body.odometer, "Odometer"),
-      engine_hours: parseNonNegativeNumber(body.engine_hours, "Engine hours"),
-      starter_v: parseNonNegativeNumber(body.starter_v, "Starter voltage"),
-      starter_pct: parsePercentage(body.starter_pct, "Starter percentage"),
-      aux_v: parseNonNegativeNumber(body.aux_v, "Auxiliary voltage"),
-      aux_pct: parsePercentage(body.aux_pct, "Auxiliary percentage"),
-      fuel_l: parseNonNegativeNumber(body.fuel_l, "Fuel litres"),
-      fuel_pct: parsePercentage(body.fuel_pct, "Fuel percentage"),
-      fire_ext_expiry: body.fire_ext_expiry || null,
+      odometer: parseRequiredNonNegativeNumber(body.odometer, "Odometer"),
+      engine_hours: parseRequiredNonNegativeNumber(body.engine_hours, "Engine hours"),
+      starter_v: parseRequiredNonNegativeNumber(body.starter_v, "Starter voltage"),
+      starter_pct: parseRequiredPercentage(body.starter_pct, "Starter percentage"),
+      aux_v: parseRequiredNonNegativeNumber(body.aux_v, "Auxiliary voltage"),
+      aux_pct: parseRequiredPercentage(body.aux_pct, "Auxiliary percentage"),
+      fuel_l: parseRequiredNonNegativeNumber(body.fuel_l, "Fuel litres"),
+      fuel_pct: parseRequiredPercentage(body.fuel_pct, "Fuel percentage"),
+      fire_ext_expiry: body.fire_ext_expiry || (() => {
+        throw new Error("Fire extinguisher expiry date is required");
+      })(),
       notes: body.notes || null,
       check_in: new Date().toISOString(),
     });

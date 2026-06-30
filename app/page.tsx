@@ -32,6 +32,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 
+import { FireExpiryPicker } from "@/components/dashboard/fire-expiry-picker";
+import { RequiredMark } from "@/components/dashboard/required-mark";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -46,6 +48,15 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import defaultParkingConfig from "@/lib/parking-config.json";
 import { cn } from "@/lib/utils";
@@ -130,14 +141,6 @@ type AdminUserRecord = {
   depot?: string | null;
 };
 
-function RequiredMark() {
-  return (
-    <span className="ml-0.5 text-red-600" aria-label="required">
-      *
-    </span>
-  );
-}
-
 function parseDateInput(dateStr: string) {
   if (!dateStr) return undefined;
   const parts = dateStr.split("-");
@@ -158,7 +161,8 @@ function toDateInputValue(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-const DEFAULT_PARKING_LEVELS = defaultParkingConfig.levels as ParkingLevelConfig[];
+const DEFAULT_PARKING_LEVELS =
+  defaultParkingConfig.levels as ParkingLevelConfig[];
 
 function getLevelLots(level?: ParkingLevelConfig) {
   if (!level) return [];
@@ -225,6 +229,53 @@ const RANK_OPTIONS = [
   "SLTC",
   "COL",
   "BG",
+];
+
+const RANK_CATEGORIES = [
+  {
+    label: "Enlisted",
+    ranks: ["REC", "PTE", "LCP", "CPL", "CFC"],
+  },
+  {
+    label: "Specialists",
+    ranks: ["3SG", "2SG", "1SG", "SSG", "MSG", "SCT"],
+  },
+  {
+    label: "Warrant Officers",
+    ranks: ["3WO", "2WO", "1WO", "MWO", "SWO", "CWO"],
+  },
+  {
+    label: "Officers",
+    ranks: [
+      "2LT",
+      "LTA",
+      "CPT",
+      "MAJ",
+      "LTC",
+      "SLTC",
+      "COL",
+      "BG",
+      "GEN",
+      "ADM",
+      "OCT",
+    ],
+  },
+  {
+    label: "Military Experts",
+    ranks: [
+      "ME1T",
+      "ME1",
+      "ME2",
+      "ME3",
+      "ME4T",
+      "ME4A",
+      "ME4",
+      "ME5",
+      "ME6",
+      "ME7",
+      "ME8",
+    ],
+  },
 ];
 
 function LoginGate({
@@ -662,9 +713,17 @@ export default function Home() {
     parkingLevels[0];
   const selectedLevelLots = getLevelLots(selectedLevelConfig);
   const profileUnit = profile?.unit || profile?.depot || "";
-  const fireExpiryYear = new Date().getFullYear();
-  const fireExpiryCalendarStart = new Date(fireExpiryYear - 1, 0);
-  const fireExpiryCalendarEnd = new Date(fireExpiryYear + 20, 11);
+  const currentYear = new Date().getFullYear();
+  const profileOrdDate = parseDateInput(peOrdDate);
+  const profileOrdYear = profileOrdDate?.getFullYear() ?? currentYear;
+  const profileOrdCalendarStart = new Date(
+    Math.min(currentYear - 5, profileOrdYear),
+    0,
+  );
+  const profileOrdCalendarEnd = new Date(
+    Math.max(currentYear + 15, profileOrdYear),
+    11,
+  );
 
   // Handle open vehicle details
   const handleOpenVehicle = async (vehicle: any) => {
@@ -768,6 +827,20 @@ export default function Home() {
       setFormError("Licence plate must contain numbers only");
       return;
     }
+    if (
+      !ciOdometer ||
+      !ciEngineHours ||
+      !ciBattStarterV ||
+      !ciBattStarterPct ||
+      !ciBattAuxV ||
+      !ciBattAuxPct ||
+      !ciFuelL ||
+      !ciFuelPct ||
+      !ciFireExpiry
+    ) {
+      setFormError("Odometer, engine hours, battery, fuel and fire extinguisher expiry are required");
+      return;
+    }
 
     setIsSubmitting(true);
     setFormError(null);
@@ -857,6 +930,20 @@ export default function Home() {
   const handleUpdateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedVehicle) return;
+    if (
+      !upOdometer ||
+      !upEngineHours ||
+      !upBattStarterV ||
+      !upBattStarterPct ||
+      !upBattAuxV ||
+      !upBattAuxPct ||
+      !upFuelL ||
+      !upFuelPct ||
+      !upFireExpiry
+    ) {
+      setFormError("Odometer, engine hours, battery, fuel and fire extinguisher expiry are required");
+      return;
+    }
 
     setIsSubmitting(true);
     setFormError(null);
@@ -879,7 +966,6 @@ export default function Home() {
       notes: upNotes || null,
       historyRow: {
         vehicle_id: selectedVehicle.id,
-        plate: selectedVehicle.plate,
         variant: upVariant || selectedVehicle.variant,
         driver_id: selectedVehicle.driver_id || null,
         driver: upDriver || selectedVehicle.driver,
@@ -958,7 +1044,6 @@ export default function Home() {
       const payload = {
         historyRow: {
           vehicle_id: selectedVehicle.id,
-          plate: selectedVehicle.plate,
           variant: selectedVehicle.variant,
           level: selectedVehicle.level,
           lot: selectedVehicle.lot,
@@ -1030,7 +1115,6 @@ export default function Home() {
     setIsSubmitting(true);
     const payload = {
       vehicle_id: escVehicleId,
-      plate: matchedVeh.plate,
       ...escChecks,
       scu: escScu ? parseInt(escScu, 10) : null,
       dcu: escDcu ? parseInt(escDcu, 10) : null,
@@ -1069,6 +1153,26 @@ export default function Home() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleEditTurretEsc = () => {
+    if (!selectedVehicle || !profile.is_technician) return;
+
+    setEscVehicleId(String(selectedVehicle.id));
+    setEscChecks(
+      (currentChecks) =>
+        Object.fromEntries(
+          Object.keys(currentChecks).map((key) => [
+            key,
+            latestEsc ? latestEsc[key] === true : false,
+          ]),
+        ) as Record<string, boolean>,
+    );
+    setEscScu(latestEsc?.scu != null ? String(latestEsc.scu) : "");
+    setEscDcu(latestEsc?.dcu != null ? String(latestEsc.dcu) : "");
+    setEscFaultList(latestEsc?.fault_list || "");
+    setEscNotes(latestEsc?.notes || "");
+    setActiveTab("turret-esc");
   };
 
   // Save profile updates
@@ -1424,7 +1528,12 @@ export default function Home() {
 
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white border-b border-zinc-200 px-6 py-4 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => goTab("home")}
+          className="flex items-center gap-3 rounded-lg text-left transition hover:bg-zinc-50 focus:outline-none focus:ring-3 focus:ring-red-600/15"
+          aria-label="Go to home page"
+        >
           <Image
             src="/unit-logo.jpeg"
             alt="Parking unit logo"
@@ -1439,7 +1548,7 @@ export default function Home() {
             </p>
             <h1 className="text-lg font-bold tracking-tight">Block 210</h1>
           </div>
-        </div>
+        </button>
         <div className="flex items-center gap-2">
           <Button
             type="button"
@@ -2292,30 +2401,73 @@ export default function Home() {
                       Rank
                       <RequiredMark />
                     </label>
-                    <select
-                      value={peRank}
-                      onChange={(e) => setPeRank(e.target.value)}
-                      className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600 focus:ring-3 focus:ring-red-600/15"
-                    >
-                      <option value="">Select rank</option>
-                      {RANK_OPTIONS.map((rankOption) => (
-                        <option key={rankOption} value={rankOption}>
-                          {rankOption}
-                        </option>
-                      ))}
-                    </select>
+                    <Select value={peRank} onValueChange={setPeRank}>
+                      <SelectTrigger className="w-full h-10 bg-white border-zinc-200 focus:border-red-600 focus:ring-3 focus:ring-red-600/15 justify-between">
+                        <SelectValue placeholder="Select rank" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60 bg-white border border-zinc-200 shadow-md rounded-md">
+                        {RANK_CATEGORIES.map((category) => (
+                          <SelectGroup key={category.label}>
+                            <SelectLabel className="px-2 py-1 text-xs font-semibold text-zinc-500 bg-zinc-50/50">
+                              {category.label}
+                            </SelectLabel>
+                            {category.ranks.map((rankOption) => (
+                              <SelectItem
+                                key={rankOption}
+                                value={rankOption}
+                                className="cursor-pointer"
+                              >
+                                {rankOption}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-zinc-700">
                       ORD date
                       <RequiredMark />
                     </label>
-                    <input
-                      type="date"
-                      value={peOrdDate}
-                      onChange={(e) => setPeOrdDate(e.target.value)}
-                      className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600 focus:ring-3 focus:ring-red-600/15"
-                    />
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className={cn(
+                            "h-10 w-full justify-between rounded-md border-zinc-200 bg-white px-3 text-left text-sm font-normal hover:bg-zinc-50 focus:border-red-600 focus:ring-3 focus:ring-red-600/15",
+                            !peOrdDate && "text-muted-foreground",
+                          )}
+                        >
+                          <span>
+                            {profileOrdDate
+                              ? format(profileOrdDate, "dd MMM yyyy")
+                              : "Select date"}
+                          </span>
+                          <Calendar
+                            className="size-4 text-zinc-400"
+                            aria-hidden="true"
+                          />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="w-auto p-0 bg-white border border-zinc-200 shadow-md rounded-md"
+                        align="start"
+                      >
+                        <DatePickerCalendar
+                          mode="single"
+                          selected={profileOrdDate}
+                          captionLayout="dropdown"
+                          navLayout="after"
+                          startMonth={profileOrdCalendarStart}
+                          endMonth={profileOrdCalendarEnd}
+                          onSelect={(date) => {
+                            setPeOrdDate(date ? toDateInputValue(date) : "");
+                          }}
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 </div>
 
@@ -2866,6 +3018,17 @@ export default function Home() {
                 <Edit2 className="size-4 mr-2" />
                 Update Vehicle Record
               </Button>
+              {profile.is_technician && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleEditTurretEsc}
+                  className="w-full text-zinc-700 hover:bg-zinc-50 h-10 font-bold border-zinc-200"
+                >
+                  <Wrench className="size-4 mr-2" />
+                  Edit Turret ESC
+                </Button>
+              )}
               <Button
                 variant="outline"
                 onClick={() => {
@@ -3263,12 +3426,14 @@ export default function Home() {
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-zinc-700">
                       Variant / Model
+                      <RequiredMark />
                     </label>
                     <input
                       type="text"
                       value={ciVariant}
                       onChange={(e) => setCiVariant(e.target.value)}
                       placeholder="e.g. Hunter RCV"
+                      required
                       className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
                     />
                   </div>
@@ -3329,6 +3494,7 @@ export default function Home() {
                         setCiLevel(e.target.value);
                         setCiLot("");
                       }}
+                      required
                       className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
                     >
                       <option value="" disabled>
@@ -3378,10 +3544,12 @@ export default function Home() {
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-zinc-700">
                       Odometer (km)
+                      <RequiredMark />
                     </label>
                     <input
                       type="number"
                       min="0"
+                      required
                       value={ciOdometer}
                       onChange={(e) => setCiOdometer(e.target.value)}
                       placeholder="e.g. 50000"
@@ -3391,11 +3559,13 @@ export default function Home() {
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-zinc-700">
                       Engine Hours
+                      <RequiredMark />
                     </label>
                     <input
                       type="number"
                       min="0"
                       step="0.1"
+                      required
                       value={ciEngineHours}
                       onChange={(e) => setCiEngineHours(e.target.value)}
                       placeholder="e.g. 120.5"
@@ -3407,12 +3577,14 @@ export default function Home() {
                 <div className="border-t border-zinc-100 pt-3 space-y-3">
                   <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">
                     Starter Battery (24V System)
+                    <RequiredMark />
                   </span>
                   <div className="grid grid-cols-2 gap-4">
                     <input
                       type="number"
                       min="0"
                       step="0.1"
+                      required
                       value={ciBattStarterV}
                       onChange={(e) => setCiBattStarterV(e.target.value)}
                       placeholder="Volts (e.g. 24.0)"
@@ -3422,6 +3594,7 @@ export default function Home() {
                       type="number"
                       min="0"
                       max="100"
+                      required
                       value={ciBattStarterPct}
                       onChange={(e) => setCiBattStarterPct(e.target.value)}
                       placeholder="Percentage %"
@@ -3433,12 +3606,14 @@ export default function Home() {
                 <div className="space-y-3">
                   <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">
                     Auxiliary Battery (24V System)
+                    <RequiredMark />
                   </span>
                   <div className="grid grid-cols-2 gap-4">
                     <input
                       type="number"
                       min="0"
                       step="0.1"
+                      required
                       value={ciBattAuxV}
                       onChange={(e) => setCiBattAuxV(e.target.value)}
                       placeholder="Volts (e.g. 24.0)"
@@ -3448,6 +3623,7 @@ export default function Home() {
                       type="number"
                       min="0"
                       max="100"
+                      required
                       value={ciBattAuxPct}
                       onChange={(e) => setCiBattAuxPct(e.target.value)}
                       placeholder="Percentage %"
@@ -3459,15 +3635,18 @@ export default function Home() {
                 <div className="space-y-3">
                   <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">
                     Fuel Level
+                    <RequiredMark />
                   </span>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-[10px] text-zinc-400 font-bold block mb-1">
                         Litres (L)
+                        <RequiredMark />
                       </label>
                       <input
                         type="number"
                         min="0"
+                        required
                         value={ciFuelL}
                         onChange={(e) => setCiFuelL(e.target.value)}
                         placeholder="e.g. 1140"
@@ -3477,11 +3656,13 @@ export default function Home() {
                     <div>
                       <label className="text-[10px] text-zinc-400 font-bold block mb-1">
                         Percentage (%)
+                        <RequiredMark />
                       </label>
                       <input
                         type="number"
                         min="0"
                         max="100"
+                        required
                         value={ciFuelPct}
                         onChange={(e) => setCiFuelPct(e.target.value)}
                         placeholder="e.g. 100"
@@ -3494,42 +3675,12 @@ export default function Home() {
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-zinc-700">
                     🧯 Fire Extinguisher Expiry Date
+                    <RequiredMark />
                   </label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className={cn(
-                          "h-10 w-full justify-between rounded-md border-zinc-200 bg-white px-3 text-left text-sm font-normal hover:bg-zinc-50 focus:border-red-600 focus:ring-3 focus:ring-red-600/15",
-                          !ciFireExpiry && "text-muted-foreground",
-                        )}
-                      >
-                        <span>
-                          {ciFireExpiry
-                            ? format(parseDateInput(ciFireExpiry)!, "dd MMM yyyy")
-                            : "Select date"}
-                        </span>
-                        <Calendar className="size-4 text-zinc-400" aria-hidden="true" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-auto p-0 bg-white border border-zinc-200 shadow-md rounded-md"
-                      align="start"
-                    >
-                      <DatePickerCalendar
-                        mode="single"
-                        selected={parseDateInput(ciFireExpiry)}
-                        captionLayout="dropdown"
-                        navLayout="after"
-                        startMonth={fireExpiryCalendarStart}
-                        endMonth={fireExpiryCalendarEnd}
-                        onSelect={(date) => {
-                          setCiFireExpiry(date ? toDateInputValue(date) : "");
-                        }}
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <FireExpiryPicker
+                    value={ciFireExpiry}
+                    onChange={setCiFireExpiry}
+                  />
                 </div>
 
                 <div className="space-y-1">
@@ -3673,10 +3824,12 @@ export default function Home() {
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-zinc-700">
                       Lot No.
+                      <RequiredMark />
                     </label>
                     <select
                       value={upLot}
                       onChange={(e) => setUpLot(e.target.value)}
+                      required
                       className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
                     >
                       <option value="" disabled>
@@ -3711,10 +3864,12 @@ export default function Home() {
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-zinc-700">
                       Odometer (km)
+                      <RequiredMark />
                     </label>
                     <input
                       type="number"
                       min="0"
+                      required
                       value={upOdometer}
                       onChange={(e) => setUpOdometer(e.target.value)}
                       className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
@@ -3723,11 +3878,13 @@ export default function Home() {
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-zinc-700">
                       Engine Hours
+                      <RequiredMark />
                     </label>
                     <input
                       type="number"
                       min="0"
                       step="0.1"
+                      required
                       value={upEngineHours}
                       onChange={(e) => setUpEngineHours(e.target.value)}
                       className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
@@ -3738,12 +3895,14 @@ export default function Home() {
                 <div className="border-t border-zinc-100 pt-3 space-y-3">
                   <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">
                     Starter Battery (24V)
+                    <RequiredMark />
                   </span>
                   <div className="grid grid-cols-2 gap-4">
                     <input
                       type="number"
                       min="0"
                       step="0.1"
+                      required
                       value={upBattStarterV}
                       onChange={(e) => setUpBattStarterV(e.target.value)}
                       placeholder="Volts"
@@ -3753,6 +3912,7 @@ export default function Home() {
                       type="number"
                       min="0"
                       max="100"
+                      required
                       value={upBattStarterPct}
                       onChange={(e) => setUpBattStarterPct(e.target.value)}
                       placeholder="Percentage %"
@@ -3764,12 +3924,14 @@ export default function Home() {
                 <div className="space-y-3">
                   <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">
                     Auxiliary Battery (24V)
+                    <RequiredMark />
                   </span>
                   <div className="grid grid-cols-2 gap-4">
                     <input
                       type="number"
                       min="0"
                       step="0.1"
+                      required
                       value={upBattAuxV}
                       onChange={(e) => setUpBattAuxV(e.target.value)}
                       placeholder="Volts"
@@ -3779,6 +3941,7 @@ export default function Home() {
                       type="number"
                       min="0"
                       max="100"
+                      required
                       value={upBattAuxPct}
                       onChange={(e) => setUpBattAuxPct(e.target.value)}
                       placeholder="Percentage %"
@@ -3790,15 +3953,18 @@ export default function Home() {
                 <div className="space-y-3">
                   <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">
                     Fuel Level
+                    <RequiredMark />
                   </span>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-[10px] text-zinc-400 font-bold block mb-1">
                         Litres (L)
+                        <RequiredMark />
                       </label>
                       <input
                         type="number"
                         min="0"
+                        required
                         value={upFuelL}
                         onChange={(e) => setUpFuelL(e.target.value)}
                         className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
@@ -3807,11 +3973,13 @@ export default function Home() {
                     <div>
                       <label className="text-[10px] text-zinc-400 font-bold block mb-1">
                         Percentage (%)
+                        <RequiredMark />
                       </label>
                       <input
                         type="number"
                         min="0"
                         max="100"
+                        required
                         value={upFuelPct}
                         onChange={(e) => setUpFuelPct(e.target.value)}
                         className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
@@ -3823,42 +3991,12 @@ export default function Home() {
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-zinc-700">
                     🧯 Fire Extinguisher Expiry Date
+                    <RequiredMark />
                   </label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className={cn(
-                          "h-10 w-full justify-between rounded-md border-zinc-200 bg-white px-3 text-left text-sm font-normal hover:bg-zinc-50 focus:border-red-600 focus:ring-3 focus:ring-red-600/15",
-                          !upFireExpiry && "text-muted-foreground",
-                        )}
-                      >
-                        <span>
-                          {upFireExpiry
-                            ? format(parseDateInput(upFireExpiry)!, "dd MMM yyyy")
-                            : "Select date"}
-                        </span>
-                        <Calendar className="size-4 text-zinc-400" aria-hidden="true" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-auto p-0 bg-white border border-zinc-200 shadow-md rounded-md"
-                      align="start"
-                    >
-                      <DatePickerCalendar
-                        mode="single"
-                        selected={parseDateInput(upFireExpiry)}
-                        captionLayout="dropdown"
-                        navLayout="after"
-                        startMonth={fireExpiryCalendarStart}
-                        endMonth={fireExpiryCalendarEnd}
-                        onSelect={(date) => {
-                          setUpFireExpiry(date ? toDateInputValue(date) : "");
-                        }}
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <FireExpiryPicker
+                    value={upFireExpiry}
+                    onChange={setUpFireExpiry}
+                  />
                 </div>
 
                 <div className="space-y-1">
