@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/set-state-in-effect, react-hooks/purity, react-hooks/exhaustive-deps, react/no-unescaped-entities */
 
@@ -71,6 +71,26 @@ const SAFETY_MESSAGES = [
   "Never leave engines running in enclosed spaces. Carbon monoxide is invisible and deadly.",
   "Wear your high-visibility vest when working in the car park outside your vehicle.",
 ];
+
+// --- Vehicle Plate Display Config -----------------------------------------
+// Vehicle IDs are stored internally with a "MID" prefix (e.g. "MID087").
+// While the project is scoped to a single unit, we hide that prefix in the
+// UI and only ask for/show a short 3-digit "Vehicle Plate" number instead.
+//
+// To remove this feature later (e.g. when scaling up to support longer or
+// differently-formatted plate numbers), simply set PLATE_MASK_ENABLED to
+// false below — everything else in the file reads from these two values.
+const PLATE_MASK_ENABLED = true;
+const PLATE_MAX_DIGITS = 3;
+
+// Variant / Model options shown in the Log Vehicle In dropdown.
+const VEHICLE_VARIANT_OPTIONS = ["HAFV", "HARV", "2BT", "B", "BN"];
+
+function formatPlateDisplay(plate?: string | null): string {
+  if (!plate) return "—";
+  if (!PLATE_MASK_ENABLED) return plate;
+  return plate.replace(/^MID/i, "");
+}
 
 type ParkingLevelConfig = {
   id: string;
@@ -625,6 +645,20 @@ export default function Home() {
     }
   }, [auth.isAuthenticated, profile]);
 
+  // Periodically re-fetch vehicles so newly checked-in vehicles (and any
+  // other check-in/check-out activity from other users) show up without
+  // requiring a manual page reload.
+  useEffect(() => {
+    if (!auth.isAuthenticated || !profile) return;
+
+    const AUTO_REFRESH_MS = 30000;
+    const interval = window.setInterval(() => {
+      fetchDashboardData();
+    }, AUTO_REFRESH_MS);
+
+    return () => window.clearInterval(interval);
+  }, [auth.isAuthenticated, profile]);
+
   useEffect(() => {
     if (activeTab === "driveout-history") {
       fetchDriveoutHistory();
@@ -732,7 +766,10 @@ export default function Home() {
     setLatestEsc(null);
     setHistoryRecords([]);
 
-    if (profile.is_technician) {
+    // Turret ESC feature temporarily disabled. Flip this condition back to
+    // `profile.is_technician` to restore fetching the latest Turret ESC
+    // checklist when a vehicle is opened.
+    if (false && profile.is_technician) {
       try {
         const res = await fetch(`/api/turret-esc?vehicle_id=${vehicle.id}`);
         if (res.ok) {
@@ -807,6 +844,8 @@ export default function Home() {
     setCiDriver(profile.name || "");
     setCiDriverPhone(profile.phone || "");
     setCiDriverUnit(profileUnit);
+    setCiBattStarterV("24");
+    setCiBattAuxV("24");
     setFormError(null);
     setIsCheckingIn(true);
   };
@@ -824,7 +863,7 @@ export default function Home() {
       return;
     }
     if (!/^\d+$/.test(ciPlate)) {
-      setFormError("Licence plate must contain numbers only");
+      setFormError("Vehicle plate must contain numbers only");
       return;
     }
     if (
@@ -875,7 +914,7 @@ export default function Home() {
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || "Check-in failed");
 
-      triggerToast(`✓ MID${ciPlate} checked in → ${ciLevel} Lot ${ciLot}`);
+      triggerToast(`✓ Vehicle ${ciPlate} checked in → ${ciLevel} Lot ${ciLot}`);
       setIsCheckingIn(false);
 
       // Clear inputs
@@ -887,9 +926,9 @@ export default function Home() {
       setCiLot("");
       setCiOdometer("");
       setCiEngineHours("");
-      setCiBattStarterV("");
+      setCiBattStarterV("24");
       setCiBattStarterPct("");
-      setCiBattAuxV("");
+      setCiBattAuxV("24");
       setCiBattAuxPct("");
       setCiFuelL("");
       setCiFuelPct("");
@@ -1080,7 +1119,7 @@ export default function Home() {
         throw new Error(d.error || "Drive-out checkout failed");
       }
 
-      triggerToast(`✓ ${selectedVehicle.plate} driven out`);
+      triggerToast(`✓ ${formatPlateDisplay(selectedVehicle.plate)} driven out`);
       setIsConfirmingDriveout(false);
       setSelectedVehicle(null);
       setActiveTab("search");
@@ -1617,7 +1656,10 @@ export default function Home() {
                     label: "Parking Overview",
                     icon: <MapPin className="size-4" />,
                   },
-                  ...(profile.is_technician
+                  // Turret ESC Checklist tab — temporarily disabled.
+                  // Change `false &&` back to `profile.is_technician` to
+                  // restore this nav item.
+                  ...(false && profile.is_technician
                     ? [
                         {
                           id: "turret-esc",
@@ -1780,7 +1822,7 @@ export default function Home() {
                         </div>
                         <div>
                           <div className="font-bold text-zinc-900">
-                            {v.plate}
+                            {formatPlateDisplay(v.plate)}
                           </div>
                           <p className="text-xs text-zinc-500 font-medium">
                             {v.variant} &nbsp;·&nbsp; {v.level} · Lot {v.lot}
@@ -1816,7 +1858,7 @@ export default function Home() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search licence plate, variant or driver..."
+                placeholder="Search vehicle plate, variant or driver..."
                 className="w-full h-10 pl-9 pr-4 rounded-lg border border-zinc-200 bg-white text-sm outline-none transition focus:border-red-600 focus:ring-3 focus:ring-red-600/15 shadow-xs"
               />
             </div>
@@ -1834,7 +1876,7 @@ export default function Home() {
                         <CarFront className="size-5" />
                       </div>
                       <div>
-                        <div className="font-bold text-zinc-900">{v.plate}</div>
+                        <div className="font-bold text-zinc-900">{formatPlateDisplay(v.plate)}</div>
                         <p className="text-xs text-zinc-500 font-medium">
                           {v.variant} &nbsp;·&nbsp; {v.level} · Lot {v.lot}
                         </p>
@@ -2036,7 +2078,7 @@ export default function Home() {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-extrabold text-lg text-zinc-900">
-                            {selectedLotVehicle.plate}
+                            {formatPlateDisplay(selectedLotVehicle.plate)}
                           </span>
                           <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded uppercase">
                             Lot {selectedLot}
@@ -2081,8 +2123,10 @@ export default function Home() {
           </div>
         )}
 
-        {/* TAB 4: TURRET CHECKLIST */}
-        {activeTab === "turret-esc" && profile.is_technician && (
+        {/* TAB 4: TURRET CHECKLIST — temporarily disabled.
+            Change `false &&` back to `activeTab === "turret-esc" &&` to
+            restore this tab. */}
+        {false && activeTab === "turret-esc" && profile.is_technician && (
           <form
             onSubmit={handleChecklistSubmit}
             className="bg-white rounded-xl border border-zinc-200 p-6 shadow-sm space-y-6"
@@ -2240,7 +2284,7 @@ export default function Home() {
                         <Clock className="size-5" />
                       </div>
                       <div>
-                        <div className="font-bold text-zinc-900">{r.plate}</div>
+                        <div className="font-bold text-zinc-900">{formatPlateDisplay(r.plate)}</div>
                         <p className="text-xs text-zinc-500 font-medium">
                           {r.variant} &nbsp;·&nbsp; {r.level} · Lot {r.lot}
                         </p>
@@ -2731,7 +2775,7 @@ export default function Home() {
 
             <div>
               <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900">
-                {selectedVehicle.plate}
+                {formatPlateDisplay(selectedVehicle.plate)}
               </h2>
               <p className="text-sm text-zinc-500 font-semibold mt-1">
                 {selectedVehicle.variant}
@@ -2910,8 +2954,10 @@ export default function Home() {
               );
             })()}
 
-            {/* Latest Turret ESC Section */}
-            {profile.is_technician && (
+            {/* Latest Turret ESC Section — temporarily disabled.
+                Change `false &&` back to `profile.is_technician &&` to
+                restore this section. */}
+            {false && profile.is_technician && (
               <div className="space-y-2">
                 <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
                   Latest Turret ESC Checklist
@@ -3063,7 +3109,7 @@ export default function Home() {
                 Back to detail
               </Button>
               <h3 className="text-sm font-black text-zinc-800">
-                {selectedVehicle.plate} History Log
+                {formatPlateDisplay(selectedVehicle.plate)} History Log
               </h3>
             </div>
 
@@ -3147,7 +3193,7 @@ export default function Home() {
 
             <div>
               <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900">
-                {selectedDriveout.plate}
+                {formatPlateDisplay(selectedDriveout.plate)}
               </h2>
               <p className="text-sm text-zinc-500 font-semibold mt-1">
                 {selectedDriveout.variant}
@@ -3404,23 +3450,30 @@ export default function Home() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-zinc-700">
-                      Licence Plate
+                      Vehicle Plate
                       <RequiredMark />
                     </label>
                     <input
                       type="text"
                       value={ciPlate}
                       onChange={(e) =>
-                        setCiPlate(e.target.value.replace(/\D/g, ""))
+                        setCiPlate(
+                          e.target.value
+                            .replace(/\D/g, "")
+                            .slice(0, PLATE_MASK_ENABLED ? PLATE_MAX_DIGITS : undefined),
+                        )
                       }
-                      placeholder="e.g. 87000"
+                      placeholder="e.g. 087"
                       inputMode="numeric"
                       pattern="[0-9]*"
+                      maxLength={PLATE_MASK_ENABLED ? PLATE_MAX_DIGITS : undefined}
                       required
                       className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600 focus:ring-3 focus:ring-red-600/15"
                     />
                     <p className="text-[10px] font-medium text-zinc-500">
-                      Enter numbers only. MID is added automatically.
+                      {PLATE_MASK_ENABLED
+                        ? `Enter up to ${PLATE_MAX_DIGITS} digits.`
+                        : "Enter numbers only."}
                     </p>
                   </div>
                   <div className="space-y-1">
@@ -3428,14 +3481,21 @@ export default function Home() {
                       Variant / Model
                       <RequiredMark />
                     </label>
-                    <input
-                      type="text"
+                    <select
                       value={ciVariant}
                       onChange={(e) => setCiVariant(e.target.value)}
-                      placeholder="e.g. Hunter RCV"
                       required
                       className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
-                    />
+                    >
+                      <option value="" disabled>
+                        Select variant
+                      </option>
+                      {VEHICLE_VARIANT_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -3727,7 +3787,7 @@ export default function Home() {
                 <div>
                   <CardTitle className="text-xl">Update Vehicle</CardTitle>
                   <CardDescription>
-                    Edit details for {selectedVehicle.plate}
+                    Edit details for {formatPlateDisplay(selectedVehicle.plate)}
                   </CardDescription>
                 </div>
                 <Button
@@ -3750,11 +3810,11 @@ export default function Home() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-zinc-700">
-                      Licence Plate
+                      Vehicle Plate
                     </label>
                     <input
                       type="text"
-                      value={selectedVehicle.plate}
+                      value={formatPlateDisplay(selectedVehicle.plate)}
                       disabled
                       className="h-10 w-full rounded-md border border-zinc-200 bg-zinc-50 px-3 text-sm outline-none cursor-not-allowed"
                     />
@@ -4050,7 +4110,7 @@ export default function Home() {
               <p className="text-sm font-medium text-zinc-700">
                 Are you sure you want to log checkout for{" "}
                 <span className="font-extrabold text-zinc-950">
-                  {selectedVehicle.plate}
+                  {formatPlateDisplay(selectedVehicle.plate)}
                 </span>
                 ?
               </p>
