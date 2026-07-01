@@ -84,7 +84,7 @@ const PLATE_MASK_ENABLED = true;
 const PLATE_MAX_DIGITS = 3;
 
 // Variant / Model options shown in the Log Vehicle In dropdown.
-const VEHICLE_VARIANT_OPTIONS = ["HAFV", "HARV", "2BT", "B", "BN"];
+const VEHICLE_VARIANT_OPTIONS = ["HFV", "HARV", "2BT", "B", "BN"];
 
 function formatPlateDisplay(plate?: string | null): string {
   if (!plate) return "—";
@@ -2360,10 +2360,6 @@ export default function Home() {
 
             {!isEditingProfile ? (
               <div className="space-y-4 text-sm">
-                <div className="flex items-center justify-between py-2 border-b border-zinc-50">
-                  <span className="text-zinc-500 font-medium">Email</span>
-                  <span className="font-semibold">{profile.id || "—"}</span>
-                </div>
                 <div className="flex items-center justify-between py-2 border-b border-zinc-50">
                   <span className="text-zinc-500 font-medium">Phone</span>
                   <span className="font-semibold">{profile.phone || "—"}</span>
