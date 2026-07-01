@@ -19,7 +19,7 @@ function isValidationError(error: unknown) {
     error instanceof Error &&
     (error.message.includes("must be") ||
       error.message.includes("is required") ||
-      error.message.includes("Licence plate"))
+      error.message.includes("Vehicle plate"))
   );
 }
 
@@ -82,7 +82,19 @@ export async function POST(request: NextRequest) {
 
     const plateNumber = String(body.plate).trim();
     if (!/^\d+$/.test(plateNumber)) {
-      return NextResponse.json({ error: "Licence plate must contain numbers only" }, { status: 400 });
+      return NextResponse.json({ error: "Vehicle plate must contain numbers only" }, { status: 400 });
+    }
+
+    // Vehicle Plate masking: entries are capped at 3 digits while the app is
+    // scoped to a single unit. Set PLATE_MASK_ENABLED to false (and remove
+    // this block) to allow longer plate numbers again when scaling up.
+    const PLATE_MASK_ENABLED = true;
+    const PLATE_MAX_DIGITS = 3;
+    if (PLATE_MASK_ENABLED && plateNumber.length > PLATE_MAX_DIGITS) {
+      return NextResponse.json(
+        { error: `Vehicle plate must be at most ${PLATE_MAX_DIGITS} digits` },
+        { status: 400 },
+      );
     }
 
     const plate = `MID${plateNumber}`;
