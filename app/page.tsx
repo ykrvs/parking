@@ -31,6 +31,8 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 import { FireExpiryPicker } from "@/components/dashboard/fire-expiry-picker";
 import { RequiredMark } from "@/components/dashboard/required-mark";
@@ -156,6 +158,16 @@ function UnverifiedDot({ isVerified }: { isVerified?: boolean }) {
 // Lot occupancy colour tiers: boxes stay neutral below 50% occupied, then
 // step through green -> yellow -> red as fewer lots remain (50% / 75% / 90%
 // thresholds).
+// Simple pulsing placeholder used while initial data is still loading.
+function Skeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn("animate-pulse rounded-md bg-zinc-200/70", className)}
+      aria-hidden="true"
+    />
+  );
+}
+
 function getLotOccupancyClasses(occupied: number, total: number) {
   if (!total) return { box: "", text: "" };
   const pct = (occupied / total) * 100;
@@ -169,6 +181,87 @@ function getLotOccupancyClasses(occupied: number, total: number) {
     return { box: "bg-emerald-50 border-emerald-300", text: "text-emerald-700" };
   }
   return { box: "", text: "" };
+}
+
+// --- Drive-out History Export -----------------------------------------
+const HISTORY_EXPORT_COLUMNS = [
+  { key: "plate", label: "Vehicle Plate" },
+  { key: "variant", label: "Variant" },
+  { key: "level", label: "Level" },
+  { key: "lot", label: "Lot" },
+  { key: "driver", label: "Driver" },
+  { key: "driver_unit", label: "Unit" },
+  { key: "check_in", label: "Check In" },
+  { key: "check_out", label: "Check Out" },
+  { key: "odometer", label: "Odometer" },
+  { key: "engine_hours", label: "Engine Hours" },
+  { key: "starter_v", label: "Starter V" },
+  { key: "starter_pct", label: "Starter %" },
+  { key: "aux_v", label: "Aux V" },
+  { key: "aux_pct", label: "Aux %" },
+  { key: "fuel_l", label: "Fuel L" },
+  { key: "fuel_pct", label: "Fuel %" },
+  { key: "fire_ext_expiry", label: "Fire Ext Expiry" },
+  { key: "notes", label: "Notes" },
+] as const;
+
+function historyExportRow(record: any): string[] {
+  return HISTORY_EXPORT_COLUMNS.map(({ key }) => {
+    const value = record[key];
+    if (value === null || value === undefined) return "";
+    if (key === "plate") return formatPlateDisplay(value);
+    if (key === "check_in" || key === "check_out") {
+      return format(new Date(value), "dd MMM yyyy HH:mm");
+    }
+    return String(value);
+  });
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function csvEscape(value: string): string {
+  if (/[",\n]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+function exportDriveoutHistoryCSV(records: any[]) {
+  const header = HISTORY_EXPORT_COLUMNS.map((c) => c.label);
+  const rows = records.map(historyExportRow);
+  const csv = [header, ...rows]
+    .map((row) => row.map(csvEscape).join(","))
+    .join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  downloadBlob(blob, `trackr-drive-out-history-${format(new Date(), "yyyy-MM-dd")}.csv`);
+}
+
+function exportDriveoutHistoryPDF(records: any[]) {
+  const doc = new jsPDF({ orientation: "landscape" });
+  doc.setFontSize(14);
+  doc.text("Trackr — Drive-out History", 14, 14);
+  doc.setFontSize(9);
+  doc.text(`Generated ${format(new Date(), "dd MMM yyyy HH:mm")}`, 14, 20);
+
+  autoTable(doc, {
+    startY: 26,
+    head: [HISTORY_EXPORT_COLUMNS.map((c) => c.label)],
+    body: records.map(historyExportRow),
+    styles: { fontSize: 7, cellPadding: 2 },
+    headStyles: { fillColor: [220, 38, 38] },
+    margin: { left: 10, right: 10 },
+  });
+
+  doc.save(`trackr-drive-out-history-${format(new Date(), "yyyy-MM-dd")}.pdf`);
 }
 
 type ParkingLevelConfig = {
@@ -428,6 +521,7 @@ export default function Home() {
     DEFAULT_PARKING_LEVELS,
   );
   const [isLoadingParkingConfig, setIsLoadingParkingConfig] = useState(false);
+  const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
   const [safetyMessages, setSafetyMessages] = useState<SafetyMessageRecord[]>(
     [],
   );
@@ -724,7 +818,7 @@ export default function Home() {
 
   useEffect(() => {
     if (auth.isAuthenticated && profile) {
-      fetchDashboardData();
+      fetchDashboardData().finally(() => setIsLoadingDashboard(false));
       fetchParkingConfig();
       fetchSafetyMessages();
       // Admins need the full user list (not just vehicles) so ORD
@@ -2117,47 +2211,64 @@ export default function Home() {
             </div>
 
             {/* Active Totals Counter Card */}
-            <div className="bg-white rounded-xl border border-zinc-200 shadow-sm p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-              <div className="space-y-1">
-                <div className="text-5xl font-black tracking-tight text-red-600">
-                  {vehicles.length}
+            {isLoadingDashboard ? (
+              <div className="bg-white rounded-xl border border-zinc-200 shadow-sm p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+                <div className="space-y-2">
+                  <Skeleton className="h-12 w-20" />
+                  <Skeleton className="h-3 w-48" />
                 </div>
-                <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider">
-                  Vehicles currently parked in Block 210
-                </p>
-              </div>
-
-              {/* Levels chips */}
-              <div className="grid grid-cols-2 sm:flex sm:items-center gap-3">
-                {parkingLevels.map((level) => {
-                  const c = counts[level.id] || 0;
-                  const levelTotal =
-                    level.totalLots ?? getLevelLots(level).length;
-                  const occupancyClasses = getLotOccupancyClasses(
-                    c,
-                    levelTotal,
-                  );
-                  return (
-                    <div
+                <div className="grid grid-cols-2 sm:flex sm:items-center gap-3">
+                  {parkingLevels.map((level) => (
+                    <Skeleton
                       key={level.id}
-                      onClick={() => openParkingLevel(level.id)}
-                      className={cn(
-                        "cursor-pointer border rounded-lg p-3 w-full sm:w-24 text-center transition-colors shadow-xs",
-                        occupancyClasses.box ||
-                          "border-zinc-200 hover:bg-zinc-50 hover:border-zinc-300",
-                      )}
-                    >
-                      <div className="text-lg font-black text-zinc-800">
-                        {c}
-                      </div>
-                      <div className="text-[10px] font-bold text-zinc-400 uppercase">
-                        {level.icon || level.id}
-                      </div>
-                    </div>
-                  );
-                })}
+                      className="h-16 w-full sm:w-24 rounded-lg"
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="bg-white rounded-xl border border-zinc-200 shadow-sm p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+                <div className="space-y-1">
+                  <div className="text-5xl font-black tracking-tight text-red-600">
+                    {vehicles.length}
+                  </div>
+                  <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider">
+                    Vehicles currently parked in Block 210
+                  </p>
+                </div>
+
+                {/* Levels chips */}
+                <div className="grid grid-cols-2 sm:flex sm:items-center gap-3">
+                  {parkingLevels.map((level) => {
+                    const c = counts[level.id] || 0;
+                    const levelTotal =
+                      level.totalLots ?? getLevelLots(level).length;
+                    const occupancyClasses = getLotOccupancyClasses(
+                      c,
+                      levelTotal,
+                    );
+                    return (
+                      <div
+                        key={level.id}
+                        onClick={() => openParkingLevel(level.id)}
+                        className={cn(
+                          "cursor-pointer border rounded-lg p-3 w-full sm:w-24 text-center transition-colors shadow-xs",
+                          occupancyClasses.box ||
+                            "border-zinc-200 hover:bg-zinc-50 hover:border-zinc-300",
+                        )}
+                      >
+                        <div className="text-lg font-black text-zinc-800">
+                          {c}
+                        </div>
+                        <div className="text-[10px] font-bold text-zinc-400 uppercase">
+                          {level.icon || level.id}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Recently Checked In List */}
             <div className="space-y-3">
@@ -2165,7 +2276,20 @@ export default function Home() {
                 Recently Checked In
               </h2>
               <div className="grid gap-2 sm:grid-cols-2">
-                {recentVehicles.length > 0 ? (
+                {isLoadingDashboard ? (
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="bg-white border border-zinc-200 p-4 rounded-xl flex items-center gap-4"
+                    >
+                      <Skeleton className="size-10 rounded-lg shrink-0" />
+                      <div className="space-y-2 flex-1">
+                        <Skeleton className="h-3.5 w-24" />
+                        <Skeleton className="h-3 w-32" />
+                      </div>
+                    </div>
+                  ))
+                ) : recentVehicles.length > 0 ? (
                   recentVehicles.map((v) => (
                     <div
                       key={v.id}
@@ -2220,7 +2344,20 @@ export default function Home() {
             </div>
 
             <div className="grid gap-2 sm:grid-cols-2">
-              {filteredVehicles.length > 0 ? (
+              {isLoadingDashboard ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="bg-white border border-zinc-200 p-4 rounded-xl flex items-center gap-4"
+                  >
+                    <Skeleton className="size-10 rounded-lg shrink-0" />
+                    <div className="space-y-2 flex-1">
+                      <Skeleton className="h-3.5 w-24" />
+                      <Skeleton className="h-3 w-32" />
+                    </div>
+                  </div>
+                ))
+              ) : filteredVehicles.length > 0 ? (
                 filteredVehicles.map((v) => (
                   <div
                     key={v.id}
@@ -2632,6 +2769,29 @@ export default function Home() {
                 placeholder="Search plate or driver..."
                 className="w-full h-10 pl-9 pr-4 rounded-lg border border-zinc-200 bg-white text-sm outline-none transition focus:border-red-600 focus:ring-3 focus:ring-red-600/15 shadow-xs"
               />
+            </div>
+
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!filteredDriveouts.length}
+                onClick={() => exportDriveoutHistoryCSV(filteredDriveouts)}
+                className="h-8 gap-1.5 text-xs"
+              >
+                <FileText className="size-3.5" />
+                Export CSV
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!filteredDriveouts.length}
+                onClick={() => exportDriveoutHistoryPDF(filteredDriveouts)}
+                className="h-8 gap-1.5 text-xs"
+              >
+                <FileText className="size-3.5" />
+                Export PDF
+              </Button>
             </div>
 
             <div className="grid gap-2 sm:grid-cols-2">
