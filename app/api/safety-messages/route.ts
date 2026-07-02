@@ -1,11 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getRequestSession } from "@/lib/api-auth";
+import { rateLimited } from "@/lib/rate-limit";
 import {
   createSafetyMessage,
   deleteSafetyMessage,
   getActiveSafetyMessages,
   getSafetyMessages,
+  logAuditEvent,
   requireAdmin,
   updateSafetyMessage,
 } from "@/lib/supabase/server";
@@ -42,6 +44,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const limited = rateLimited(session.openid, "safety-messages:post", 20, 60_000);
+  if (limited) return limited;
+
   try {
     await requireAdmin(session.openid);
 
@@ -65,6 +70,13 @@ export async function POST(request: NextRequest) {
       created_by: session.openid,
     });
 
+    await logAuditEvent({
+      actorId: session.openid,
+      action: "safety_message.create",
+      targetId: created?.id ?? null,
+      targetLabel: message,
+    });
+
     return NextResponse.json({ message: created }, { status: 201 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to create safety message";
@@ -79,6 +91,9 @@ export async function PATCH(request: NextRequest) {
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const limited = rateLimited(session.openid, "safety-messages:patch", 30, 60_000);
+  if (limited) return limited;
 
   try {
     await requireAdmin(session.openid);
@@ -102,6 +117,17 @@ export async function PATCH(request: NextRequest) {
       ...(body.isActive !== undefined ? { is_active: body.isActive } : {}),
     });
 
+    await logAuditEvent({
+      actorId: session.openid,
+      action: "safety_message.update",
+      targetId: body.id,
+      targetLabel: updated?.message ?? body.id,
+      details: {
+        startsAt: body.startsAt ?? undefined,
+        endsAt: body.endsAt ?? undefined,
+      },
+    });
+
     return NextResponse.json({ message: updated });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to update safety message";
@@ -117,6 +143,9 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const limited = rateLimited(session.openid, "safety-messages:delete", 20, 60_000);
+  if (limited) return limited;
+
   try {
     await requireAdmin(session.openid);
 
@@ -126,6 +155,13 @@ export async function DELETE(request: NextRequest) {
     }
 
     await deleteSafetyMessage(body.id);
+
+    await logAuditEvent({
+      actorId: session.openid,
+      action: "safety_message.delete",
+      targetId: body.id,
+    });
+
     return NextResponse.json({ success: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to delete safety message";

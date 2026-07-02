@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getRequestSession } from "@/lib/api-auth";
+import { rateLimited } from "@/lib/rate-limit";
 import {
   getUsers,
   requireAdmin,
@@ -32,6 +33,9 @@ export async function PATCH(request: NextRequest) {
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const limited = rateLimited(session.openid, "admin-users:patch", 30, 60_000);
+  if (limited) return limited;
 
   try {
     const body = (await request.json()) as {

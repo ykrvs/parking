@@ -101,6 +101,23 @@ create table if not exists public.history (
 );
 
 create index if not exists history_vehicle_id_idx on public.history (vehicle_id);
+
+-- Audit trail for admin actions (verifying users, granting/revoking admin,
+-- managing safety messages). actor_name/target_label are snapshotted at
+-- write time so the log still reads sensibly after a user is removed
+-- (e.g. following the ORD reminder workflow).
+create table if not exists public.audit_log (
+  id uuid primary key default gen_random_uuid(),
+  actor_id text null,
+  actor_name text null,
+  action text not null,
+  target_id text null,
+  target_label text null,
+  details jsonb null,
+  created_at timestamp with time zone not null default now()
+);
+
+create index if not exists audit_log_created_at_idx on public.audit_log (created_at desc);
 create index if not exists vehicles_driver_id_idx on public.vehicles (driver_id);
 create index if not exists history_driver_id_idx on public.history (driver_id);
 create index if not exists history_check_out_idx on public.history (check_out desc);

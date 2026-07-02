@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getRequestSession } from "@/lib/api-auth";
-import { updateVehicle, moveOutVehicle, insertHistory } from "@/lib/supabase/server";
+import { rateLimited } from "@/lib/rate-limit";
+import { updateVehicle, moveOutVehicle, insertHistory, requireVerified } from "@/lib/supabase/server";
 
 const NUMERIC_FIELDS = [
   ["odometer", "Odometer"],
@@ -77,9 +78,14 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const patchLimited = rateLimited(session.openid, "vehicles:patch", 30, 60_000);
+  if (patchLimited) return patchLimited;
+
   const { id } = await params;
 
   try {
+    await requireVerified(session.openid);
+
     const body = await request.json();
     const { historyRow, ...updateData } = body;
     validateVehicleNumbers(updateData);
@@ -96,10 +102,13 @@ export async function PATCH(
     return NextResponse.json({ success: true, vehicle: data });
   } catch (err) {
     console.error("Update vehicle failed:", err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Update failed" },
-      { status: isValidationError(err) ? 400 : 500 },
-    );
+    const message = err instanceof Error ? err.message : "Update failed";
+    const status = message.includes("hasn't been verified")
+      ? 403
+      : isValidationError(err)
+        ? 400
+        : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }
 
@@ -113,9 +122,14 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const deleteLimited = rateLimited(session.openid, "vehicles:delete", 30, 60_000);
+  if (deleteLimited) return deleteLimited;
+
   const { id } = await params;
 
   try {
+    await requireVerified(session.openid);
+
     const body = await request.json();
     const { historyRow } = body;
 
@@ -131,6 +145,8 @@ export async function DELETE(
     return NextResponse.json({ success: true, vehicle });
   } catch (err) {
     console.error("Drive out failed:", err);
-    return NextResponse.json({ error: err instanceof Error ? err.message : "Drive out failed" }, { status: 500 });
+    const message = err instanceof Error ? err.message : "Drive out failed";
+    const status = message.includes("hasn't been verified") ? 403 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getRequestSession } from "@/lib/api-auth";
+import { rateLimited } from "@/lib/rate-limit";
 import {
   getUserProfile,
   isRegistrationComplete,
@@ -40,6 +41,9 @@ export async function PATCH(request: NextRequest) {
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const limited = rateLimited(session.openid, "users-me:patch", 10, 60_000);
+    if (limited) return limited;
 
     const body = (await request.json()) as {
       rank?: string;

@@ -264,6 +264,17 @@ function exportDriveoutHistoryPDF(records: any[]) {
   doc.save(`trackr-drive-out-history-${format(new Date(), "yyyy-MM-dd")}.pdf`);
 }
 
+// Human-readable labels for audit_log action codes.
+const AUDIT_ACTION_LABELS: Record<string, string> = {
+  "user.verify": "verified",
+  "user.unverify": "marked unverified",
+  "user.admin.grant": "granted admin access to",
+  "user.admin.revoke": "revoked admin access from",
+  "safety_message.create": "created safety message:",
+  "safety_message.update": "rescheduled safety message:",
+  "safety_message.delete": "deleted safety message",
+};
+
 type ParkingLevelConfig = {
   id: string;
   label: string;
@@ -318,6 +329,17 @@ type SafetyMessageRecord = {
   starts_at: string | null;
   ends_at: string | null;
   is_active: boolean;
+  created_at: string;
+};
+
+type AuditLogEntry = {
+  id: string;
+  actor_id: string | null;
+  actor_name: string | null;
+  action: string;
+  target_id: string | null;
+  target_label: string | null;
+  details: Record<string, unknown> | null;
   created_at: string;
 };
 
@@ -530,10 +552,11 @@ export default function Home() {
   const [adminSafetyMessages, setAdminSafetyMessages] = useState<
     SafetyMessageRecord[]
   >([]);
+  const [auditLogEntries, setAuditLogEntries] = useState<AuditLogEntry[]>([]);
   const [isLoadingAdmin, setIsLoadingAdmin] = useState(false);
-  const [adminActiveTab, setAdminActiveTab] = useState<"users" | "safety">(
-    "users",
-  );
+  const [adminActiveTab, setAdminActiveTab] = useState<
+    "users" | "safety" | "activity"
+  >("users");
   const [adminUserSearch, setAdminUserSearch] = useState("");
   const [adminDraftAdmins, setAdminDraftAdmins] = useState<
     Record<string, boolean>
@@ -790,9 +813,10 @@ export default function Home() {
 
     setIsLoadingAdmin(true);
     try {
-      const [usersResponse, safetyResponse] = await Promise.all([
+      const [usersResponse, safetyResponse, auditResponse] = await Promise.all([
         fetch("/api/admin/users"),
         fetch("/api/safety-messages?all=true"),
+        fetch("/api/admin/audit-log"),
       ]);
 
       if (usersResponse.ok) {
@@ -807,6 +831,13 @@ export default function Home() {
           messages?: SafetyMessageRecord[];
         };
         setAdminSafetyMessages(safetyData.messages || []);
+      }
+
+      if (auditResponse.ok) {
+        const auditData = (await auditResponse.json()) as {
+          entries?: AuditLogEntry[];
+        };
+        setAuditLogEntries(auditData.entries || []);
       }
     } catch (err) {
       console.error("Failed to load admin data:", err);
@@ -1015,6 +1046,19 @@ export default function Home() {
     parkingLevels[0];
   const selectedLevelLots = getLevelLots(selectedLevelConfig);
   const profileUnit = profile?.unit || profile?.depot || "";
+  // Unverified users can browse the app (viewer mode) but can't check
+  // vehicles in/out or edit records until an admin verifies them. Mirrors
+  // the same rule enforced server-side in requireVerified().
+  const isUnverified = !!profile && !profile.is_admin && !profile.is_verified;
+  const guardVerifiedAction = (action: () => void) => {
+    if (isUnverified) {
+      triggerToast(
+        "Your account is pending admin verification. You can view the app, but can't make changes yet.",
+      );
+      return;
+    }
+    action();
+  };
   const currentYear = new Date().getFullYear();
   const profileOrdDate = parseDateInput(peOrdDate);
   const profileOrdYear = profileOrdDate?.getFullYear() ?? currentYear;
@@ -2072,6 +2116,21 @@ export default function Home() {
         {/* TAB 1: HOME */}
         {activeTab === "home" && (
           <div className="space-y-6">
+            {/* Unverified account notice */}
+            {isUnverified && (
+              <div className="bg-zinc-100 border border-zinc-200 rounded-xl p-4 sm:p-5 shadow-xs space-y-1">
+                <div className="flex items-center gap-2 text-zinc-700 font-bold text-xs uppercase tracking-wider">
+                  <User className="size-4" />
+                  Pending Verification
+                </div>
+                <p className="text-zinc-600 text-sm font-medium">
+                  Your account hasn't been verified by an admin yet. You can
+                  look around, but you won't be able to check vehicles
+                  in/out or edit records until you're verified.
+                </p>
+              </div>
+            )}
+
             {/* Safety card of the day */}
             <div className="bg-emerald-50 border border-emerald-200/50 rounded-xl p-4 sm:p-5 shadow-xs space-y-2">
               <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs uppercase tracking-wider">
@@ -2202,8 +2261,13 @@ export default function Home() {
               </h2>
               <Button
                 type="button"
-                onClick={openCheckinModal}
-                className="bg-red-600 hover:bg-red-700 h-9 text-sm"
+                onClick={() => guardVerifiedAction(openCheckinModal)}
+                className={cn(
+                  "h-9 text-sm",
+                  isUnverified
+                    ? "bg-zinc-300 hover:bg-zinc-300 text-zinc-600 cursor-not-allowed"
+                    : "bg-red-600 hover:bg-red-700",
+                )}
               >
                 <Plus className="size-4 mr-1.5" />
                 Log Vehicle In
@@ -3080,16 +3144,19 @@ export default function Home() {
                     Manage users and scheduled safety messages.
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-1 rounded-lg border border-zinc-200 bg-zinc-50 p-1 text-sm font-semibold">
+                <div className="grid grid-cols-3 gap-1 rounded-lg border border-zinc-200 bg-zinc-50 p-1 text-sm font-semibold">
                   {[
                     { id: "users", label: "Users" },
                     { id: "safety", label: "Safety" },
+                    { id: "activity", label: "Activity" },
                   ].map((tab) => (
                     <button
                       key={tab.id}
                       type="button"
                       onClick={() =>
-                        setAdminActiveTab(tab.id as "users" | "safety")
+                        setAdminActiveTab(
+                          tab.id as "users" | "safety" | "activity",
+                        )
                       }
                       className={cn(
                         "rounded-md px-4 py-2 transition",
@@ -3359,6 +3426,49 @@ export default function Home() {
                     {!adminSafetyMessages.length && (
                       <p className="py-6 text-center text-sm text-zinc-500">
                         No safety messages added yet.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {adminActiveTab === "activity" && (
+                <div className="space-y-2 border-t border-zinc-100 pt-4">
+                  <p className="text-xs text-zinc-500 font-medium">
+                    Recent admin actions — verifying users, granting or
+                    revoking admin access, and managing safety messages.
+                  </p>
+                  <div className="overflow-hidden rounded-lg border border-zinc-200">
+                    {auditLogEntries.map((entry) => (
+                      <div
+                        key={entry.id}
+                        className="flex items-center justify-between gap-3 border-t border-zinc-100 px-3 py-2.5 text-sm first:border-t-0"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-zinc-800">
+                            <span className="font-bold">
+                              {entry.actor_name || "Unknown admin"}
+                            </span>{" "}
+                            {AUDIT_ACTION_LABELS[entry.action] ||
+                              entry.action}
+                            {entry.target_label ? (
+                              <>
+                                {" "}
+                                <span className="font-semibold">
+                                  {entry.target_label}
+                                </span>
+                              </>
+                            ) : null}
+                          </p>
+                        </div>
+                        <span className="shrink-0 text-xs text-zinc-400 font-medium">
+                          {format(new Date(entry.created_at), "dd MMM HH:mm")}
+                        </span>
+                      </div>
+                    ))}
+                    {!auditLogEntries.length && (
+                      <p className="py-6 text-center text-sm text-zinc-500">
+                        No admin activity recorded yet.
                       </p>
                     )}
                   </div>
@@ -3673,13 +3783,22 @@ export default function Home() {
             {/* Action buttons */}
             <div className="space-y-2 pt-4 border-t border-zinc-100">
               <Button
-                onClick={handleOpenUpdate}
-                className="w-full bg-red-600 hover:bg-red-700 h-10 font-bold"
+                onClick={() => guardVerifiedAction(handleOpenUpdate)}
+                className={cn(
+                  "w-full h-10 font-bold",
+                  isUnverified
+                    ? "bg-zinc-300 hover:bg-zinc-300 text-zinc-600 cursor-not-allowed"
+                    : "bg-red-600 hover:bg-red-700",
+                )}
               >
                 <Edit2 className="size-4 mr-2" />
                 Update Vehicle Record
               </Button>
-              {profile.is_technician && (
+              {/* Edit Turret ESC button — temporarily disabled along with
+                  the rest of the Turret ESC feature (see other `false &&`
+                  guards for this feature throughout the file). Change
+                  `false &&` back to `profile.is_technician &&` to restore. */}
+              {false && profile.is_technician && (
                 <Button
                   type="button"
                   variant="outline"
@@ -3701,8 +3820,15 @@ export default function Home() {
                 View History Logs
               </Button>
               <Button
-                onClick={() => setIsConfirmingDriveout(true)}
-                className="w-full bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800 border border-red-100 h-10 font-bold"
+                onClick={() =>
+                  guardVerifiedAction(() => setIsConfirmingDriveout(true))
+                }
+                className={cn(
+                  "w-full h-10 font-bold",
+                  isUnverified
+                    ? "bg-zinc-100 text-zinc-400 border border-zinc-200 cursor-not-allowed"
+                    : "bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800 border border-red-100",
+                )}
               >
                 <LogOut className="size-4 mr-2" />
                 Drive Out / Move Off

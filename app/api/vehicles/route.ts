@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getRequestSession } from "@/lib/api-auth";
-import { getVehicles, checkinVehicle } from "@/lib/supabase/server";
+import { rateLimited } from "@/lib/rate-limit";
+import { getVehicles, checkinVehicle, requireVerified } from "@/lib/supabase/server";
 
 function parseNonNegativeNumber(value: unknown, label: string) {
   if (value === null || value === undefined || value === "") return null;
@@ -73,7 +74,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const limited = rateLimited(session.openid, "vehicles:post", 20, 60_000);
+  if (limited) return limited;
+
   try {
+    await requireVerified(session.openid);
+
     const body = await request.json();
     // Validate required fields
     if (!body.plate || !body.level || !body.lot) {
@@ -155,9 +161,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, vehicle: data });
   } catch (err) {
     console.error("Check-in failed:", err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Check-in failed" },
-      { status: isValidationError(err) ? 400 : 500 },
-    );
+    const message = err instanceof Error ? err.message : "Check-in failed";
+    const status = message.includes("hasn't been verified")
+      ? 403
+      : isValidationError(err)
+        ? 400
+        : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

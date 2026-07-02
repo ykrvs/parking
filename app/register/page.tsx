@@ -248,7 +248,7 @@ export default function RegisterPage() {
   const currentYear = new Date().getFullYear();
   const selectedYear = selectedDate?.getFullYear() ?? currentYear;
   const ordCalendarStart = new Date(Math.min(currentYear - 5, selectedYear), 0);
-  const ordCalendarEnd = new Date(Math.max(currentYear + 15, selectedYear), 11);
+  const ordCalendarEnd = new Date(Math.max(currentYear + 45, selectedYear), 11);
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-zinc-100 px-6 py-12">

@@ -341,11 +341,77 @@ export async function requireAdmin(actorId: string) {
   return profile;
 }
 
+// Unverified users can browse the app (viewer mode) but can't check
+// vehicles in/out or edit records until an admin verifies them. Admins are
+// always exempt so verifying the first admin can never become a
+// chicken-and-egg lockout.
+export async function requireVerified(actorId: string) {
+  const profile = await getUserProfile(actorId);
+
+  if (!profile) {
+    throw new Error("User not found.");
+  }
+
+  if (!profile.is_admin && !profile.is_verified) {
+    throw new Error(
+      "Your account hasn't been verified by an admin yet. You can view the app, but can't make changes until you're verified.",
+    );
+  }
+
+  return profile;
+}
+
+export async function logAuditEvent(entry: {
+  actorId?: string | null;
+  actorName?: string | null;
+  action: string;
+  targetId?: string | null;
+  targetLabel?: string | null;
+  details?: Record<string, unknown> | null;
+}) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return null;
+
+  // Logging failures should never block the action that triggered them —
+  // log and swallow rather than throw.
+  try {
+    const { error } = await supabase.from("audit_log").insert([
+      {
+        actor_id: entry.actorId ?? null,
+        actor_name: entry.actorName ?? null,
+        action: entry.action,
+        target_id: entry.targetId ?? null,
+        target_label: entry.targetLabel ?? null,
+        details: entry.details ?? null,
+      },
+    ]);
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.error("Failed to write audit log entry:", err);
+    return null;
+  }
+}
+
+export async function getAuditLog(limit = 200) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return [];
+
+  const { data, error } = await supabase
+    .from("audit_log")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return data || [];
+}
+
 export async function setUserAdmin(actorId: string, targetId: string, isAdmin: boolean) {
   const supabase = getSupabaseAdmin();
   if (!supabase) return null;
 
-  await requireAdmin(actorId);
+  const actor = await requireAdmin(actorId);
 
   const table = getUsersTable();
   let { data, error } = await supabase
@@ -369,6 +435,15 @@ export async function setUserAdmin(actorId: string, targetId: string, isAdmin: b
   }
 
   if (error) throw error;
+
+  await logAuditEvent({
+    actorId: actor.id,
+    actorName: actor.name,
+    action: isAdmin ? "user.admin.grant" : "user.admin.revoke",
+    targetId,
+    targetLabel: data?.name ?? targetId,
+  });
+
   return data ? withVehiclePlate(data) : data;
 }
 
@@ -380,7 +455,7 @@ export async function setUserVerified(
   const supabase = getSupabaseAdmin();
   if (!supabase) return null;
 
-  await requireAdmin(actorId);
+  const actor = await requireAdmin(actorId);
 
   const table = getUsersTable();
   let { data, error } = await supabase
@@ -404,6 +479,15 @@ export async function setUserVerified(
   }
 
   if (error) throw error;
+
+  await logAuditEvent({
+    actorId: actor.id,
+    actorName: actor.name,
+    action: isVerified ? "user.verify" : "user.unverify",
+    targetId,
+    targetLabel: data?.name ?? targetId,
+  });
+
   return data;
 }
 
