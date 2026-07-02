@@ -10,7 +10,7 @@ function parseNonNegativeNumber(value: unknown, label: string) {
   if (!Number.isFinite(parsed) || parsed < 0) {
     throw new Error(`${label} must be a non-negative number`);
   }
-
+  
   return parsed;
 }
 
