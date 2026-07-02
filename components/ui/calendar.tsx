@@ -51,27 +51,14 @@ function Calendar({
         ),
         month: cn("flex w-full flex-col gap-4", defaultClassNames.month),
         nav: cn(
-          "pointer-events-none absolute inset-x-0 top-0 z-20 flex w-full items-center justify-between gap-1",
-          defaultClassNames.nav
-        ),
-        button_previous: cn(
-          buttonVariants({ variant: buttonVariant }),
-          "pointer-events-auto z-20 size-(--cell-size) p-0 select-none aria-disabled:opacity-50",
-          defaultClassNames.button_previous
-        ),
-        button_next: cn(
-          buttonVariants({ variant: buttonVariant }),
-          "pointer-events-auto z-20 size-(--cell-size) p-0 select-none aria-disabled:opacity-50",
-          defaultClassNames.button_next
-        ),
-        month_caption: cn(
-          "flex h-(--cell-size) w-full items-center justify-center px-(--cell-size) z-10",
-          defaultClassNames.month_caption
-        ),
-        dropdowns: cn(
-          "flex h-(--cell-size) w-full items-center justify-center gap-1.5 text-sm font-medium",
-          defaultClassNames.dropdowns
-        ),
+  "pointer-events-none relative z-20 flex w-full items-center justify-center gap-1",
+  defaultClassNames.nav
+),
+...
+dropdowns: cn(
+  "flex h-(--cell-size) items-center justify-center gap-1.5 text-sm font-medium",
+  defaultClassNames.dropdowns
+),
         dropdown_root: cn(
           "relative rounded-(--cell-radius)",
           defaultClassNames.dropdown_root
