@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const plate = `MID${plateNumber}`;
+    const plate = `${plateNumber}`;
 
     const data = await checkinVehicle({
       id: plate,
