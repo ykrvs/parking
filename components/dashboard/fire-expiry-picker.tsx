@@ -66,7 +66,7 @@ export function FireExpiryPicker({ value, onChange }: FireExpiryPickerProps) {
           mode="single"
           selected={selectedDate}
           captionLayout="dropdown"
-          navLayout="after"
+          navLayout="around"
           startMonth={new Date(currentYear - 1, 0)}
           endMonth={new Date(currentYear + 20, 11)}
           onSelect={(date) => {

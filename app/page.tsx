@@ -2693,7 +2693,7 @@ export default function Home() {
                           mode="single"
                           selected={profileOrdDate}
                           captionLayout="dropdown"
-                          navLayout="after"
+                          navLayout="around"
                           startMonth={profileOrdCalendarStart}
                           endMonth={profileOrdCalendarEnd}
                           onSelect={(date) => {
