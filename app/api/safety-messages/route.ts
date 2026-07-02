@@ -3,9 +3,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getRequestSession } from "@/lib/api-auth";
 import {
   createSafetyMessage,
+  deleteSafetyMessage,
   getActiveSafetyMessages,
   getSafetyMessages,
   requireAdmin,
+  updateSafetyMessage,
 } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
@@ -66,6 +68,67 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: created }, { status: 201 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to create safety message";
+    const status = message.includes("Only admins") ? 403 : 500;
+    return NextResponse.json({ error: message }, { status });
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  const session = await getRequestSession(request);
+
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    await requireAdmin(session.openid);
+
+    const body = (await request.json()) as {
+      id?: string;
+      message?: string;
+      startsAt?: string | null;
+      endsAt?: string | null;
+      isActive?: boolean;
+    };
+
+    if (!body.id) {
+      return NextResponse.json({ error: "Message id is required" }, { status: 400 });
+    }
+
+    const updated = await updateSafetyMessage(body.id, {
+      ...(body.message !== undefined ? { message: body.message.trim() } : {}),
+      ...(body.startsAt !== undefined ? { starts_at: body.startsAt || null } : {}),
+      ...(body.endsAt !== undefined ? { ends_at: body.endsAt || null } : {}),
+      ...(body.isActive !== undefined ? { is_active: body.isActive } : {}),
+    });
+
+    return NextResponse.json({ message: updated });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to update safety message";
+    const status = message.includes("Only admins") ? 403 : 500;
+    return NextResponse.json({ error: message }, { status });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  const session = await getRequestSession(request);
+
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    await requireAdmin(session.openid);
+
+    const body = (await request.json()) as { id?: string };
+    if (!body.id) {
+      return NextResponse.json({ error: "Message id is required" }, { status: 400 });
+    }
+
+    await deleteSafetyMessage(body.id);
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to delete safety message";
     const status = message.includes("Only admins") ? 403 : 500;
     return NextResponse.json({ error: message }, { status });
   }

@@ -12,6 +12,7 @@
 
 alter table public.users add column if not exists phone text null;
 alter table public.users add column if not exists unit text null;
+alter table public.users add column if not exists is_verified boolean not null default false;
 do $$
 begin
   if exists (

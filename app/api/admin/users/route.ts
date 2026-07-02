@@ -1,7 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getRequestSession } from "@/lib/api-auth";
-import { getUsers, requireAdmin, setUserAdmin } from "@/lib/supabase/server";
+import {
+  getUsers,
+  requireAdmin,
+  setUserAdmin,
+  setUserVerified,
+} from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   const session = await getRequestSession(request);
@@ -32,16 +37,24 @@ export async function PATCH(request: NextRequest) {
     const body = (await request.json()) as {
       targetId?: string;
       isAdmin?: boolean;
+      isVerified?: boolean;
     };
 
     if (!body.targetId) {
       return NextResponse.json({ error: "Target user is required" }, { status: 400 });
     }
 
-    const user = await setUserAdmin(session.openid, body.targetId, body.isAdmin === true);
+    let user;
+    if (body.isVerified !== undefined) {
+      user = await setUserVerified(session.openid, body.targetId, body.isVerified === true);
+    }
+    if (body.isAdmin !== undefined) {
+      user = await setUserAdmin(session.openid, body.targetId, body.isAdmin === true);
+    }
+
     return NextResponse.json({ user });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to update admin";
+    const message = err instanceof Error ? err.message : "Failed to update user";
     const status = message.includes("Only admins") ? 403 : 500;
     return NextResponse.json({ error: message }, { status });
   }

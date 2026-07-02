@@ -10,7 +10,7 @@ function parseNonNegativeNumber(value: unknown, label: string) {
   if (!Number.isFinite(parsed) || parsed < 0) {
     throw new Error(`${label} must be a non-negative number`);
   }
-  
+
   return parsed;
 }
 
@@ -97,7 +97,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const plate = `${plateNumber}`;
+    // When plate masking is enabled, store the plate itself (no "MID"
+    // prefix) so the raw data in Supabase matches what's shown in the UI.
+    // Flip PLATE_MASK_ENABLED to false to go back to "MID"-prefixed IDs.
+    const plate = PLATE_MASK_ENABLED ? plateNumber : `MID${plateNumber}`;
 
     const data = await checkinVehicle({
       id: plate,

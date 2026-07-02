@@ -17,6 +17,7 @@ export type UserProfile = {
   name: string;
   is_admin: boolean;
   is_technician: boolean;
+  is_verified: boolean;
   ord_date: string | null;
   phone: string | null;
   unit: string | null;
@@ -96,9 +97,9 @@ export type ParkingConfig = {
 };
 
 const USER_PROFILE_SELECT =
-  "id, rank, name, is_admin, is_technician, ord_date, phone, unit, created_at";
+  "id, rank, name, is_admin, is_technician, is_verified, ord_date, phone, unit, created_at";
 const LEGACY_USER_PROFILE_SELECT =
-  "id, rank, name, is_admin, is_technician, ord_date, phone, depot, created_at";
+  "id, rank, name, is_admin, is_technician, is_verified, ord_date, phone, depot, created_at";
 
 function getSupabaseConfig() {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -181,7 +182,12 @@ function withoutLegacyPlate(payload: Record<string, any>) {
 }
 
 function withVehiclePlate(record: Record<string, any>) {
-  return { ...record, plate: record.id ?? record.vehicle_id ?? record.plate };
+  // History rows have their own primary key (`id`) separate from the
+  // vehicle they refer to (`vehicle_id` holds the actual plate). Vehicle
+  // rows don't have a `vehicle_id` column at all — their `id` IS the plate.
+  // Checking `vehicle_id` first fixes checked-out vehicles showing the
+  // history row's own id instead of the vehicle's plate.
+  return { ...record, plate: record.vehicle_id ?? record.id ?? record.plate };
 }
 
 export async function upsertSgidUser({ openid, name }: SgidUser) {
@@ -297,6 +303,7 @@ export async function getUsers() {
   const result = await supabase
     .from(table)
     .select(USER_PROFILE_SELECT)
+    .order("is_verified", { ascending: true })
     .order("name", { ascending: true });
 
   if (!result.error) {
@@ -310,6 +317,7 @@ export async function getUsers() {
   const legacyResult = await supabase
     .from(table)
     .select(LEGACY_USER_PROFILE_SELECT)
+    .order("is_verified", { ascending: true })
     .order("name", { ascending: true });
 
   if (legacyResult.error) throw legacyResult.error;
@@ -362,6 +370,41 @@ export async function setUserAdmin(actorId: string, targetId: string, isAdmin: b
 
   if (error) throw error;
   return data ? withVehiclePlate(data) : data;
+}
+
+export async function setUserVerified(
+  actorId: string,
+  targetId: string,
+  isVerified: boolean,
+) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return null;
+
+  await requireAdmin(actorId);
+
+  const table = getUsersTable();
+  let { data, error } = await supabase
+    .from(table)
+    .update({ is_verified: isVerified })
+    .eq("id", targetId)
+    .select(USER_PROFILE_SELECT)
+    .single<UserProfile>();
+
+  if (error && error.message.toLowerCase().includes("unit")) {
+    const retry = await supabase
+      .from(table)
+      .update({ is_verified: isVerified })
+      .eq("id", targetId)
+      .select(LEGACY_USER_PROFILE_SELECT)
+      .single<Omit<UserProfile, "unit">>();
+    data = retry.data
+      ? ({ ...retry.data, unit: retry.data.depot ?? null } as UserProfile)
+      : null;
+    error = retry.error;
+  }
+
+  if (error) throw error;
+  return data;
 }
 
 export async function getVehicles() {
@@ -575,4 +618,36 @@ export async function createSafetyMessage(messageData: {
 
   if (error) throw error;
   return data;
+}
+
+export async function updateSafetyMessage(
+  id: string,
+  updateData: {
+    message?: string;
+    starts_at?: string | null;
+    ends_at?: string | null;
+    is_active?: boolean;
+  },
+) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from("safety_messages")
+    .update(updateData)
+    .eq("id", id)
+    .select()
+    .single<SafetyMessage>();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteSafetyMessage(id: string) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return null;
+
+  const { error } = await supabase.from("safety_messages").delete().eq("id", id);
+  if (error) throw error;
+  return { success: true };
 }

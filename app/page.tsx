@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/set-state-in-effect, react-hooks/purity, react-hooks/exhaustive-deps, react/no-unescaped-entities */
 
@@ -92,6 +92,85 @@ function formatPlateDisplay(plate?: string | null): string {
   return plate.replace(/^MID/i, "");
 }
 
+// --- Safety Message Scheduling Helpers -------------------------------------
+// <input type="datetime-local"> values (e.g. "2026-07-02T07:52") have no
+// timezone attached — they represent whatever the browser's local wall-clock
+// time is. `new Date(...)` on such a string is interpreted as local time by
+// spec, so converting to ISO before sending to the server stores the correct
+// UTC instant instead of misreading the local digits as UTC (which was
+// causing the displayed time to drift by the local UTC offset, e.g. +8h in
+// Singapore).
+function localInputToUtcIso(value: string): string | null {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
+function utcIsoToLocalInput(value?: string | null): string {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+    d.getHours(),
+  )}:${pad(d.getMinutes())}`;
+}
+
+// Shared colour thresholds for percentage indicators (fuel, battery, etc.)
+// so battery readings can use the same green/amber/red logic as fuel level.
+function percentIndicatorColor(pct: number | null | undefined): string {
+  const value = pct ?? 0;
+  if (value > 50) return "bg-emerald-500";
+  if (value > 20) return "bg-amber-500";
+  return "bg-red-500";
+}
+
+function PercentDot({ pct }: { pct: number | null | undefined }) {
+  return (
+    <span
+      className={cn(
+        "inline-block size-2.5 rounded-full shrink-0",
+        percentIndicatorColor(pct),
+      )}
+      aria-hidden="true"
+    />
+  );
+}
+
+// Small red dot shown next to a user's name anywhere it appears in the app,
+// flagging accounts an admin hasn't verified yet. Renders nothing once
+// `isVerified` is true (or unknown, since most name displays don't have
+// verification data joined in).
+function UnverifiedDot({ isVerified }: { isVerified?: boolean }) {
+  if (isVerified !== false) return null;
+  return (
+    <span
+      title="Not yet verified by an admin"
+      aria-label="Not yet verified by an admin"
+      className="inline-block size-2 rounded-full bg-red-600 shrink-0"
+    />
+  );
+}
+
+// Lot occupancy colour tiers: boxes stay neutral below 50% occupied, then
+// step through green -> yellow -> red as fewer lots remain (50% / 75% / 90%
+// thresholds).
+function getLotOccupancyClasses(occupied: number, total: number) {
+  if (!total) return { box: "", text: "" };
+  const pct = (occupied / total) * 100;
+  if (pct >= 90) {
+    return { box: "bg-red-50 border-red-300", text: "text-red-700" };
+  }
+  if (pct >= 75) {
+    return { box: "bg-amber-50 border-amber-300", text: "text-amber-700" };
+  }
+  if (pct >= 50) {
+    return { box: "bg-emerald-50 border-emerald-300", text: "text-emerald-700" };
+  }
+  return { box: "", text: "" };
+}
+
 type ParkingLevelConfig = {
   id: string;
   label: string;
@@ -155,6 +234,7 @@ type AdminUserRecord = {
   name: string;
   is_admin: boolean;
   is_technician: boolean;
+  is_verified: boolean;
   ord_date: string | null;
   phone: string | null;
   unit: string | null;
@@ -401,6 +481,11 @@ export default function Home() {
   const [newSafetyMessage, setNewSafetyMessage] = useState("");
   const [newSafetyStartsAt, setNewSafetyStartsAt] = useState("");
   const [newSafetyEndsAt, setNewSafetyEndsAt] = useState("");
+  const [editingSafetyMessageId, setEditingSafetyMessageId] = useState<
+    string | null
+  >(null);
+  const [editSafetyStartsAt, setEditSafetyStartsAt] = useState("");
+  const [editSafetyEndsAt, setEditSafetyEndsAt] = useState("");
 
   // Form submission inputs
   const [formError, setFormError] = useState<string | null>(null);
@@ -755,7 +840,7 @@ export default function Home() {
     0,
   );
   const profileOrdCalendarEnd = new Date(
-    Math.max(currentYear + 15, profileOrdYear),
+    Math.max(currentYear + 45, profileOrdYear),
     11,
   );
 
@@ -1288,6 +1373,40 @@ export default function Home() {
     }
   };
 
+  const handleToggleUserVerified = async (
+    userId: string,
+    isVerified: boolean,
+  ) => {
+    // Optimistic update so the checkbox feels instant.
+    setAdminUsers((users) =>
+      users.map((user) =>
+        user.id === userId ? { ...user, is_verified: isVerified } : user,
+      ),
+    );
+
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ targetId: userId, isVerified }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Verification update failed");
+
+      // Re-sort (unverified first) now that a status changed.
+      await fetchAdminData();
+      triggerToast(isVerified ? "User verified" : "User marked unverified");
+    } catch (err: any) {
+      // Roll back on failure.
+      setAdminUsers((users) =>
+        users.map((user) =>
+          user.id === userId ? { ...user, is_verified: !isVerified } : user,
+        ),
+      );
+      triggerToast(`Verification update failed: ${err.message}`);
+    }
+  };
+
   const handleCreateSafetyMessage = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -1297,8 +1416,8 @@ export default function Home() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           message: newSafetyMessage,
-          startsAt: newSafetyStartsAt || null,
-          endsAt: newSafetyEndsAt || null,
+          startsAt: localInputToUtcIso(newSafetyStartsAt),
+          endsAt: localInputToUtcIso(newSafetyEndsAt),
         }),
       });
       const d = await res.json();
@@ -1312,6 +1431,62 @@ export default function Home() {
       triggerToast("Safety message scheduled");
     } catch (err: any) {
       triggerToast(`Safety message failed: ${err.message}`);
+    }
+  };
+
+  const startRescheduleSafetyMessage = (msg: SafetyMessageRecord) => {
+    setEditingSafetyMessageId(msg.id);
+    setEditSafetyStartsAt(utcIsoToLocalInput(msg.starts_at));
+    setEditSafetyEndsAt(utcIsoToLocalInput(msg.ends_at));
+  };
+
+  const cancelRescheduleSafetyMessage = () => {
+    setEditingSafetyMessageId(null);
+    setEditSafetyStartsAt("");
+    setEditSafetyEndsAt("");
+  };
+
+  const handleSaveRescheduleSafetyMessage = async (id: string) => {
+    try {
+      const res = await fetch("/api/safety-messages", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          id,
+          startsAt: localInputToUtcIso(editSafetyStartsAt),
+          endsAt: localInputToUtcIso(editSafetyEndsAt),
+        }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Reschedule failed");
+
+      cancelRescheduleSafetyMessage();
+      await fetchSafetyMessages();
+      await fetchAdminData();
+      triggerToast("Safety message rescheduled");
+    } catch (err: any) {
+      triggerToast(`Reschedule failed: ${err.message}`);
+    }
+  };
+
+  const handleDeleteSafetyMessage = async (id: string) => {
+    if (!window.confirm("Delete this safety message? This cannot be undone.")) {
+      return;
+    }
+    try {
+      const res = await fetch("/api/safety-messages", {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Delete failed");
+
+      await fetchSafetyMessages();
+      await fetchAdminData();
+      triggerToast("Safety message deleted");
+    } catch (err: any) {
+      triggerToast(`Delete failed: ${err.message}`);
     }
   };
 
@@ -1711,8 +1886,9 @@ export default function Home() {
                   {(profile.name || "U").slice(0, 2).toUpperCase()}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-bold truncate leading-none mb-1">
+                  <p className="flex items-center gap-1.5 text-sm font-bold truncate leading-none mb-1">
                     {profile.name}
+                    <UnverifiedDot isVerified={profile.is_verified} />
                   </p>
                   <span className="inline-block bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase">
                     {profile.is_admin
@@ -1785,11 +1961,21 @@ export default function Home() {
               <div className="grid grid-cols-2 sm:flex sm:items-center gap-3">
                 {parkingLevels.map((level) => {
                   const c = counts[level.id] || 0;
+                  const levelTotal =
+                    level.totalLots ?? getLevelLots(level).length;
+                  const occupancyClasses = getLotOccupancyClasses(
+                    c,
+                    levelTotal,
+                  );
                   return (
                     <div
                       key={level.id}
                       onClick={() => openParkingLevel(level.id)}
-                      className="cursor-pointer border border-zinc-200 rounded-lg p-3 w-full sm:w-24 text-center hover:bg-zinc-50 hover:border-zinc-300 transition-colors shadow-xs"
+                      className={cn(
+                        "cursor-pointer border rounded-lg p-3 w-full sm:w-24 text-center transition-colors shadow-xs",
+                        occupancyClasses.box ||
+                          "border-zinc-200 hover:bg-zinc-50 hover:border-zinc-300",
+                      )}
                     >
                       <div className="text-lg font-black text-zinc-800">
                         {c}
@@ -1908,15 +2094,17 @@ export default function Home() {
             <div className="grid grid-cols-2 sm:flex sm:items-center gap-3">
               {parkingLevels.map((level) => {
                 const occ = counts[level.id] || 0;
+                const levelTotal = level.totalLots ?? getLevelLots(level).length;
+                const occupancyClasses = getLotOccupancyClasses(occ, levelTotal);
                 return (
                   <div
                     key={level.id}
                     onClick={() => openParkingLevel(level.id)}
                     className={cn(
                       "cursor-pointer border p-3 w-full sm:w-36 rounded-xl flex items-center gap-3 shadow-xs transition-all",
-                      selectedLevel === level.id
-                        ? "bg-red-50 border-red-300 text-red-700 ring-2 ring-red-600/10"
-                        : "bg-white border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50/50",
+                      occupancyClasses.box ||
+                        "bg-white border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50/50",
+                      selectedLevel === level.id && "ring-2 ring-red-600/40",
                     )}
                   >
                     <div className="size-9 bg-zinc-100 rounded-lg flex items-center justify-center text-sm font-semibold select-none">
@@ -1926,8 +2114,13 @@ export default function Home() {
                       <div className="font-bold text-xs tracking-tight text-zinc-800 leading-tight">
                         {level.label}
                       </div>
-                      <p className="text-[10px] text-zinc-500 font-medium mt-0.5">
-                        {occ}/{level.totalLots ?? getLevelLots(level).length}{" "}
+                      <p
+                        className={cn(
+                          "text-[10px] font-medium mt-0.5",
+                          occupancyClasses.text || "text-zinc-500",
+                        )}
+                      >
+                        {occ}/{levelTotal}{" "}
                         lots
                       </p>
                     </div>
@@ -2349,8 +2542,9 @@ export default function Home() {
                   .toUpperCase()}
               </div>
               <div className="text-center">
-                <p className="text-base font-extrabold text-zinc-900">
+                <p className="flex items-center justify-center gap-1.5 text-base font-extrabold text-zinc-900">
                   {profile.name}
+                  <UnverifiedDot isVerified={profile.is_verified} />
                 </p>
                 <span className="inline-block bg-red-50 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase mt-1">
                   {profile.rank || "REC"}
@@ -2613,18 +2807,20 @@ export default function Home() {
                     </p>
                   ) : (
                     <div className="overflow-hidden rounded-lg border border-zinc-200">
-                      <div className="grid grid-cols-[1.5fr_1fr_auto] gap-3 bg-zinc-50 px-3 py-2 text-xs font-bold uppercase tracking-wider text-zinc-500">
+                      <div className="grid grid-cols-[1.5fr_auto_1fr_auto] gap-3 bg-zinc-50 px-3 py-2 text-xs font-bold uppercase tracking-wider text-zinc-500">
                         <span>User</span>
+                        <span>Verified</span>
                         <span>Role</span>
                         <span className="text-right">Admin</span>
                       </div>
                       {filteredAdminUsers.map((user) => (
                         <div
                           key={user.id}
-                          className="grid grid-cols-[1.5fr_1fr_auto] items-center gap-3 border-t border-zinc-100 px-3 py-3"
+                          className="grid grid-cols-[1.5fr_auto_1fr_auto] items-center gap-3 border-t border-zinc-100 px-3 py-3"
                         >
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-bold text-zinc-900">
+                            <p className="flex items-center gap-1.5 truncate text-sm font-bold text-zinc-900">
+                              <UnverifiedDot isVerified={user.is_verified} />
                               {user.rank ? `${user.rank} ` : ""}
                               {user.name}
                             </p>
@@ -2633,6 +2829,18 @@ export default function Home() {
                               {user.unit || user.depot || "No unit"}
                             </p>
                           </div>
+                          <input
+                            type="checkbox"
+                            aria-label={`Mark ${user.name} as verified`}
+                            className="size-4 accent-emerald-600"
+                            checked={user.is_verified === true}
+                            onChange={(e) =>
+                              handleToggleUserVerified(
+                                user.id,
+                                e.target.checked,
+                              )
+                            }
+                          />
                           <span className="text-xs font-semibold text-zinc-600">
                             {user.is_technician ? "Technician" : "Combatant"}
                           </span>
@@ -2717,26 +2925,105 @@ export default function Home() {
                     {adminSafetyMessages.map((message) => (
                       <div
                         key={message.id}
-                        className="rounded-lg border border-zinc-100 p-3"
+                        className="rounded-lg border border-zinc-100 p-3 space-y-2"
                       >
                         <p className="text-sm font-medium text-zinc-800">
                           {message.message}
                         </p>
-                        <p className="mt-1 text-[11px] font-semibold text-zinc-500">
-                          {message.starts_at
-                            ? format(
-                                new Date(message.starts_at),
-                                "dd MMM yyyy HH:mm",
-                              )
-                            : "Always on"}{" "}
-                          to{" "}
-                          {message.ends_at
-                            ? format(
-                                new Date(message.ends_at),
-                                "dd MMM yyyy HH:mm",
-                              )
-                            : "no end"}
-                        </p>
+
+                        {editingSafetyMessageId === message.id ? (
+                          <div className="space-y-2 rounded-md bg-zinc-50 p-2">
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-semibold text-zinc-500">
+                                  Starts
+                                </label>
+                                <input
+                                  type="datetime-local"
+                                  value={editSafetyStartsAt}
+                                  onChange={(e) =>
+                                    setEditSafetyStartsAt(e.target.value)
+                                  }
+                                  className="h-9 w-full rounded-md border border-zinc-200 bg-white px-2 text-xs outline-none focus:border-red-600"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-semibold text-zinc-500">
+                                  Ends
+                                </label>
+                                <input
+                                  type="datetime-local"
+                                  value={editSafetyEndsAt}
+                                  onChange={(e) =>
+                                    setEditSafetyEndsAt(e.target.value)
+                                  }
+                                  className="h-9 w-full rounded-md border border-zinc-200 bg-white px-2 text-xs outline-none focus:border-red-600"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                onClick={() =>
+                                  handleSaveRescheduleSafetyMessage(message.id)
+                                }
+                                className="h-8 flex-1 bg-red-600 text-xs hover:bg-red-700"
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={cancelRescheduleSafetyMessage}
+                                className="h-8 flex-1 text-xs"
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <p className="text-[11px] font-semibold text-zinc-500">
+                              {message.starts_at
+                                ? format(
+                                    new Date(message.starts_at),
+                                    "dd MMM yyyy HH:mm",
+                                  )
+                                : "Always on"}{" "}
+                              to{" "}
+                              {message.ends_at
+                                ? format(
+                                    new Date(message.ends_at),
+                                    "dd MMM yyyy HH:mm",
+                                  )
+                                : "no end"}
+                            </p>
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() =>
+                                  startRescheduleSafetyMessage(message)
+                                }
+                                className="h-7 gap-1 px-2 text-[11px]"
+                              >
+                                <Edit2 className="size-3" />
+                                Reschedule
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() =>
+                                  handleDeleteSafetyMessage(message.id)
+                                }
+                                className="h-7 gap-1 px-2 text-[11px] text-red-600 hover:bg-red-50 hover:text-red-700"
+                              >
+                                <Trash2 className="size-3" />
+                                Delete
+                              </Button>
+                            </div>
+                          </>
+                        )}
                       </div>
                     ))}
                     {!adminSafetyMessages.length && (
@@ -2787,7 +3074,7 @@ export default function Home() {
             {/* Driver Card */}
             <div className="space-y-2">
               <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                Last Driver
+                Last Operator
               </h3>
               <div className="border border-zinc-200 rounded-xl p-4 flex items-center gap-4 bg-zinc-50/25">
                 <div className="flex size-11 items-center justify-center rounded-full bg-zinc-100 font-bold text-zinc-700 text-sm">
@@ -2858,18 +3145,20 @@ export default function Home() {
                 <span className="font-bold text-zinc-600">
                   Starter Battery (24V)
                 </span>
-                <span className="font-extrabold text-zinc-800">
+                <span className="flex items-center gap-1.5 font-extrabold text-zinc-800">
                   {selectedVehicle.starter_v || "--"}V &nbsp;·&nbsp;{" "}
                   {selectedVehicle.starter_pct || 0}%
+                  <PercentDot pct={selectedVehicle.starter_pct} />
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="font-bold text-zinc-600">
                   Auxiliary Battery (24V)
                 </span>
-                <span className="font-extrabold text-zinc-800">
+                <span className="flex items-center gap-1.5 font-extrabold text-zinc-800">
                   {selectedVehicle.aux_v || "--"}V &nbsp;·&nbsp;{" "}
                   {selectedVehicle.aux_pct || 0}%
+                  <PercentDot pct={selectedVehicle.aux_pct} />
                 </span>
               </div>
             </div>
@@ -3305,16 +3594,18 @@ export default function Home() {
             <div className="border border-zinc-200 rounded-xl p-4 space-y-3 bg-zinc-50/25 text-xs">
               <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
                 <span className="font-bold text-zinc-600">Starter Battery</span>
-                <span className="font-extrabold text-zinc-800">
+                <span className="flex items-center gap-1.5 font-extrabold text-zinc-800">
                   {selectedDriveout.starter_v || "--"}V &nbsp;·&nbsp;{" "}
                   {selectedDriveout.starter_pct || 0}%
+                  <PercentDot pct={selectedDriveout.starter_pct} />
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="font-bold text-zinc-600">Aux Battery</span>
-                <span className="font-extrabold text-zinc-800">
+                <span className="flex items-center gap-1.5 font-extrabold text-zinc-800">
                   {selectedDriveout.aux_v || "--"}V &nbsp;·&nbsp;{" "}
                   {selectedDriveout.aux_pct || 0}%
+                  <PercentDot pct={selectedDriveout.aux_pct} />
                 </span>
               </div>
             </div>
