@@ -727,6 +727,11 @@ export default function Home() {
       fetchDashboardData();
       fetchParkingConfig();
       fetchSafetyMessages();
+      // Admins need the full user list (not just vehicles) so ORD
+      // reminders can show on Home without first opening the Admin tab.
+      if (profile.is_admin) {
+        fetchAdminData();
+      }
     }
   }, [auth.isAuthenticated, profile]);
 
@@ -739,6 +744,9 @@ export default function Home() {
     const AUTO_REFRESH_MS = 30000;
     const interval = window.setInterval(() => {
       fetchDashboardData();
+      if (profile.is_admin) {
+        fetchAdminData();
+      }
     }, AUTO_REFRESH_MS);
 
     return () => window.clearInterval(interval);
@@ -813,6 +821,87 @@ export default function Home() {
     month: "long",
     year: "numeric",
   });
+
+  // Fire Extinguisher Status calculation
+  const getFireExtDaysLeft = (dateStr: string | null) => {
+    if (!dateStr) return null;
+    return Math.floor(
+      (new Date(dateStr + "T00:00:00").getTime() -
+        new Date().setHours(0, 0, 0, 0)) /
+        86400000,
+    );
+  };
+
+  const getFireExtStatus = (dateStr: string | null) => {
+    if (!dateStr)
+      return { label: "Unknown", color: "text-zinc-500", bg: "bg-zinc-100/50" };
+    const days = getFireExtDaysLeft(dateStr) ?? 0;
+    if (days < 0) {
+      return {
+        label: `Expired ${Math.abs(days)}d ago`,
+        color: "text-red-700 font-semibold",
+        bg: "bg-red-50 border-red-200",
+      };
+    }
+    if (days <= 90) {
+      return {
+        label: `Expires in ${days}d`,
+        color: "text-amber-700 font-semibold",
+        bg: "bg-amber-50 border-amber-200",
+      };
+    }
+    return {
+      label: `Valid · ${days}d left`,
+      color: "text-emerald-700 font-semibold",
+      bg: "bg-emerald-50 border-emerald-200",
+    };
+  };
+
+  // Fire extinguishers expired, or expiring within the next 14 days, on
+  // vehicles currently parked in the facility.
+  const FIRE_EXT_WARNING_DAYS = 14;
+  const fireExtAlerts = vehicles
+    .map((v) => ({ vehicle: v, daysLeft: getFireExtDaysLeft(v.fire_ext_expiry) }))
+    .filter(
+      (entry) =>
+        entry.daysLeft !== null && entry.daysLeft <= FIRE_EXT_WARNING_DAYS,
+    )
+    .sort((a, b) => (a.daysLeft ?? 0) - (b.daysLeft ?? 0));
+
+  // ORD reminders. Admins see everyone due within 30 days (day 0 = ORD is
+  // today, a cue to remove that user from the database); each user also
+  // sees their own reminder on their Home tab.
+  const getOrdDaysLeft = (dateStr: string | null | undefined) => {
+    if (!dateStr) return null;
+    const d = new Date(dateStr);
+    if (Number.isNaN(d.getTime())) return null;
+    const ordDateOnly = new Date(
+      d.getFullYear(),
+      d.getMonth(),
+      d.getDate(),
+    ).getTime();
+    const today = new Date().setHours(0, 0, 0, 0);
+    return Math.floor((ordDateOnly - today) / 86400000);
+  };
+
+  const ORD_WARNING_DAYS = 30;
+  const ordAlerts = adminUsers
+    .map((u) => ({ user: u, daysLeft: getOrdDaysLeft(u.ord_date) }))
+    .filter(
+      (entry) =>
+        entry.daysLeft !== null &&
+        entry.daysLeft >= 0 &&
+        entry.daysLeft <= ORD_WARNING_DAYS,
+    )
+    .sort((a, b) => (a.daysLeft ?? 0) - (b.daysLeft ?? 0));
+
+  const myOrdDaysLeft = getOrdDaysLeft(profile?.ord_date);
+  const myOrdReminder =
+    myOrdDaysLeft !== null &&
+    myOrdDaysLeft >= 0 &&
+    myOrdDaysLeft <= ORD_WARNING_DAYS
+      ? myOrdDaysLeft
+      : null;
 
   // Calculate Zone metrics
   const counts = parkingLevels.reduce<Record<string, number>>((acc, level) => {
@@ -947,8 +1036,10 @@ export default function Home() {
       setFormError("Plate, Level and Lot are required");
       return;
     }
-    if (!/^\d+$/.test(ciPlate)) {
-      setFormError("Vehicle plate must contain numbers only");
+    if (!/^\d{1,3}(\(\d{1,2}\))?$/.test(ciPlate)) {
+      setFormError(
+        "Vehicle plate must be up to 3 digits, optionally followed by a bracketed number, e.g. 675(1)",
+      );
       return;
     }
     if (
@@ -1509,36 +1600,6 @@ export default function Home() {
     goTab("parking");
   };
 
-  // Fire Extinguisher Status calculation
-  const getFireExtStatus = (dateStr: string | null) => {
-    if (!dateStr)
-      return { label: "Unknown", color: "text-zinc-500", bg: "bg-zinc-100/50" };
-    const days = Math.floor(
-      (new Date(dateStr + "T00:00:00").getTime() -
-        new Date().setHours(0, 0, 0, 0)) /
-        86400000,
-    );
-    if (days < 0) {
-      return {
-        label: `Expired ${Math.abs(days)}d ago`,
-        color: "text-red-700 font-semibold",
-        bg: "bg-red-50 border-red-200",
-      };
-    }
-    if (days <= 90) {
-      return {
-        label: `Expires in ${days}d`,
-        color: "text-amber-700 font-semibold",
-        bg: "bg-amber-50 border-amber-200",
-      };
-    }
-    return {
-      label: `Valid · ${days}d left`,
-      color: "text-emerald-700 font-semibold",
-      bg: "bg-emerald-50 border-emerald-200",
-    };
-  };
-
   // Helpers
   const formatTimeAgo = (iso: string) => {
     if (!iso) return "—";
@@ -1930,6 +1991,115 @@ export default function Home() {
                 {safetyDate}
               </p>
             </div>
+
+            {/* Fire Extinguisher Expiry Alerts */}
+            {fireExtAlerts.length > 0 && (
+              <div className="bg-red-50 border border-red-200/70 rounded-xl p-4 sm:p-5 shadow-xs space-y-3">
+                <div className="flex items-center gap-2 text-red-800 font-bold text-xs uppercase tracking-wider">
+                  <Flame className="size-4" />
+                  Fire Extinguisher{fireExtAlerts.length > 1 ? "s" : ""} Needing
+                  Attention
+                </div>
+                <div className="space-y-1.5">
+                  {fireExtAlerts.map(({ vehicle, daysLeft }) => (
+                    <div
+                      key={vehicle.id}
+                      onClick={() => handleOpenVehicle(vehicle)}
+                      className="flex items-center justify-between gap-2 rounded-lg bg-white/70 border border-red-100 px-3 py-2 cursor-pointer hover:bg-white transition"
+                    >
+                      <span className="text-sm font-bold text-zinc-800">
+                        {formatPlateDisplay(vehicle.plate)}{" "}
+                        <span className="font-medium text-zinc-500">
+                          ({vehicle.variant})
+                        </span>
+                      </span>
+                      <span
+                        className={cn(
+                          "text-xs font-bold shrink-0",
+                          (daysLeft ?? 0) < 0
+                            ? "text-red-700"
+                            : "text-amber-700",
+                        )}
+                      >
+                        {(daysLeft ?? 0) < 0
+                          ? `Expired ${Math.abs(daysLeft ?? 0)}d ago`
+                          : `Expires in ${daysLeft}d`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Personal ORD Reminder */}
+            {myOrdReminder !== null && (
+              <div
+                className={cn(
+                  "rounded-xl p-4 sm:p-5 shadow-xs space-y-1 border",
+                  myOrdReminder === 0
+                    ? "bg-red-50 border-red-200/70"
+                    : "bg-amber-50 border-amber-200/70",
+                )}
+              >
+                <div
+                  className={cn(
+                    "flex items-center gap-2 font-bold text-xs uppercase tracking-wider",
+                    myOrdReminder === 0 ? "text-red-800" : "text-amber-800",
+                  )}
+                >
+                  <User className="size-4" />
+                  ORD Reminder
+                </div>
+                <p className="text-zinc-800 text-sm font-medium">
+                  {profile.name}, {profileUnit || "No unit"} due to ORD{" "}
+                  {myOrdReminder === 0
+                    ? "today"
+                    : `within ${ORD_WARNING_DAYS} days`}
+                  .
+                </p>
+              </div>
+            )}
+
+            {/* Admin: ORD Reminders for all users */}
+            {profile.is_admin && ordAlerts.length > 0 && (
+              <div className="bg-amber-50 border border-amber-200/70 rounded-xl p-4 sm:p-5 shadow-xs space-y-3">
+                <div className="flex items-center gap-2 text-amber-800 font-bold text-xs uppercase tracking-wider">
+                  <User className="size-4" />
+                  ORD Reminders
+                </div>
+                <div className="space-y-1.5">
+                  {ordAlerts.map(({ user, daysLeft }) => (
+                    <div
+                      key={user.id}
+                      className={cn(
+                        "flex items-center justify-between gap-2 rounded-lg border px-3 py-2",
+                        daysLeft === 0
+                          ? "bg-red-50 border-red-200"
+                          : "bg-white/70 border-amber-100",
+                      )}
+                    >
+                      <span className="text-sm font-medium text-zinc-800">
+                        {user.name}, {user.unit || user.depot || "No unit"}{" "}
+                        due to ORD{" "}
+                        {daysLeft === 0
+                          ? "today"
+                          : `within ${ORD_WARNING_DAYS} days`}
+                      </span>
+                      <span
+                        className={cn(
+                          "text-xs font-bold shrink-0",
+                          daysLeft === 0 ? "text-red-700" : "text-amber-700",
+                        )}
+                      >
+                        {daysLeft === 0
+                          ? "Remove from database"
+                          : `${daysLeft}d left`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Quick Actions Header */}
             <div className="flex items-center justify-between">
@@ -3746,20 +3916,19 @@ export default function Home() {
                       onChange={(e) =>
                         setCiPlate(
                           e.target.value
-                            .replace(/\D/g, "")
-                            .slice(0, PLATE_MASK_ENABLED ? PLATE_MAX_DIGITS : undefined),
+                            .replace(/[^\d()]/g, "")
+                            .slice(0, PLATE_MASK_ENABLED ? PLATE_MAX_DIGITS + 4 : undefined),
                         )
                       }
                       placeholder="e.g. 087"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      maxLength={PLATE_MASK_ENABLED ? PLATE_MAX_DIGITS : undefined}
+                      inputMode="text"
+                      maxLength={PLATE_MASK_ENABLED ? PLATE_MAX_DIGITS + 4 : undefined}
                       required
                       className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600 focus:ring-3 focus:ring-red-600/15"
                     />
                     <p className="text-[10px] font-medium text-zinc-500">
                       {PLATE_MASK_ENABLED
-                        ? `Enter up to ${PLATE_MAX_DIGITS} digits.`
+                        ? `Enter up to ${PLATE_MAX_DIGITS} digits. If this plate is already in use by a different vehicle, add a number in brackets, e.g. 675(1).`
                         : "Enter numbers only."}
                     </p>
                   </div>

@@ -81,16 +81,24 @@ export async function POST(request: NextRequest) {
     }
 
     const plateNumber = String(body.plate).trim();
-    if (!/^\d+$/.test(plateNumber)) {
-      return NextResponse.json({ error: "Vehicle plate must contain numbers only" }, { status: 400 });
+    if (!/^\d{1,3}(\(\d{1,2}\))?$/.test(plateNumber)) {
+      return NextResponse.json(
+        {
+          error:
+            "Vehicle plate must be up to 3 digits, optionally followed by a bracketed number, e.g. 675(1)",
+        },
+        { status: 400 },
+      );
     }
 
-    // Vehicle Plate masking: entries are capped at 3 digits while the app is
+    // Vehicle Plate masking: entries are capped at 3 digits (plus an
+    // optional bracketed disambiguator, e.g. "675(1)") while the app is
     // scoped to a single unit. Set PLATE_MASK_ENABLED to false (and remove
     // this block) to allow longer plate numbers again when scaling up.
     const PLATE_MASK_ENABLED = true;
     const PLATE_MAX_DIGITS = 3;
-    if (PLATE_MASK_ENABLED && plateNumber.length > PLATE_MAX_DIGITS) {
+    const plateDigitsOnly = plateNumber.split("(")[0];
+    if (PLATE_MASK_ENABLED && plateDigitsOnly.length > PLATE_MAX_DIGITS) {
       return NextResponse.json(
         { error: `Vehicle plate must be at most ${PLATE_MAX_DIGITS} digits` },
         { status: 400 },
@@ -101,6 +109,24 @@ export async function POST(request: NextRequest) {
     // prefix) so the raw data in Supabase matches what's shown in the UI.
     // Flip PLATE_MASK_ENABLED to false to go back to "MID"-prefixed IDs.
     const plate = PLATE_MASK_ENABLED ? plateNumber : `MID${plateNumber}`;
+
+    // Warn instead of silently overwriting if this exact plate is already
+    // checked in. Since plates are now short 3-digit numbers, two different
+    // vehicles may legitimately share one — the person checking in can add
+    // a bracketed number (e.g. 675(1)) to tell them apart.
+    const existingVehicles = await getVehicles();
+    if (
+      existingVehicles.some(
+        (v: { id?: string; plate?: string }) => v.id === plate || v.plate === plate,
+      )
+    ) {
+      return NextResponse.json(
+        {
+          error: `Vehicle plate ${plate} already exists in the system. If this is a different vehicle, add a number in brackets to tell it apart, e.g. ${plateDigitsOnly}(1).`,
+        },
+        { status: 409 },
+      );
+    }
 
     const data = await checkinVehicle({
       id: plate,
