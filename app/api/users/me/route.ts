@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getRequestSession } from "@/lib/api-auth";
 import { rateLimited } from "@/lib/rate-limit";
 import {
+  getFacilities,
   getUserProfile,
   isRegistrationComplete,
   updateUserRegistration,
@@ -52,9 +53,11 @@ export async function PATCH(request: NextRequest) {
       phone?: string;
       unit?: string;
       name?: string;
+      facility?: string;
     };
     const rank = body.rank?.trim() || "";
     const ordDate = body.ordDate?.trim() || "";
+    const facility = body.facility?.trim() || "";
 
     if (!rank) {
       return badRequest("Rank is required.");
@@ -64,6 +67,15 @@ export async function PATCH(request: NextRequest) {
       return badRequest("ORD date is required.");
     }
 
+    if (!facility) {
+      return badRequest("Depot is required.");
+    }
+
+    const facilities = await getFacilities();
+    if (!facilities.some((f) => f.code === facility)) {
+      return badRequest("Depot is not recognized.");
+    }
+
     const profile = await updateUserRegistration(session.openid, {
       rank,
       ordDate,
@@ -71,6 +83,7 @@ export async function PATCH(request: NextRequest) {
       phone: body.phone?.trim() || null,
       unit: body.unit?.trim() || null,
       name: body.name?.trim() || session.name,
+      facilityCode: facility,
     });
 
     return NextResponse.json({

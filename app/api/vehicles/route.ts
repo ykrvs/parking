@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { getRequestSession } from "@/lib/api-auth";
 import { rateLimited } from "@/lib/rate-limit";
-import { getVehicles, checkinVehicle, requireVerified } from "@/lib/supabase/server";
+import { getVehicles, checkinVehicle, requireVerified, resolveFacilityCode } from "@/lib/supabase/server";
 
 function parseNonNegativeNumber(value: unknown, label: string) {
   if (value === null || value === undefined || value === "") return null;
@@ -59,8 +59,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const list = await getVehicles();
-    return NextResponse.json({ vehicles: list });
+    const requestedFacility = request.nextUrl.searchParams.get("facility");
+    const facilityCode = await resolveFacilityCode(session.openid, requestedFacility);
+    const list = await getVehicles(facilityCode);
+    return NextResponse.json({ vehicles: list, facility: facilityCode });
   } catch (err) {
     console.error("Failed to load vehicles:", err);
     return NextResponse.json({ error: "Failed to load vehicles" }, { status: 500 });
@@ -86,6 +88,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Plate, Level and Lot are required" }, { status: 400 });
     }
 
+    const facilityCode = await resolveFacilityCode(session.openid, body.facility);
+
     const plateNumber = String(body.plate).trim();
     if (!/^\d{1,3}(\(\d{1,2}\))?$/.test(plateNumber)) {
       return NextResponse.json(
@@ -98,9 +102,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Vehicle Plate masking: entries are capped at 3 digits (plus an
-    // optional bracketed disambiguator, e.g. "675(1)") while the app is
-    // scoped to a single unit. Set PLATE_MASK_ENABLED to false (and remove
-    // this block) to allow longer plate numbers again when scaling up.
+    // optional bracketed disambiguator, e.g. "675(1)") while each depot's
+    // plates are scoped to a single unit. Set PLATE_MASK_ENABLED to false
+    // (and remove this block) to allow longer plate numbers again.
     const PLATE_MASK_ENABLED = true;
     const PLATE_MAX_DIGITS = 3;
     const plateDigitsOnly = plateNumber.split("(")[0];
@@ -111,16 +115,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // When plate masking is enabled, store the plate itself (no "MID"
-    // prefix) so the raw data in Supabase matches what's shown in the UI.
-    // Flip PLATE_MASK_ENABLED to false to go back to "MID"-prefixed IDs.
-    const plate = PLATE_MASK_ENABLED ? plateNumber : `MID${plateNumber}`;
+    // Every vehicle's stored id is prefixed with its depot's facility code
+    // (e.g. "11FMD-087") so the same 3-digit plate can be reused across
+    // depots without colliding — the UI only ever shows the part after the
+    // prefix. Flip PLATE_MASK_ENABLED to false to go back to plain "MID"
+    // prefixed IDs with no depot scoping.
+    const plate = PLATE_MASK_ENABLED
+      ? `${facilityCode}-${plateNumber}`
+      : `MID${plateNumber}`;
 
     // Warn instead of silently overwriting if this exact plate is already
-    // checked in. Since plates are now short 3-digit numbers, two different
-    // vehicles may legitimately share one — the person checking in can add
-    // a bracketed number (e.g. 675(1)) to tell them apart.
-    const existingVehicles = await getVehicles();
+    // checked in at this depot. Since plates are now short 3-digit numbers,
+    // two different vehicles may legitimately share one — the person
+    // checking in can add a bracketed number (e.g. 675(1)) to tell them
+    // apart.
+    const existingVehicles = await getVehicles(facilityCode);
     if (
       existingVehicles.some(
         (v: { id?: string; plate?: string }) => v.id === plate || v.plate === plate,
@@ -128,7 +137,7 @@ export async function POST(request: NextRequest) {
     ) {
       return NextResponse.json(
         {
-          error: `Vehicle plate ${plate} already exists in the system. If this is a different vehicle, add a number in brackets to tell it apart, e.g. ${plateDigitsOnly}(1).`,
+          error: `Vehicle plate ${plateNumber} already exists in the system. If this is a different vehicle, add a number in brackets to tell it apart, e.g. ${plateDigitsOnly}(1).`,
         },
         { status: 409 },
       );
@@ -136,6 +145,7 @@ export async function POST(request: NextRequest) {
 
     const data = await checkinVehicle({
       id: plate,
+      facility_code: facilityCode,
       variant: body.variant?.trim() || "—",
       driver_id: session.openid,
       driver: body.driver?.trim() || "—",

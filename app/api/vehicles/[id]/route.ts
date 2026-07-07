@@ -2,7 +2,14 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { getRequestSession } from "@/lib/api-auth";
 import { rateLimited } from "@/lib/rate-limit";
-import { updateVehicle, moveOutVehicle, insertHistory, requireVerified } from "@/lib/supabase/server";
+import {
+  updateVehicle,
+  moveOutVehicle,
+  insertHistory,
+  requireVerified,
+  assertVehicleFacilityAccess,
+  getFacilityCodeFromVehicleId,
+} from "@/lib/supabase/server";
 
 const NUMERIC_FIELDS = [
   ["odometer", "Odometer"],
@@ -85,6 +92,7 @@ export async function PATCH(
 
   try {
     await requireVerified(session.openid);
+    await assertVehicleFacilityAccess(session.openid, id);
 
     const body = await request.json();
     const { historyRow, ...updateData } = body;
@@ -94,6 +102,7 @@ export async function PATCH(
     if (historyRow) {
       await insertHistory({
         ...historyRow,
+        facility_code: getFacilityCodeFromVehicleId(id),
         created_at: new Date().toISOString(),
       });
     }
@@ -105,9 +114,11 @@ export async function PATCH(
     const message = err instanceof Error ? err.message : "Update failed";
     const status = message.includes("hasn't been verified")
       ? 403
-      : isValidationError(err)
-        ? 400
-        : 500;
+      : message.includes("different depot")
+        ? 403
+        : isValidationError(err)
+          ? 400
+          : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }
@@ -129,6 +140,7 @@ export async function DELETE(
 
   try {
     await requireVerified(session.openid);
+    await assertVehicleFacilityAccess(session.openid, id);
 
     const body = await request.json();
     const { historyRow } = body;
@@ -136,6 +148,7 @@ export async function DELETE(
     if (historyRow) {
       await insertHistory({
         ...historyRow,
+        facility_code: getFacilityCodeFromVehicleId(id),
         check_out: new Date().toISOString(),
         created_at: new Date().toISOString(),
       });
@@ -146,7 +159,11 @@ export async function DELETE(
   } catch (err) {
     console.error("Drive out failed:", err);
     const message = err instanceof Error ? err.message : "Drive out failed";
-    const status = message.includes("hasn't been verified") ? 403 : 500;
+    const status = message.includes("hasn't been verified")
+      ? 403
+      : message.includes("different depot")
+        ? 403
+        : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }

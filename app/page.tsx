@@ -91,6 +91,11 @@ const VEHICLE_VARIANT_OPTIONS = ["HFV", "HARV", "2BT", "B", "BN"];
 function formatPlateDisplay(plate?: string | null): string {
   if (!plate) return "—";
   if (!PLATE_MASK_ENABLED) return plate;
+  // New scheme: "{FACILITY_CODE}-{plate}" (e.g. "11FMD-087") — strip the
+  // depot prefix so two depots can each show a plain "087". Falls back to
+  // stripping the older "MID" prefix for pre-multi-depot records.
+  const facilityPrefixMatch = plate.match(/^[A-Za-z0-9]+-(.+)$/);
+  if (facilityPrefixMatch) return facilityPrefixMatch[1];
   return plate.replace(/^MID/i, "");
 }
 
@@ -539,6 +544,13 @@ export default function Home() {
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [isCheckingProfile, setIsCheckingProfile] = useState<boolean>(false);
   const [profile, setProfile] = useState<any>(null);
+  // The depot whose data is currently shown. Regular users are always
+  // locked to their own depot; admins can switch this via the header
+  // dropdown to view/manage a different depot's operational data.
+  const [activeFacility, setActiveFacility] = useState<string>("");
+  const [facilities, setFacilities] = useState<
+    { code: string; name: string }[]
+  >([]);
   const [parkingLevels, setParkingLevels] = useState<ParkingLevelConfig[]>(
     DEFAULT_PARKING_LEVELS,
   );
@@ -711,6 +723,7 @@ export default function Home() {
         }
 
         setProfile(data.profile);
+        setActiveFacility((current) => current || data.profile?.facility_code || "11FMD");
 
         // Sync rank to local storage if different or missing
         if (data.profile?.rank && auth.rank !== data.profile.rank) {
@@ -735,7 +748,9 @@ export default function Home() {
   // Load Vehicles & dashboard metrics
   const fetchDashboardData = async () => {
     try {
-      const response = await fetch("/api/vehicles");
+      const response = await fetch(
+        `/api/vehicles?facility=${encodeURIComponent(activeFacility)}`,
+      );
       if (response.ok) {
         const data = await response.json();
         setVehicles(data.vehicles || []);
@@ -750,7 +765,9 @@ export default function Home() {
   // Fetch drive-out history
   const fetchDriveoutHistory = async () => {
     try {
-      const response = await fetch("/api/history?check_out=notnull");
+      const response = await fetch(
+        `/api/history?check_out=notnull&facility=${encodeURIComponent(activeFacility)}`,
+      );
       if (response.ok) {
         const data = await response.json();
         setDriveoutRecords(data.history || []);
@@ -765,7 +782,9 @@ export default function Home() {
     setIsLoadingParkingConfig(true);
 
     try {
-      const response = await fetch("/api/config/parking");
+      const response = await fetch(
+        `/api/config/parking?facility=${encodeURIComponent(activeFacility)}`,
+      );
       if (!response.ok) throw new Error("Config request failed");
 
       const data = (await response.json()) as {
@@ -795,7 +814,9 @@ export default function Home() {
 
   const fetchSafetyMessages = async () => {
     try {
-      const response = await fetch("/api/safety-messages");
+      const response = await fetch(
+        `/api/safety-messages?facility=${encodeURIComponent(activeFacility)}`,
+      );
       if (!response.ok) throw new Error("Safety message request failed");
 
       const data = (await response.json()) as {
@@ -815,7 +836,9 @@ export default function Home() {
     try {
       const [usersResponse, safetyResponse, auditResponse] = await Promise.all([
         fetch("/api/admin/users"),
-        fetch("/api/safety-messages?all=true"),
+        fetch(
+          `/api/safety-messages?all=true&facility=${encodeURIComponent(activeFacility)}`,
+        ),
         fetch("/api/admin/audit-log"),
       ]);
 
@@ -848,7 +871,18 @@ export default function Home() {
   };
 
   useEffect(() => {
-    if (auth.isAuthenticated && profile) {
+    if (!auth.isAuthenticated) return;
+
+    fetch("/api/facilities")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { facilities?: { code: string; name: string }[] } | null) => {
+        if (data?.facilities) setFacilities(data.facilities);
+      })
+      .catch((err) => console.error("Failed to load facilities:", err));
+  }, [auth.isAuthenticated]);
+
+  useEffect(() => {
+    if (auth.isAuthenticated && profile && activeFacility) {
       fetchDashboardData().finally(() => setIsLoadingDashboard(false));
       fetchParkingConfig();
       fetchSafetyMessages();
@@ -858,13 +892,13 @@ export default function Home() {
         fetchAdminData();
       }
     }
-  }, [auth.isAuthenticated, profile]);
+  }, [auth.isAuthenticated, profile, activeFacility]);
 
   // Periodically re-fetch vehicles so newly checked-in vehicles (and any
   // other check-in/check-out activity from other users) show up without
   // requiring a manual page reload.
   useEffect(() => {
-    if (!auth.isAuthenticated || !profile) return;
+    if (!auth.isAuthenticated || !profile || !activeFacility) return;
 
     const AUTO_REFRESH_MS = 30000;
     const interval = window.setInterval(() => {
@@ -1046,6 +1080,8 @@ export default function Home() {
     parkingLevels[0];
   const selectedLevelLots = getLevelLots(selectedLevelConfig);
   const profileUnit = profile?.unit || profile?.depot || "";
+  const activeFacilityName =
+    facilities.find((f) => f.code === activeFacility)?.name || activeFacility;
   // Unverified users can browse the app (viewer mode) but can't check
   // vehicles in/out or edit records until an admin verifies them. Mirrors
   // the same rule enforced server-side in requireVerified().
@@ -1095,7 +1131,9 @@ export default function Home() {
 
     // Fetch vehicle history logs
     try {
-      const res = await fetch(`/api/history?vehicle_id=${vehicle.id}`);
+      const res = await fetch(
+        `/api/history?vehicle_id=${vehicle.id}&facility=${encodeURIComponent(activeFacility)}`,
+      );
       if (res.ok) {
         const d = await res.json();
         setHistoryRecords(d.history || []);
@@ -1216,6 +1254,7 @@ export default function Home() {
       fuel_pct: ciFuelPct || null,
       fire_ext_expiry: ciFireExpiry || null,
       notes: ciNotes || null,
+      facility: activeFacility,
     };
 
     try {
@@ -1373,7 +1412,7 @@ export default function Home() {
 
       // Fetch latest history
       const historyRes = await fetch(
-        `/api/history?vehicle_id=${selectedVehicle.id}`,
+        `/api/history?vehicle_id=${selectedVehicle.id}&facility=${encodeURIComponent(activeFacility)}`,
       );
       if (historyRes.ok) {
         const histData = await historyRes.json();
@@ -1647,6 +1686,7 @@ export default function Home() {
           message: newSafetyMessage,
           startsAt: localInputToUtcIso(newSafetyStartsAt),
           endsAt: localInputToUtcIso(newSafetyEndsAt),
+          facility: activeFacility,
         }),
       });
       const d = await res.json();
@@ -1941,27 +1981,49 @@ export default function Home() {
 
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white border-b border-zinc-200 px-6 py-4 flex items-center justify-between shadow-sm">
-        <button
-          type="button"
-          onClick={() => goTab("home")}
-          className="flex items-center gap-3 rounded-lg text-left transition hover:bg-zinc-50 focus:outline-none focus:ring-3 focus:ring-red-600/15"
-          aria-label="Go to home page"
-        >
-          <Image
-            src="/unit-logo.jpeg"
-            alt="Parking unit logo"
-            width={40}
-            height={40}
-            className="size-10 rounded-md object-cover border border-zinc-200"
-            priority
-          />
+        <div className="flex items-center gap-3 rounded-lg">
+          <button
+            type="button"
+            onClick={() => goTab("home")}
+            className="rounded-lg transition hover:opacity-80 focus:outline-none focus:ring-3 focus:ring-red-600/15"
+            aria-label="Go to home page"
+          >
+            <Image
+              src="/unit-logo.jpeg"
+              alt="Parking unit logo"
+              width={40}
+              height={40}
+              className="size-10 rounded-md object-cover border border-zinc-200"
+              priority
+            />
+          </button>
           <div>
             <p className="text-xs text-zinc-500 font-semibold tracking-wider uppercase">
               FleetOps
             </p>
-            <h1 className="text-lg font-bold tracking-tight">Block 210</h1>
+            {profile.is_admin && facilities.length > 0 ? (
+              <select
+                value={activeFacility}
+                onChange={(e) => setActiveFacility(e.target.value)}
+                aria-label="Switch depot"
+                className="-ml-1 rounded-md border-none bg-transparent px-1 text-lg font-bold tracking-tight outline-none transition hover:bg-zinc-50 focus:ring-3 focus:ring-red-600/15"
+              >
+                {facilities.map((f) => (
+                  <option key={f.code} value={f.code}>
+                    {f.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <h1
+                onClick={() => goTab("home")}
+                className="cursor-pointer text-lg font-bold tracking-tight"
+              >
+                {activeFacilityName}
+              </h1>
+            )}
           </div>
-        </button>
+        </div>
         <div className="flex items-center gap-2">
           <Button
             type="button"
@@ -2001,7 +2063,7 @@ export default function Home() {
               <div className="flex items-center justify-between pb-4 border-b border-zinc-100">
                 <div>
                   <h2 className="text-lg font-bold tracking-tight">FleetOps</h2>
-                  <p className="text-xs text-zinc-500">Block 210 Carpark</p>
+                  <p className="text-xs text-zinc-500">{activeFacilityName} Carpark</p>
                 </div>
                 <Button
                   variant="ghost"
@@ -2297,7 +2359,7 @@ export default function Home() {
                     {vehicles.length}
                   </div>
                   <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider">
-                    Vehicles currently parked in Block 210
+                    Vehicles currently parked in {activeFacilityName}
                   </p>
                 </div>
 
@@ -4170,7 +4232,7 @@ export default function Home() {
                 <div>
                   <CardTitle className="text-xl">Log Vehicle In</CardTitle>
                   <CardDescription>
-                    Record a vehicle parking at Block 210
+                    Record a vehicle parking at {activeFacilityName}
                   </CardDescription>
                 </div>
                 <Button

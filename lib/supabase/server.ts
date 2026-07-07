@@ -18,6 +18,7 @@ export type UserProfile = {
   is_admin: boolean;
   is_technician: boolean;
   is_verified: boolean;
+  facility_code: string;
   ord_date: string | null;
   phone: string | null;
   unit: string | null;
@@ -32,6 +33,12 @@ export type UserRegistration = {
   phone?: string | null;
   unit?: string | null;
   name?: string;
+  facilityCode?: string;
+};
+
+export type Facility = {
+  code: string;
+  name: string;
 };
 
 export type SafetyMessage = {
@@ -41,6 +48,7 @@ export type SafetyMessage = {
   ends_at: string | null;
   is_active: boolean;
   created_by: string | null;
+  facility_code: string | null;
   created_at: string;
 };
 
@@ -97,9 +105,9 @@ export type ParkingConfig = {
 };
 
 const USER_PROFILE_SELECT =
-  "id, rank, name, is_admin, is_technician, is_verified, ord_date, phone, unit, created_at";
+  "id, rank, name, is_admin, is_technician, is_verified, facility_code, ord_date, phone, unit, created_at";
 const LEGACY_USER_PROFILE_SELECT =
-  "id, rank, name, is_admin, is_technician, is_verified, ord_date, phone, depot, created_at";
+  "id, rank, name, is_admin, is_technician, is_verified, facility_code, ord_date, phone, depot, created_at";
 
 function getSupabaseConfig() {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -249,7 +257,7 @@ export async function getUserProfile(id: string) {
 
 export async function updateUserRegistration(
   id: string,
-  { rank, ordDate, isTechnician, phone, unit, name }: UserRegistration,
+  { rank, ordDate, isTechnician, phone, unit, name, facilityCode }: UserRegistration,
 ) {
   const supabase = getSupabaseAdmin();
 
@@ -264,6 +272,7 @@ export async function updateUserRegistration(
   if (phone !== undefined) updatePayload.phone = phone;
   if (unit !== undefined) updatePayload.unit = unit;
   if (name !== undefined) updatePayload.name = name;
+  if (facilityCode !== undefined) updatePayload.facility_code = facilityCode;
 
   const runUpdate = async (payload: any, selectFields: string) =>
     supabase
@@ -329,6 +338,65 @@ export async function getUsers() {
 
 export function isRegistrationComplete(profile: UserProfile | null) {
   return !!profile?.rank && !!profile.ord_date && !!profile.phone && !!(profile.unit || profile.depot);
+}
+
+export async function getFacilities() {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return [];
+
+  const { data, error } = await supabase
+    .from("facilities")
+    .select("code, name")
+    .order("code", { ascending: true });
+
+  if (error) throw error;
+  return (data || []) as Facility[];
+}
+
+// Figures out which depot a request should operate on. Regular users are
+// always locked to their own depot (requestedFacility is ignored for them,
+// so there's no way to spoof access to another depot's data from the
+// client). Admins can pass a `facility` param to view/act on any real
+// depot; an invalid or omitted value falls back to their own.
+export async function resolveFacilityCode(
+  actorId: string,
+  requestedFacility?: string | null,
+) {
+  const profile = await getUserProfile(actorId);
+  if (!profile) {
+    throw new Error("User not found.");
+  }
+
+  if (profile.is_admin && requestedFacility) {
+    const facilities = await getFacilities();
+    const match = facilities.find((f) => f.code === requestedFacility);
+    if (match) return match.code;
+  }
+
+  return profile.facility_code || "11FMD";
+}
+
+// Every vehicle's id is prefixed with its depot's facility code (see
+// app/api/vehicles/route.ts), so the vehicle's own facility can be read
+// straight off its id without an extra lookup.
+export function getFacilityCodeFromVehicleId(id: string) {
+  const [prefix] = id.split("-");
+  return prefix;
+}
+
+// Non-admins may only update/checkout vehicles that belong to their own
+// depot. Admins may act on any depot (that's the point of the toggle).
+export async function assertVehicleFacilityAccess(actorId: string, vehicleId: string) {
+  const profile = await getUserProfile(actorId);
+  if (!profile) {
+    throw new Error("User not found.");
+  }
+  if (profile.is_admin) return;
+
+  const vehicleFacility = getFacilityCodeFromVehicleId(vehicleId);
+  if (vehicleFacility !== profile.facility_code) {
+    throw new Error("This vehicle belongs to a different depot.");
+  }
 }
 
 export async function requireAdmin(actorId: string) {
@@ -491,12 +559,13 @@ export async function setUserVerified(
   return data;
 }
 
-export async function getVehicles() {
+export async function getVehicles(facilityCode: string) {
   const supabase = getSupabaseAdmin();
   if (!supabase) return [];
   const { data, error } = await supabase
     .from("vehicles")
     .select("*")
+    .eq("facility_code", facilityCode)
     .not("lot", "is", null)
     .order("check_in", { ascending: false });
   if (error) throw error;
@@ -573,10 +642,17 @@ export async function moveOutVehicle(id: string) {
   return data ? withVehiclePlate(data) : data;
 }
 
-export async function getHistory(vehicleId?: string, onlyCheckouts: boolean = false) {
+export async function getHistory(
+  facilityCode: string,
+  vehicleId?: string,
+  onlyCheckouts: boolean = false,
+) {
   const supabase = getSupabaseAdmin();
   if (!supabase) return [];
-  let query = supabase.from("history").select("*");
+  let query = supabase
+    .from("history")
+    .select("*")
+    .eq("facility_code", facilityCode);
   if (vehicleId) {
     query = query.eq("vehicle_id", vehicleId);
   }
@@ -639,14 +715,14 @@ export async function insertTurretEscLog(logData: any) {
   return data ? withVehiclePlate(data) : data;
 }
 
-export async function getParkingConfig() {
+export async function getParkingConfig(facilityCode: string) {
   const supabase = getSupabaseAdmin();
   if (!supabase) return null;
 
   const { data, error } = await supabase
     .from("parking_config")
     .select("layout")
-    .eq("id", "default")
+    .eq("id", facilityCode)
     .maybeSingle<{ layout: ParkingConfig }>();
 
   if (error) throw error;
@@ -654,7 +730,7 @@ export async function getParkingConfig() {
   return data?.layout ?? null;
 }
 
-export async function getActiveSafetyMessages() {
+export async function getActiveSafetyMessages(facilityCode: string) {
   const supabase = getSupabaseAdmin();
   if (!supabase) return [];
 
@@ -663,6 +739,9 @@ export async function getActiveSafetyMessages() {
     .from("safety_messages")
     .select("*")
     .eq("is_active", true)
+    // Messages tagged for this facility, plus legacy/global messages that
+    // predate multi-depot support (facility_code is null = shown everywhere).
+    .or(`facility_code.eq.${facilityCode},facility_code.is.null`)
     .or(`starts_at.is.null,starts_at.lte.${now}`)
     .or(`ends_at.is.null,ends_at.gte.${now}`)
     .order("created_at", { ascending: false });
@@ -671,13 +750,14 @@ export async function getActiveSafetyMessages() {
   return (data || []) as SafetyMessage[];
 }
 
-export async function getSafetyMessages() {
+export async function getSafetyMessages(facilityCode: string) {
   const supabase = getSupabaseAdmin();
   if (!supabase) return [];
 
   const { data, error } = await supabase
     .from("safety_messages")
     .select("*")
+    .or(`facility_code.eq.${facilityCode},facility_code.is.null`)
     .order("created_at", { ascending: false });
 
   if (error) throw error;
@@ -690,6 +770,7 @@ export async function createSafetyMessage(messageData: {
   ends_at?: string | null;
   is_active?: boolean;
   created_by?: string | null;
+  facility_code?: string | null;
 }) {
   const supabase = getSupabaseAdmin();
   if (!supabase) return null;

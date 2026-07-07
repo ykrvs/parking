@@ -9,6 +9,7 @@ import {
   getSafetyMessages,
   logAuditEvent,
   requireAdmin,
+  resolveFacilityCode,
   updateSafetyMessage,
 } from "@/lib/supabase/server";
 
@@ -21,14 +22,17 @@ export async function GET(request: NextRequest) {
 
   try {
     const includeAll = request.nextUrl.searchParams.get("all") === "true";
+    const requestedFacility = request.nextUrl.searchParams.get("facility");
 
     if (includeAll) {
       await requireAdmin(session.openid);
-      const messages = await getSafetyMessages();
-      return NextResponse.json({ messages });
+      const facilityCode = await resolveFacilityCode(session.openid, requestedFacility);
+      const messages = await getSafetyMessages(facilityCode);
+      return NextResponse.json({ messages, facility: facilityCode });
     }
 
-    const messages = await getActiveSafetyMessages();
+    const facilityCode = await resolveFacilityCode(session.openid, requestedFacility);
+    const messages = await getActiveSafetyMessages(facilityCode);
     return NextResponse.json({ messages });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to load safety messages";
@@ -55,6 +59,7 @@ export async function POST(request: NextRequest) {
       startsAt?: string;
       endsAt?: string;
       isActive?: boolean;
+      facility?: string;
     };
     const message = body.message?.trim();
 
@@ -62,12 +67,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Message is required" }, { status: 400 });
     }
 
+    const facilityCode = await resolveFacilityCode(session.openid, body.facility);
+
     const created = await createSafetyMessage({
       message,
       starts_at: body.startsAt || null,
       ends_at: body.endsAt || null,
       is_active: body.isActive !== false,
       created_by: session.openid,
+      facility_code: facilityCode,
     });
 
     await logAuditEvent({
@@ -75,6 +83,7 @@ export async function POST(request: NextRequest) {
       action: "safety_message.create",
       targetId: created?.id ?? null,
       targetLabel: message,
+      details: { facility: facilityCode },
     });
 
     return NextResponse.json({ message: created }, { status: 201 });

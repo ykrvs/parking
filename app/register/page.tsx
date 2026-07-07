@@ -5,6 +5,7 @@ import {
   Calendar as CalendarIcon,
   IdCard,
   LogOut,
+  MapPin,
   Phone,
   User,
   Wrench,
@@ -48,8 +49,14 @@ type ProfileResponse = {
     phone: string | null;
     unit: string | null;
     depot?: string | null;
+    facility_code?: string | null;
   } | null;
   registrationComplete: boolean;
+};
+
+type FacilityOption = {
+  code: string;
+  name: string;
 };
 
 const RANK_CATEGORIES = [
@@ -120,6 +127,8 @@ export default function RegisterPage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [unit, setUnit] = useState("");
+  const [facility, setFacility] = useState("");
+  const [facilities, setFacilities] = useState<FacilityOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -153,6 +162,7 @@ export default function RegisterPage() {
         setIsTechnician(data.profile?.is_technician ?? false);
         setPhone(data.profile?.phone ?? "");
         setUnit(data.profile?.unit ?? data.profile?.depot ?? "");
+        setFacility(data.profile?.facility_code ?? "");
       } catch (profileError) {
         if (!controller.signal.aborted) {
           console.error("[register] Failed to load profile", profileError);
@@ -171,6 +181,31 @@ export default function RegisterPage() {
 
     return () => controller.abort();
   }, [auth.isAuthenticated, auth.isLoading, auth.name, auth.openid, router]);
+
+  useEffect(() => {
+    if (!auth.isAuthenticated) return;
+
+    const controller = new AbortController();
+
+    async function loadFacilities() {
+      try {
+        const response = await fetch("/api/facilities", {
+          signal: controller.signal,
+        });
+        if (!response.ok) return;
+        const data = (await response.json()) as { facilities?: FacilityOption[] };
+        setFacilities(data.facilities || []);
+      } catch (facilitiesError) {
+        if (!controller.signal.aborted) {
+          console.error("[register] Failed to load facilities", facilitiesError);
+        }
+      }
+    }
+
+    void loadFacilities();
+
+    return () => controller.abort();
+  }, [auth.isAuthenticated]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -197,6 +232,11 @@ export default function RegisterPage() {
       return;
     }
 
+    if (!facility) {
+      setError("Please select your depot.");
+      return;
+    }
+
     setIsSaving(true);
     setError(null);
 
@@ -214,6 +254,7 @@ export default function RegisterPage() {
           isTechnician,
           phone,
           unit,
+          facility,
         }),
       });
       const data = (await response.json()) as { error?: string };
@@ -364,21 +405,22 @@ export default function RegisterPage() {
               </Popover>
             </div>
 
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <Phone className="size-4 text-red-700" aria-hidden="true" />
+                Phone
+                <RequiredMark />
+              </label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+                placeholder="+65 9XXX XXXX"
+                className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600 focus:ring-3 focus:ring-red-600/15"
+              />
+            </div>
+
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-medium">
-                  <Phone className="size-4 text-red-700" aria-hidden="true" />
-                  Phone
-                  <RequiredMark />
-                </label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(event) => setPhone(event.target.value)}
-                  placeholder="+65 9XXX XXXX"
-                  className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600 focus:ring-3 focus:ring-red-600/15"
-                />
-              </div>
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm font-medium">
                   <IdCard className="size-4 text-red-700" aria-hidden="true" />
@@ -392,6 +434,29 @@ export default function RegisterPage() {
                   placeholder="e.g. Alpha Coy"
                   className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600 focus:ring-3 focus:ring-red-600/15"
                 />
+              </div>
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-medium">
+                  <MapPin className="size-4 text-red-700" aria-hidden="true" />
+                  Depot
+                  <RequiredMark />
+                </label>
+                <Select value={facility} onValueChange={setFacility}>
+                  <SelectTrigger className="w-full h-10 bg-white border-zinc-200 focus:border-red-600 focus:ring-3 focus:ring-red-600/15 justify-between">
+                    <SelectValue placeholder="Select depot" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border border-zinc-200 shadow-md rounded-md">
+                    {facilities.map((f) => (
+                      <SelectItem
+                        key={f.code}
+                        value={f.code}
+                        className="cursor-pointer"
+                      >
+                        {f.name} ({f.code})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

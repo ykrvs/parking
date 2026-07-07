@@ -1,4 +1,19 @@
-﻿create table if not exists public.users (
+﻿-- Facilities (depots). Adding a third depot later is just a new row here —
+-- no code changes needed. Named "facility_code" (not "depot") on the other
+-- tables to avoid colliding with the old, now-unused "depot" column that
+-- predates the depot -> unit rename below and may still exist in some
+-- databases.
+create table if not exists public.facilities (
+  code text primary key,
+  name text not null,
+  created_at timestamp with time zone not null default now()
+);
+
+insert into public.facilities (code, name)
+values ('11FMD', 'Block 210'), ('12FMD', '12')
+on conflict (code) do nothing;
+
+create table if not exists public.users (
   id text primary key,
   rank text null,
   name text not null,
@@ -13,6 +28,7 @@
 alter table public.users add column if not exists phone text null;
 alter table public.users add column if not exists unit text null;
 alter table public.users add column if not exists is_verified boolean not null default false;
+alter table public.users add column if not exists facility_code text not null default '11FMD' references public.facilities(code);
 do $$
 begin
   if exists (
@@ -51,13 +67,15 @@ create table if not exists public.vehicles (
 
 drop index if exists vehicles_level_lot_active_key;
 create unique index if not exists vehicles_level_lot_active_key
-on public.vehicles (level, lot)
+on public.vehicles (facility_code, level, lot)
 where lot is not null;
 
 drop index if exists vehicles_plate_idx;
 create index if not exists vehicles_check_in_idx on public.vehicles (check_in desc);
 alter table public.vehicles add column if not exists driver_unit text null;
 alter table public.vehicles add column if not exists driver_id text null references public.users(id) on delete set null;
+alter table public.vehicles add column if not exists facility_code text not null default '11FMD' references public.facilities(code);
+create index if not exists vehicles_facility_code_idx on public.vehicles (facility_code);
 alter table public.vehicles alter column lot drop not null;
 alter table public.vehicles alter column id drop default;
 do $$
@@ -100,6 +118,8 @@ create table if not exists public.history (
   created_at timestamp with time zone not null default now()
 );
 
+alter table public.history add column if not exists facility_code text null references public.facilities(code);
+create index if not exists history_facility_code_idx on public.history (facility_code);
 create index if not exists history_vehicle_id_idx on public.history (vehicle_id);
 
 -- Audit trail for admin actions (verifying users, granting/revoking admin,
@@ -297,9 +317,13 @@ create table if not exists public.parking_config (
   updated_at timestamp with time zone not null default now()
 );
 
+-- Migrate the pre-multi-depot single config row ('default') to be keyed by
+-- facility code instead, so each depot can have its own layout.
+update public.parking_config set id = '11FMD' where id = 'default';
+
 insert into public.parking_config (id, layout)
 values (
-  'default',
+  '11FMD',
   $parking_config${
   "levels": [
     {
@@ -1193,6 +1217,50 @@ on conflict (id) do update
 set layout = excluded.layout,
     updated_at = now();
 
+-- Placeholder layout for the second depot (12FMD): same four
+-- levels/titles as 11FMD, but no lots defined yet — fill this in via the
+-- `parking_config` table in Supabase once the real layout is ready.
+-- Uses `do nothing` on conflict (unlike 11FMD above) so re-running this
+-- file never wipes out real layout data once it's been added for 12FMD.
+insert into public.parking_config (id, layout)
+values (
+  '12FMD',
+  $parking_config_12fmd${
+  "levels": [
+    {
+      "id": "workshop",
+      "desc": "12 workshop layout — not yet configured.",
+      "icon": "WS",
+      "lots": [],
+      "label": "Workshop"
+    },
+    {
+      "id": "level-1",
+      "desc": "12 level 1 bay layout — not yet configured.",
+      "icon": "L1",
+      "lots": [],
+      "label": "Level 1"
+    },
+    {
+      "id": "level-2",
+      "desc": "12 level 2 bay layout — not yet configured.",
+      "icon": "L2",
+      "lots": [],
+      "label": "Level 2"
+    },
+    {
+      "id": "level-3",
+      "desc": "12 level 3 bay layout — not yet configured.",
+      "icon": "L3",
+      "lots": [],
+      "label": "Level 3"
+    }
+  ]
+}
+$parking_config_12fmd$::jsonb
+)
+on conflict (id) do nothing;
+
 create table if not exists public.safety_messages (
   id uuid primary key default gen_random_uuid(),
   message text not null,
@@ -1203,6 +1271,12 @@ create table if not exists public.safety_messages (
   created_at timestamp with time zone not null default now()
 );
 
+-- Nullable: existing messages (and any future message created without a
+-- specific depot) stay NULL and are shown at every depot. New messages
+-- created via the admin panel are tagged with whichever depot the admin
+-- has selected at the time.
+alter table public.safety_messages add column if not exists facility_code text null references public.facilities(code);
+
 create index if not exists safety_messages_active_schedule_idx
 on public.safety_messages (is_active, starts_at, ends_at, created_at desc);
 
@@ -1212,6 +1286,7 @@ alter table public.history enable row level security;
 alter table public.turret_esc_logs enable row level security;
 alter table public.parking_config enable row level security;
 alter table public.safety_messages enable row level security;
+alter table public.facilities enable row level security;
 
 grant usage on schema public to service_role;
 grant select, insert, update on table public.users to service_role;

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getRequestSession } from "@/lib/api-auth";
-import { getParkingConfig } from "@/lib/supabase/server";
+import { getParkingConfig, resolveFacilityCode } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   const session = await getRequestSession(request);
@@ -11,8 +11,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const config = await getParkingConfig();
-    return NextResponse.json({ config });
+    const requestedFacility = request.nextUrl.searchParams.get("facility");
+    const facilityCode = await resolveFacilityCode(session.openid, requestedFacility);
+    const config = await getParkingConfig(facilityCode);
+    return NextResponse.json({ config, facility: facilityCode });
   } catch (err) {
     console.error("Failed to load parking config:", err);
     return NextResponse.json(
