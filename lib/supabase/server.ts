@@ -588,15 +588,20 @@ export async function setUserAdmin(actorId: string, targetId: string, isAdmin: b
 
   if (error) throw error;
 
-  await logAuditEvent({
+  const auditLogged = await logAuditEvent({
     actorId: actor.id,
     actorName: actor.name,
     action: isAdmin ? "user.admin.grant" : "user.admin.revoke",
     targetId,
     targetLabel: data?.name ?? targetId,
   });
+  if (!auditLogged) {
+    console.error(
+      `Audit log entry failed to save for action user.admin.${isAdmin ? "grant" : "revoke"} on ${targetId}. Check that the "audit_log" table exists (see supabase/parking_schema.sql).`,
+    );
+  }
 
-  return data ? withVehiclePlate(data) : data;
+  return data ? { ...withVehiclePlate(data), _auditLogged: !!auditLogged } : data;
 }
 
 export async function setUserVerified(
@@ -632,15 +637,20 @@ export async function setUserVerified(
 
   if (error) throw error;
 
-  await logAuditEvent({
+  const auditLogged = await logAuditEvent({
     actorId: actor.id,
     actorName: actor.name,
     action: isVerified ? "user.verify" : "user.unverify",
     targetId,
     targetLabel: data?.name ?? targetId,
   });
+  if (!auditLogged) {
+    console.error(
+      `Audit log entry failed to save for action user.${isVerified ? "verify" : "unverify"} on ${targetId}. Check that the "audit_log" table exists (see supabase/parking_schema.sql).`,
+    );
+  }
 
-  return data;
+  return data ? { ...data, _auditLogged: !!auditLogged } : data;
 }
 
 export async function getVehicles(facilityCode: string) {

@@ -355,6 +355,7 @@ type AdminUserRecord = {
   is_admin: boolean;
   is_technician: boolean;
   is_verified: boolean;
+  facility_code: string;
   ord_date: string | null;
   phone: string | null;
   unit: string | null;
@@ -605,6 +606,7 @@ export default function Home() {
   const [peName, setPeName] = useState<string>("");
   const [pePhone, setPePhone] = useState<string>("");
   const [peUnit, setPeUnit] = useState<string>("");
+  const [peFacility, setPeFacility] = useState<string>("");
   const [peRank, setPeRank] = useState<string>("");
   const [peOrdDate, setPeOrdDate] = useState<string>("");
   const [peIsTechnician, setPeIsTechnician] = useState<boolean>(false);
@@ -797,9 +799,15 @@ export default function Home() {
       const data = (await response.json()) as {
         config?: { levels?: ParkingLevelConfig[] } | null;
       };
+      // DEFAULT_PARKING_LEVELS is 11FMD's static layout — only use it as a
+      // fallback for 11FMD itself. Any other depot with no config row yet
+      // (e.g. 12FMD before its real layout is set up) should show empty,
+      // not silently borrow another depot's lots.
       const levels = data.config?.levels?.length
         ? data.config.levels
-        : DEFAULT_PARKING_LEVELS;
+        : activeFacility === "11FMD"
+          ? DEFAULT_PARKING_LEVELS
+          : [];
 
       setParkingLevels(levels);
       if (
@@ -868,6 +876,10 @@ export default function Home() {
           entries?: AuditLogEntry[];
         };
         setAuditLogEntries(auditData.entries || []);
+      } else {
+        const auditErr = await auditResponse.json().catch(() => null);
+        console.error("Failed to load audit log:", auditErr?.error || auditResponse.status);
+        setAuditLogEntries([]);
       }
     } catch (err) {
       console.error("Failed to load admin data:", err);
@@ -1072,6 +1084,7 @@ export default function Home() {
 
   const ORD_WARNING_DAYS = 30;
   const ordAlerts = adminUsers
+    .filter((u) => u.facility_code === activeFacility)
     .map((u) => ({ user: u, daysLeft: getOrdDaysLeft(u.ord_date) }))
     .filter(
       (entry) =>
@@ -1608,6 +1621,7 @@ export default function Home() {
           rank: peRank,
           ordDate: peOrdDate,
           isTechnician: peIsTechnician,
+          facility: peFacility,
         }),
       });
 
@@ -1615,6 +1629,12 @@ export default function Home() {
       if (!res.ok) throw new Error(d.error || "Save profile failed");
 
       setProfile(d.profile);
+      // If a non-admin just switched their own depot, follow them there —
+      // otherwise they'd keep viewing the old depot's data until reload.
+      // (Admins keep whatever depot they've toggled to in the header.)
+      if (!profile?.is_admin && d.profile?.facility_code) {
+        setActiveFacility(d.profile.facility_code);
+      }
       setIsEditingProfile(false);
       triggerToast("✓ Profile saved");
     } catch (err: any) {
@@ -1660,7 +1680,14 @@ export default function Home() {
             updatedUsers.find((updated) => updated.id === user.id) ?? user,
         ),
       );
-      triggerToast("Admin changes saved");
+      const auditFailed = updatedUsers.some(
+        (u: any) => u._auditLogged === false,
+      );
+      triggerToast(
+        auditFailed
+          ? "Admin changes saved (audit log entry failed — check server logs)"
+          : "Admin changes saved",
+      );
     } catch (err: any) {
       triggerToast(`Admin update failed: ${err.message}`);
     } finally {
@@ -1690,7 +1717,14 @@ export default function Home() {
 
       // Re-sort (unverified first) now that a status changed.
       await fetchAdminData();
-      triggerToast(isVerified ? "User verified" : "User marked unverified");
+      const auditFailed = d.user?._auditLogged === false;
+      triggerToast(
+        auditFailed
+          ? `${isVerified ? "User verified" : "User marked unverified"} (audit log entry failed — check server logs)`
+          : isVerified
+            ? "User verified"
+            : "User marked unverified",
+      );
     } catch (err: any) {
       // Roll back on failure.
       setAdminUsers((users) =>
@@ -1724,7 +1758,11 @@ export default function Home() {
       setNewSafetyEndsAt("");
       await fetchSafetyMessages();
       await fetchAdminData();
-      triggerToast("Safety message scheduled");
+      triggerToast(
+        d.auditLogged === false
+          ? "Safety message scheduled (audit log entry failed — check server logs)"
+          : "Safety message scheduled",
+      );
     } catch (err: any) {
       triggerToast(`Safety message failed: ${err.message}`);
     }
@@ -1759,7 +1797,11 @@ export default function Home() {
       cancelRescheduleSafetyMessage();
       await fetchSafetyMessages();
       await fetchAdminData();
-      triggerToast("Safety message rescheduled");
+      triggerToast(
+        d.auditLogged === false
+          ? "Safety message rescheduled (audit log entry failed — check server logs)"
+          : "Safety message rescheduled",
+      );
     } catch (err: any) {
       triggerToast(`Reschedule failed: ${err.message}`);
     }
@@ -1780,7 +1822,11 @@ export default function Home() {
 
       await fetchSafetyMessages();
       await fetchAdminData();
-      triggerToast("Safety message deleted");
+      triggerToast(
+        d.auditLogged === false
+          ? "Safety message deleted (audit log entry failed — check server logs)"
+          : "Safety message deleted",
+      );
     } catch (err: any) {
       triggerToast(`Delete failed: ${err.message}`);
     }
@@ -2026,7 +2072,7 @@ export default function Home() {
           </button>
           <div>
             <p className="text-xs text-zinc-500 font-semibold tracking-wider uppercase">
-              Trackr
+              FleetOps
             </p>
             {profile.is_admin && facilities.length > 0 ? (
               <select
@@ -2089,7 +2135,7 @@ export default function Home() {
             <div className="space-y-6">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-100">
                 <div>
-                  <h2 className="text-lg font-bold tracking-tight">Trackr</h2>
+                  <h2 className="text-lg font-bold tracking-tight">FleetOps</h2>
                   <p className="text-xs text-zinc-500">{activeFacilityName} Carpark</p>
                 </div>
                 <Button
@@ -3001,6 +3047,7 @@ export default function Home() {
                     setPeName(profile.name || "");
                     setPePhone(profile.phone || "");
                     setPeUnit(profile.unit || profile.depot || "");
+                    setPeFacility(profile.facility_code || "");
                     setPeRank(profile.rank || "");
                     setPeOrdDate(profile.ord_date?.slice(0, 10) || "");
                     setPeIsTechnician(profile.is_technician === true);
@@ -3099,17 +3146,42 @@ export default function Home() {
                     className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600 focus:ring-3 focus:ring-red-600/15"
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-zinc-700">
-                    Unit
-                    <RequiredMark />
-                  </label>
-                  <input
-                    type="text"
-                    value={peUnit}
-                    onChange={(e) => setPeUnit(e.target.value)}
-                    className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600 focus:ring-3 focus:ring-red-600/15"
-                  />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-zinc-700">
+                      Depot
+                      <RequiredMark />
+                    </label>
+                    <Select value={peFacility} onValueChange={setPeFacility}>
+                      <SelectTrigger className="w-full h-10 bg-white border-zinc-200 focus:border-red-600 focus:ring-3 focus:ring-red-600/15 justify-between">
+                        <SelectValue placeholder="Select depot" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white border border-zinc-200 shadow-md rounded-md">
+                        {facilities.map((f) => (
+                          <SelectItem
+                            key={f.code}
+                            value={f.code}
+                            className="cursor-pointer"
+                          >
+                            {f.name} ({f.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-zinc-700">
+                      Unit
+                      <RequiredMark />
+                    </label>
+                    <input
+                      type="text"
+                      value={peUnit}
+                      onChange={(e) => setPeUnit(e.target.value)}
+                      placeholder="e.g. Alpha Coy"
+                      className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600 focus:ring-3 focus:ring-red-600/15"
+                    />
+                  </div>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
