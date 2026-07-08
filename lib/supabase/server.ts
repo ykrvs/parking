@@ -108,6 +108,19 @@ const USER_PROFILE_SELECT =
   "id, rank, name, is_admin, is_technician, is_verified, facility_code, ord_date, phone, unit, created_at";
 const LEGACY_USER_PROFILE_SELECT =
   "id, rank, name, is_admin, is_technician, is_verified, facility_code, ord_date, phone, depot, created_at";
+// Fallbacks for a database that hasn't had the multi-depot migration run
+// yet (no `facility_code` column). Rather than hard-failing every profile
+// lookup in that case, fall back to these and default facility_code to
+// "11FMD" client-side — the app stays usable while the migration is
+// pending, instead of the profile screen silently hanging forever.
+const NO_FACILITY_USER_PROFILE_SELECT =
+  "id, rank, name, is_admin, is_technician, is_verified, ord_date, phone, unit, created_at";
+const NO_FACILITY_LEGACY_USER_PROFILE_SELECT =
+  "id, rank, name, is_admin, is_technician, is_verified, ord_date, phone, depot, created_at";
+
+function isMissingFacilityColumnError(message: string) {
+  return message.toLowerCase().includes("facility_code");
+}
 
 function getSupabaseConfig() {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -236,6 +249,22 @@ export async function getUserProfile(id: string) {
     return result.data;
   }
 
+  if (isMissingFacilityColumnError(result.error.message)) {
+    const noFacilityResult = await supabase
+      .from(table)
+      .select(NO_FACILITY_USER_PROFILE_SELECT)
+      .eq("id", id)
+      .maybeSingle<Omit<UserProfile, "facility_code">>();
+
+    if (noFacilityResult.error) {
+      throw new Error(`Failed to fetch user profile: ${noFacilityResult.error.message}`);
+    }
+
+    return noFacilityResult.data
+      ? ({ ...noFacilityResult.data, facility_code: "11FMD" } as UserProfile)
+      : null;
+  }
+
   if (!result.error.message.toLowerCase().includes("unit")) {
     throw new Error(`Failed to fetch user profile: ${result.error.message}`);
   }
@@ -247,6 +276,28 @@ export async function getUserProfile(id: string) {
     .maybeSingle<Omit<UserProfile, "unit">>();
 
   if (legacyResult.error) {
+    if (isMissingFacilityColumnError(legacyResult.error.message)) {
+      const noFacilityLegacyResult = await supabase
+        .from(table)
+        .select(NO_FACILITY_LEGACY_USER_PROFILE_SELECT)
+        .eq("id", id)
+        .maybeSingle<Omit<UserProfile, "unit" | "facility_code">>();
+
+      if (noFacilityLegacyResult.error) {
+        throw new Error(
+          `Failed to fetch user profile: ${noFacilityLegacyResult.error.message}`,
+        );
+      }
+
+      return noFacilityLegacyResult.data
+        ? ({
+            ...noFacilityLegacyResult.data,
+            unit: noFacilityLegacyResult.data.depot ?? null,
+            facility_code: "11FMD",
+          } as UserProfile)
+        : null;
+    }
+
     throw new Error(`Failed to fetch user profile: ${legacyResult.error.message}`);
   }
 
@@ -284,7 +335,18 @@ export async function updateUserRegistration(
 
   let { data, error } = await runUpdate(updatePayload, USER_PROFILE_SELECT);
 
-  if (error && error.message.toLowerCase().includes("unit")) {
+  if (error && isMissingFacilityColumnError(error.message)) {
+    const noFacilityPayload = { ...updatePayload };
+    delete noFacilityPayload.facility_code;
+    const noFacilityResult = await runUpdate(
+      noFacilityPayload,
+      NO_FACILITY_USER_PROFILE_SELECT,
+    );
+    data = noFacilityResult.data
+      ? ({ ...noFacilityResult.data, facility_code: "11FMD" } as UserProfile)
+      : null;
+    error = noFacilityResult.error;
+  } else if (error && error.message.toLowerCase().includes("unit")) {
     const legacyPayload = { ...updatePayload };
     if (legacyPayload.unit !== undefined) {
       legacyPayload.depot = legacyPayload.unit;
@@ -319,6 +381,20 @@ export async function getUsers() {
     return result.data || [];
   }
 
+  if (isMissingFacilityColumnError(result.error.message)) {
+    const noFacilityResult = await supabase
+      .from(table)
+      .select(NO_FACILITY_USER_PROFILE_SELECT)
+      .order("is_verified", { ascending: true })
+      .order("name", { ascending: true });
+
+    if (noFacilityResult.error) throw noFacilityResult.error;
+    return (noFacilityResult.data || []).map((user) => ({
+      ...user,
+      facility_code: "11FMD",
+    })) as UserProfile[];
+  }
+
   if (!result.error.message.toLowerCase().includes("unit")) {
     throw result.error;
   }
@@ -349,7 +425,15 @@ export async function getFacilities() {
     .select("code, name")
     .order("code", { ascending: true });
 
-  if (error) throw error;
+  if (error) {
+    // Most likely the multi-depot migration hasn't been run yet (no
+    // "facilities" table). Fail soft here rather than breaking every
+    // request that touches resolveFacilityCode — an empty list just means
+    // admins can't switch depots and new registrations can't pick one
+    // until the migration runs, instead of a hard 500 everywhere.
+    console.error("Failed to load facilities:", error);
+    return [];
+  }
   return (data || []) as Facility[];
 }
 

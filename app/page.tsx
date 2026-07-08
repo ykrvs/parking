@@ -543,6 +543,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<string>("home");
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [isCheckingProfile, setIsCheckingProfile] = useState<boolean>(false);
+  const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
   const [profile, setProfile] = useState<any>(null);
   // The depot whose data is currently shown. Regular users are always
   // locked to their own depot; admins can switch this via the header
@@ -724,6 +725,7 @@ export default function Home() {
 
         setProfile(data.profile);
         setActiveFacility((current) => current || data.profile?.facility_code || "11FMD");
+        setProfileLoadError(null);
 
         // Sync rank to local storage if different or missing
         if (data.profile?.rank && auth.rank !== data.profile.rank) {
@@ -732,6 +734,11 @@ export default function Home() {
       } catch (profileError) {
         if (!controller.signal.aborted) {
           console.error("[profile] Failed to check registration", profileError);
+          setProfileLoadError(
+            profileError instanceof Error
+              ? profileError.message
+              : "Failed to load your profile.",
+          );
         }
       } finally {
         if (!controller.signal.aborted) {
@@ -955,10 +962,30 @@ export default function Home() {
     return <LoginGate isLoading={auth.isLoading} onLogin={auth.login} />;
   }
 
-  if (isCheckingProfile || !profile) {
+  if (isCheckingProfile || (!profile && !profileLoadError)) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-zinc-100 px-6 py-12">
         <p className="text-sm text-zinc-500 font-medium">Checking profile...</p>
+      </main>
+    );
+  }
+
+  if (!profile && profileLoadError) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-zinc-100 px-6 py-12">
+        <div className="max-w-sm space-y-3 rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+          <p className="text-sm font-bold text-red-800">
+            Couldn't load your profile
+          </p>
+          <p className="text-xs text-red-700">{profileLoadError}</p>
+          <Button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="h-9 bg-red-600 text-sm hover:bg-red-700"
+          >
+            Retry
+          </Button>
+        </div>
       </main>
     );
   }
