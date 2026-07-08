@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       facility_code: facilityCode,
     });
 
-    await logAuditEvent({
+    const auditLogged = await logAuditEvent({
       actorId: session.openid,
       action: "safety_message.create",
       targetId: created?.id ?? null,
@@ -86,7 +86,10 @@ export async function POST(request: NextRequest) {
       details: { facility: facilityCode },
     });
 
-    return NextResponse.json({ message: created }, { status: 201 });
+    return NextResponse.json(
+      { message: created, auditLogged: !!auditLogged },
+      { status: 201 },
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to create safety message";
     const status = message.includes("Only admins") ? 403 : 500;
@@ -126,7 +129,7 @@ export async function PATCH(request: NextRequest) {
       ...(body.isActive !== undefined ? { is_active: body.isActive } : {}),
     });
 
-    await logAuditEvent({
+    const auditLogged = await logAuditEvent({
       actorId: session.openid,
       action: "safety_message.update",
       targetId: body.id,
@@ -137,7 +140,7 @@ export async function PATCH(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ message: updated });
+    return NextResponse.json({ message: updated, auditLogged: !!auditLogged });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to update safety message";
     const status = message.includes("Only admins") ? 403 : 500;
@@ -165,13 +168,13 @@ export async function DELETE(request: NextRequest) {
 
     await deleteSafetyMessage(body.id);
 
-    await logAuditEvent({
+    const auditLogged = await logAuditEvent({
       actorId: session.openid,
       action: "safety_message.delete",
       targetId: body.id,
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, auditLogged: !!auditLogged });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to delete safety message";
     const status = message.includes("Only admins") ? 403 : 500;
