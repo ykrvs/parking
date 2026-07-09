@@ -513,6 +513,22 @@ export async function requireVerified(actorId: string) {
   return profile;
 }
 
+// Supabase's PostgrestError objects aren't always real `Error` instances,
+// so `err instanceof Error` can silently miss them and fall back to a
+// useless generic message. This checks for a `.message` property directly
+// instead, which works for both native Errors and Supabase's error shape.
+function toErrorMessage(err: unknown): string {
+  if (err && typeof err === "object" && "message" in err) {
+    const e = err as { message?: unknown; hint?: unknown; code?: unknown };
+    const base = typeof e.message === "string" ? e.message : String(e.message);
+    const hint = e.hint ? ` (hint: ${e.hint})` : "";
+    const code = e.code ? ` [${e.code}]` : "";
+    return `${base}${hint}${code}`;
+  }
+  if (err instanceof Error) return err.message;
+  return String(err);
+}
+
 export async function logAuditEvent(entry: {
   actorId?: string | null;
   actorName?: string | null;
@@ -542,7 +558,7 @@ export async function logAuditEvent(entry: {
     if (error) throw error;
     return { success: true };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = toErrorMessage(err);
     console.error("Failed to write audit log entry:", message);
     return { success: false, error: message };
   }
@@ -558,7 +574,11 @@ export async function getAuditLog(limit = 200) {
     .order("created_at", { ascending: false })
     .limit(limit);
 
-  if (error) throw error;
+  if (error) {
+    throw new Error(
+      `${error.message}${error.hint ? ` (hint: ${error.hint})` : ""}${error.code ? ` [${error.code}]` : ""}`,
+    );
+  }
   return data || [];
 }
 
