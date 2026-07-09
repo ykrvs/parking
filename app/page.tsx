@@ -546,6 +546,8 @@ export default function Home() {
   const [isCheckingProfile, setIsCheckingProfile] = useState<boolean>(false);
   const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
   const [profile, setProfile] = useState<any>(null);
+  const [isVerificationPending, setIsVerificationPending] =
+  useState<boolean>(false);
   // The depot whose data is currently shown. Regular users are always
   // locked to their own depot; admins can switch this via the header
   // dropdown to view/manage a different depot's operational data.
@@ -695,64 +697,95 @@ export default function Home() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  // Sync profile & check registration
-  useEffect(() => {
-    if (!auth.isAuthenticated || !auth.openid) return;
+ // Sync profile & check registration
+useEffect(() => {
+  if (!auth.isAuthenticated || !auth.openid) return;
 
-    const controller = new AbortController();
+  const controller = new AbortController();
 
-    async function checkRegistration() {
-      setIsCheckingProfile(true);
+  async function checkRegistration() {
+    setIsCheckingProfile(true);
+    setProfileLoadError(null);
+    setIsVerificationPending(false);
 
-      try {
-        const response = await fetch(`/api/users/me`, {
-          signal: controller.signal,
-        });
+    try {
+      const response = await fetch(`/api/users/me`, {
+        signal: controller.signal,
+      });
 
-        if (response.status === 401) {
-          auth.logout();
-          return;
-        }
+      if (response.status === 401) {
+        auth.logout();
+        return;
+      }
 
-        const data = await response.json();
+      const data = await response.json();
 
-        if (!response.ok) {
-          throw new Error(data.error || "Failed to check registration");
-        }
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to check registration");
+      }
 
-        if (!data.registrationComplete) {
-          router.replace("/register");
-          return;
-        }
+      if (!data.registrationComplete) {
+        router.replace("/register");
+        return;
+      }
 
-        setProfile(data.profile);
-        setActiveFacility((current) => current || data.profile?.facility_code || "11FMD");
+      const loadedProfile = data.profile;
+
+      // Security gate:
+      // Registered but unverified users should not enter the parking dashboard.
+      if (loadedProfile?.is_verified !== true) {
+        setProfile(loadedProfile);
+        setIsVerificationPending(true);
+        setActiveFacility("");
+        setVehicles([]);
+        setRecentVehicles([]);
+        setDriveoutRecords([]);
+        setParkingLevels([]);
+        setSafetyMessages([]);
         setProfileLoadError(null);
+        return;
+      }
 
-        // Sync rank to local storage if different or missing
-        if (data.profile?.rank && auth.rank !== data.profile.rank) {
-          auth.setRank(data.profile.rank);
+      setProfile(loadedProfile);
+      setIsVerificationPending(false);
+
+      // Normal users are locked to their own facility.
+      // Admins keep their current selected facility, or default to their own facility.
+      setActiveFacility((current) => {
+        if (!loadedProfile?.is_admin) {
+          return loadedProfile?.facility_code || "";
         }
-      } catch (profileError) {
-        if (!controller.signal.aborted) {
-          console.error("[profile] Failed to check registration", profileError);
-          setProfileLoadError(
-            profileError instanceof Error
-              ? profileError.message
-              : "Failed to load your profile.",
-          );
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setIsCheckingProfile(false);
-        }
+
+        return current || loadedProfile?.facility_code || "11FMD";
+      });
+
+      setProfileLoadError(null);
+
+      // Sync rank to local storage if different or missing
+      if (loadedProfile?.rank && auth.rank !== loadedProfile.rank) {
+        auth.setRank(loadedProfile.rank);
+      }
+    } catch (profileError) {
+      if (!controller.signal.aborted) {
+        console.error("[profile] Failed to check registration", profileError);
+
+        setProfileLoadError(
+          profileError instanceof Error
+            ? profileError.message
+            : "Failed to load your profile.",
+        );
+      }
+    } finally {
+      if (!controller.signal.aborted) {
+        setIsCheckingProfile(false);
       }
     }
+  }
 
-    void checkRegistration();
+  void checkRegistration();
 
-    return () => controller.abort();
-  }, [auth.isAuthenticated, auth.openid, router]);
+  return () => controller.abort();
+}, [auth.isAuthenticated, auth.openid, router, auth]);
 
   // Load Vehicles & dashboard metrics
   const fetchDashboardData = async () => {
@@ -889,66 +922,79 @@ export default function Home() {
     }
   };
 
-  useEffect(() => {
-    if (!auth.isAuthenticated) return;
+useEffect(() => {
+  if (!auth.isAuthenticated || !profile || isVerificationPending) return;
 
-    fetch("/api/facilities")
-      .then((res) => (res.ok ? res.json() : null))
-      .then(
-        (
-          data: {
-            facilities?: { code: string; name: string }[];
-            error?: string;
-          } | null,
-        ) => {
-          if (data?.facilities) setFacilities(data.facilities);
-          if (data?.error) {
-            console.error("Failed to load facilities:", data.error);
-            triggerToast(`⚠ Could not load depot list: ${data.error}`);
-          }
-        },
-      )
-      .catch((err) => console.error("Failed to load facilities:", err));
-  }, [auth.isAuthenticated]);
+  fetch("/api/facilities")
+    .then((res) => (res.ok ? res.json() : null))
+    .then(
+      (
+        data: {
+          facilities?: { code: string; name: string }[];
+          error?: string;
+        } | null,
+      ) => {
+        if (data?.facilities) setFacilities(data.facilities);
 
-  useEffect(() => {
-    if (auth.isAuthenticated && profile && activeFacility) {
-      fetchDashboardData().finally(() => setIsLoadingDashboard(false));
-      fetchParkingConfig();
-      fetchSafetyMessages();
-      // Admins need the full user list (not just vehicles) so ORD
-      // reminders can show on Home without first opening the Admin tab.
-      if (profile.is_admin) {
-        fetchAdminData();
-      }
-    }
-  }, [auth.isAuthenticated, profile, activeFacility]);
+        if (data?.error) {
+          console.error("Failed to load facilities:", data.error);
+          triggerToast(`⚠ Could not load depot list: ${data.error}`);
+        }
+      },
+    )
+    .catch((err) => console.error("Failed to load facilities:", err));
+}, [auth.isAuthenticated, profile, isVerificationPending]);
+
+useEffect(() => {
+  if (!auth.isAuthenticated || !profile || !activeFacility || isVerificationPending) {
+    return;
+  }
+
+  setIsLoadingDashboard(true);
+
+  fetchDashboardData().finally(() => setIsLoadingDashboard(false));
+  fetchParkingConfig();
+  fetchSafetyMessages();
+
+  // Admins need the full user list so ORD reminders can show on Home
+  // without first opening the Admin tab.
+  if (profile.is_admin) {
+    fetchAdminData();
+  }
+}, [auth.isAuthenticated, profile, activeFacility, isVerificationPending]);
 
   // Periodically re-fetch vehicles so newly checked-in vehicles (and any
   // other check-in/check-out activity from other users) show up without
   // requiring a manual page reload.
-  useEffect(() => {
-    if (!auth.isAuthenticated || !profile || !activeFacility) return;
+useEffect(() => {
+  if (!auth.isAuthenticated || !profile || !activeFacility || isVerificationPending) {
+    return;
+  }
 
-    const AUTO_REFRESH_MS = 30000;
-    const interval = window.setInterval(() => {
-      fetchDashboardData();
-      if (profile.is_admin) {
-        fetchAdminData();
-      }
-    }, AUTO_REFRESH_MS);
+  const AUTO_REFRESH_MS = 30000;
 
-    return () => window.clearInterval(interval);
-  }, [auth.isAuthenticated, profile]);
+  const interval = window.setInterval(() => {
+    fetchDashboardData();
 
-  useEffect(() => {
-    if (activeTab === "driveout-history") {
-      fetchDriveoutHistory();
-    }
-    if (activeTab === "admin") {
+    if (profile.is_admin) {
       fetchAdminData();
     }
-  }, [activeTab]);
+  }, AUTO_REFRESH_MS);
+
+  return () => window.clearInterval(interval);
+}, [auth.isAuthenticated, profile, activeFacility, isVerificationPending]);
+
+useEffect(() => {
+  if (!profile || !activeFacility || isVerificationPending) return;
+
+  if (activeTab === "driveout-history") {
+    fetchDriveoutHistory();
+  }
+
+  if (activeTab === "admin") {
+    fetchAdminData();
+  }
+}, [activeTab, activeFacility, profile, isVerificationPending]);
 
   useEffect(() => {
     const activeCount =
@@ -981,17 +1027,87 @@ export default function Home() {
     );
   }, [adminUsers]);
 
+const handleFacilityChange = (facilityCode: string) => {
+  if (!profile?.is_admin || !facilityCode || facilityCode === activeFacility) {
+    return;
+  }
+
+  setActiveFacility(facilityCode);
+  setIsLoadingDashboard(true);
+
+  // Clear facility-specific UI state so old facility data does not stay selected.
+  setSelectedLot(null);
+  setSelectedLotVehicle(null);
+  setSelectedVehicle(null);
+  setSelectedDriveout(null);
+  setLatestEsc(null);
+  setHistoryRecords([]);
+  setDriveoutRecords([]);
+  setSearchQuery("");
+  setDriveoutSearchQuery("");
+};
+
+const adminFacilityOptions =
+  facilities.length > 0
+    ? facilities
+    : activeFacility
+      ? [{ code: activeFacility, name: activeFacility }]
+      : [];
+
+const facilitySwitcher =
+  profile?.is_admin && adminFacilityOptions.length > 0 ? (
+    <label className="flex w-full flex-col gap-1 rounded-xl border border-zinc-200 bg-white/90 px-3 py-2 shadow-sm sm:w-56">
+      <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+        Facility
+      </span>
+
+      <select
+        value={activeFacility}
+        onChange={(event) => handleFacilityChange(event.target.value)}
+        className="h-9 w-full rounded-md border border-zinc-300 bg-white px-2 text-sm font-semibold text-zinc-800 outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200"
+        aria-label="Select facility"
+      >
+        {adminFacilityOptions.map((facility) => (
+          <option key={facility.code} value={facility.code}>
+            {facility.name || facility.code}
+          </option>
+        ))}
+      </select>
+    </label>
+  ) : null;
+  
   if (auth.isLoading || !auth.isAuthenticated) {
     return <LoginGate isLoading={auth.isLoading} onLogin={auth.login} />;
   }
 
-  if (isCheckingProfile || (!profile && !profileLoadError)) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-zinc-100 px-6 py-12">
-        <p className="text-sm text-zinc-500 font-medium">Checking profile...</p>
-      </main>
-    );
-  }
+if (isVerificationPending) {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-zinc-100 px-6 py-12">
+      <div className="w-full max-w-md rounded-2xl border border-amber-200 bg-white p-6 text-center shadow-sm">
+        <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-amber-100 text-2xl">
+          ⏳
+        </div>
+
+        <h1 className="text-xl font-bold text-zinc-900">
+          Pending verification
+        </h1>
+
+        <p className="mt-3 text-sm leading-6 text-zinc-600">
+          Your profile has been submitted successfully. An admin needs to verify
+          your account before you can view parking and vehicle data.
+        </p>
+
+        <Button
+          variant="outline"
+          className="mt-6 w-full"
+          onClick={() => auth.logout()}
+        >
+          Sign out
+        </Button>
+      </div>
+    </main>
+  );
+}
 
   if (!profile && profileLoadError) {
     return (
@@ -2117,6 +2233,8 @@ export default function Home() {
             aria-label="Open menu"
             className="hover:bg-zinc-100"
           >
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+    {facilitySwitcher}
             <Menu className="size-5" />
           </Button>
           <div
