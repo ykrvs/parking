@@ -326,12 +326,37 @@ export async function updateUserRegistration(
   if (facilityCode !== undefined) updatePayload.facility_code = facilityCode;
 
   const runUpdate = async (payload: any, selectFields: string) =>
-    supabase
-      .from(table)
-      .update(payload)
-      .eq("id", id)
-      .select(selectFields)
-      .single<UserProfile>();
+  const upsertPayload: any = {
+  id,
+  name: name || "Unknown",
+  rank,
+  ord_date: ordDate,
+  is_technician: isTechnician,
+};
+
+if (phone !== undefined) {
+  upsertPayload.phone = phone;
+}
+
+if (unit !== undefined) {
+  upsertPayload.unit = unit;
+}
+
+if (facilityCode !== undefined) {
+  upsertPayload.facility_code = facilityCode;
+}
+
+const runUpsert = async (payload: any, selectFields: string) =>
+  supabase
+    .from(table)
+    .upsert(payload, {
+      onConflict: "id",
+      ignoreDuplicates: false,
+    })
+    .select(selectFields)
+    .single<UserProfile>();
+
+let { data, error } = await runUpsert(upsertPayload, USER_PROFILE_SELECT);
 
   let { data, error } = await runUpdate(updatePayload, USER_PROFILE_SELECT);
 
@@ -413,7 +438,13 @@ export async function getUsers() {
 }
 
 export function isRegistrationComplete(profile: UserProfile | null) {
-  return !!profile?.rank && !!profile.ord_date && !!profile.phone && !!(profile.unit || profile.depot);
+  return (
+    !!profile?.rank &&
+    !!profile.ord_date &&
+    !!profile.phone &&
+    !!(profile.unit || profile.depot) &&
+    !!profile.facility_code
+  );
 }
 
 export async function getFacilities(): Promise<{
