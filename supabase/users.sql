@@ -30,3 +30,33 @@ alter table public.users enable row level security;
 
 grant usage on schema public to service_role;
 grant select, insert, update on table public.users to service_role;
+
+alter table public.users
+add column if not exists is_verified boolean not null default false;
+
+alter table public.users
+add column if not exists facility_code text;
+
+create table if not exists public.facilities (
+  code text primary key,
+  name text not null
+);
+
+insert into public.facilities (code, name)
+values ('11FMD', '11FMD')
+on conflict (code) do nothing;
+
+update public.users
+set facility_code = '11FMD'
+where facility_code is null;
+
+alter table public.users
+alter column facility_code set not null;
+
+alter table public.users
+drop constraint if exists users_facility_code_fkey;
+
+alter table public.users
+add constraint users_facility_code_fkey
+foreign key (facility_code)
+references public.facilities(code);
