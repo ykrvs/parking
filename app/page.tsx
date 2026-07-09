@@ -1680,12 +1680,12 @@ export default function Home() {
             updatedUsers.find((updated) => updated.id === user.id) ?? user,
         ),
       );
-      const auditFailed = updatedUsers.some(
+      const auditFailure = updatedUsers.find(
         (u: any) => u._auditLogged === false,
-      );
+      ) as any;
       triggerToast(
-        auditFailed
-          ? "Admin changes saved (audit log entry failed — check server logs)"
+        auditFailure
+          ? `Admin changes saved (audit log failed: ${auditFailure._auditError || "unknown error"})`
           : "Admin changes saved",
       );
     } catch (err: any) {
@@ -1720,7 +1720,7 @@ export default function Home() {
       const auditFailed = d.user?._auditLogged === false;
       triggerToast(
         auditFailed
-          ? `${isVerified ? "User verified" : "User marked unverified"} (audit log entry failed — check server logs)`
+          ? `${isVerified ? "User verified" : "User marked unverified"} (audit log failed: ${d.user?._auditError || "unknown error"})`
           : isVerified
             ? "User verified"
             : "User marked unverified",
@@ -1760,7 +1760,7 @@ export default function Home() {
       await fetchAdminData();
       triggerToast(
         d.auditLogged === false
-          ? "Safety message scheduled (audit log entry failed — check server logs)"
+          ? `Safety message scheduled (audit log failed: ${d.auditError || "unknown error"})`
           : "Safety message scheduled",
       );
     } catch (err: any) {
@@ -1799,7 +1799,7 @@ export default function Home() {
       await fetchAdminData();
       triggerToast(
         d.auditLogged === false
-          ? "Safety message rescheduled (audit log entry failed — check server logs)"
+          ? `Safety message rescheduled (audit log failed: ${d.auditError || "unknown error"})`
           : "Safety message rescheduled",
       );
     } catch (err: any) {
@@ -1824,7 +1824,7 @@ export default function Home() {
       await fetchAdminData();
       triggerToast(
         d.auditLogged === false
-          ? "Safety message deleted (audit log entry failed — check server logs)"
+          ? `Safety message deleted (audit log failed: ${d.auditError || "unknown error"})`
           : "Safety message deleted",
       );
     } catch (err: any) {

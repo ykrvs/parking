@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       facility_code: facilityCode,
     });
 
-    const auditLogged = await logAuditEvent({
+    const auditResult = await logAuditEvent({
       actorId: session.openid,
       action: "safety_message.create",
       targetId: created?.id ?? null,
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(
-      { message: created, auditLogged: !!auditLogged },
+      { message: created, auditLogged: auditResult.success, auditError: auditResult.error },
       { status: 201 },
     );
   } catch (err) {
@@ -129,7 +129,7 @@ export async function PATCH(request: NextRequest) {
       ...(body.isActive !== undefined ? { is_active: body.isActive } : {}),
     });
 
-    const auditLogged = await logAuditEvent({
+    const auditResult = await logAuditEvent({
       actorId: session.openid,
       action: "safety_message.update",
       targetId: body.id,
@@ -140,7 +140,11 @@ export async function PATCH(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ message: updated, auditLogged: !!auditLogged });
+    return NextResponse.json({
+      message: updated,
+      auditLogged: auditResult.success,
+      auditError: auditResult.error,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to update safety message";
     const status = message.includes("Only admins") ? 403 : 500;
@@ -168,13 +172,17 @@ export async function DELETE(request: NextRequest) {
 
     await deleteSafetyMessage(body.id);
 
-    const auditLogged = await logAuditEvent({
+    const auditResult = await logAuditEvent({
       actorId: session.openid,
       action: "safety_message.delete",
       targetId: body.id,
     });
 
-    return NextResponse.json({ success: true, auditLogged: !!auditLogged });
+    return NextResponse.json({
+      success: true,
+      auditLogged: auditResult.success,
+      auditError: auditResult.error,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to delete safety message";
     const status = message.includes("Only admins") ? 403 : 500;
