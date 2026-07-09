@@ -193,8 +193,15 @@ export default function RegisterPage() {
           signal: controller.signal,
         });
         if (!response.ok) return;
-        const data = (await response.json()) as { facilities?: FacilityOption[] };
+        const data = (await response.json()) as {
+          facilities?: FacilityOption[];
+          error?: string;
+        };
         setFacilities(data.facilities || []);
+        if (data.error) {
+          console.error("[register] Failed to load facilities:", data.error);
+          setError(`Could not load depot list: ${data.error}`);
+        }
       } catch (facilitiesError) {
         if (!controller.signal.aborted) {
           console.error("[register] Failed to load facilities", facilitiesError);

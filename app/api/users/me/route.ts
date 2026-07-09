@@ -71,7 +71,13 @@ export async function PATCH(request: NextRequest) {
       return badRequest("Depot is required.");
     }
 
-    const facilities = await getFacilities();
+    const { facilities, error: facilitiesError } = await getFacilities();
+    if (facilitiesError) {
+      return NextResponse.json(
+        { error: `Could not load depot list: ${facilitiesError}` },
+        { status: 500 },
+      );
+    }
     if (!facilities.some((f) => f.code === facility)) {
       return badRequest("Depot is not recognized.");
     }

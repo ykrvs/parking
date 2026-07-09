@@ -416,9 +416,14 @@ export function isRegistrationComplete(profile: UserProfile | null) {
   return !!profile?.rank && !!profile.ord_date && !!profile.phone && !!(profile.unit || profile.depot);
 }
 
-export async function getFacilities() {
+export async function getFacilities(): Promise<{
+  facilities: Facility[];
+  error?: string;
+}> {
   const supabase = getSupabaseAdmin();
-  if (!supabase) return [];
+  if (!supabase) {
+    return { facilities: [], error: "Supabase admin client is not configured." };
+  }
 
   const { data, error } = await supabase
     .from("facilities")
@@ -427,14 +432,16 @@ export async function getFacilities() {
 
   if (error) {
     // Most likely the multi-depot migration hasn't been run yet (no
-    // "facilities" table). Fail soft here rather than breaking every
-    // request that touches resolveFacilityCode — an empty list just means
-    // admins can't switch depots and new registrations can't pick one
-    // until the migration runs, instead of a hard 500 everywhere.
-    console.error("Failed to load facilities:", error);
-    return [];
+    // "facilities" table), or the table exists but service_role wasn't
+    // granted access to it (a known Supabase quirk for tables created via
+    // raw SQL rather than the Table Editor). Fail soft on the data (an
+    // empty list just means depot pickers show nothing) but surface the
+    // real reason so it's visible instead of a silent empty dropdown.
+    const message = toErrorMessage(error);
+    console.error("Failed to load facilities:", message);
+    return { facilities: [], error: message };
   }
-  return (data || []) as Facility[];
+  return { facilities: (data || []) as Facility[] };
 }
 
 // Figures out which depot a request should operate on. Regular users are
@@ -452,7 +459,7 @@ export async function resolveFacilityCode(
   }
 
   if (profile.is_admin && requestedFacility) {
-    const facilities = await getFacilities();
+    const { facilities } = await getFacilities();
     const match = facilities.find((f) => f.code === requestedFacility);
     if (match) return match.code;
   }

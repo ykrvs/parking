@@ -894,9 +894,20 @@ export default function Home() {
 
     fetch("/api/facilities")
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: { facilities?: { code: string; name: string }[] } | null) => {
-        if (data?.facilities) setFacilities(data.facilities);
-      })
+      .then(
+        (
+          data: {
+            facilities?: { code: string; name: string }[];
+            error?: string;
+          } | null,
+        ) => {
+          if (data?.facilities) setFacilities(data.facilities);
+          if (data?.error) {
+            console.error("Failed to load facilities:", data.error);
+            triggerToast(`⚠ Could not load depot list: ${data.error}`);
+          }
+        },
+      )
       .catch((err) => console.error("Failed to load facilities:", err));
   }, [auth.isAuthenticated]);
 

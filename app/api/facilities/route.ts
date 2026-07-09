@@ -11,8 +11,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const facilities = await getFacilities();
-    return NextResponse.json({ facilities });
+    const { facilities, error } = await getFacilities();
+    return NextResponse.json({ facilities, error });
   } catch (err) {
     console.error("Failed to load facilities:", err);
     return NextResponse.json({ error: "Failed to load facilities" }, { status: 500 });
