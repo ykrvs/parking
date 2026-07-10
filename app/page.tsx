@@ -2233,8 +2233,6 @@ if (isVerificationPending) {
             aria-label="Open menu"
             className="hover:bg-zinc-100"
           >
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-    {facilitySwitcher}
             <Menu className="size-5" />
           </Button>
           <div
