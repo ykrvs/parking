@@ -25,6 +25,24 @@ const PERCENTAGE_FIELDS = [
   ["fuel_pct", "Fuel percentage"],
 ] as const;
 
+const VEHICLE_UPDATE_FIELDS = [
+  "variant",
+  "driver",
+  "driver_phone",
+  "driver_unit",
+  "lot",
+  "odometer",
+  "engine_hours",
+  "starter_v",
+  "starter_pct",
+  "aux_v",
+  "aux_pct",
+  "fuel_l",
+  "fuel_pct",
+  "fire_ext_expiry",
+  "notes",
+] as const;
+
 function parseNonNegativeNumber(value: unknown, label: string) {
   if (value === null || value === undefined || value === "") return null;
 
@@ -75,6 +93,23 @@ function isValidationError(error: unknown) {
   );
 }
 
+function pickVehicleUpdateData(body: Record<string, unknown>) {
+  const updateData: Record<string, unknown> = {};
+
+  VEHICLE_UPDATE_FIELDS.forEach((field) => {
+    if (field in body) {
+      updateData[field] = body[field];
+    }
+  });
+
+  if (typeof updateData.lot === "string") {
+    updateData.lot = updateData.lot.toUpperCase().trim();
+  }
+
+  validateVehicleNumbers(updateData);
+  return updateData;
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -95,8 +130,8 @@ export async function PATCH(
     await assertVehicleFacilityAccess(session.openid, id);
 
     const body = await request.json();
-    const { historyRow, ...updateData } = body;
-    validateVehicleNumbers(updateData);
+    const { historyRow } = body;
+    const updateData = pickVehicleUpdateData(body);
     validateVehicleNumbers(historyRow);
 
     if (historyRow) {

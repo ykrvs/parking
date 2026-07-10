@@ -1310,8 +1310,12 @@ as $$
   );
 $$;
 
+revoke execute on function public.is_admin(text) from public, anon, authenticated;
+grant execute on function public.is_admin(text) to service_role;
+
+drop function if exists public.set_user_admin(text, text, boolean);
+
 create or replace function public.set_user_admin(
-  actor_id text,
   target_id text,
   admin_value boolean
 )
@@ -1322,7 +1326,12 @@ set search_path = public
 as $$
 declare
   updated_user public.users;
+  actor_id text := auth.uid()::text;
 begin
+  if actor_id is null then
+    raise exception 'Authenticated user required';
+  end if;
+
   if not public.is_admin(actor_id) then
     raise exception 'Only admins can update admin status';
   end if;
@@ -1339,3 +1348,6 @@ begin
   return updated_user;
 end;
 $$;
+
+revoke execute on function public.set_user_admin(text, boolean) from public, anon, authenticated;
+grant execute on function public.set_user_admin(text, boolean) to service_role;
