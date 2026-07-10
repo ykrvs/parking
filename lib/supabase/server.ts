@@ -315,55 +315,33 @@ export async function updateUserRegistration(
   if (!supabase) return null;
 
   const table = getUsersTable();
-  const updatePayload: any = {
+  const upsertPayload: any = {
+    id,
+    name: name || "Unknown",
     rank,
     ord_date: ordDate,
     is_technician: isTechnician,
   };
-  if (phone !== undefined) updatePayload.phone = phone;
-  if (unit !== undefined) updatePayload.unit = unit;
-  if (name !== undefined) updatePayload.name = name;
-  if (facilityCode !== undefined) updatePayload.facility_code = facilityCode;
+  if (phone !== undefined) upsertPayload.phone = phone;
+  if (unit !== undefined) upsertPayload.unit = unit;
+  if (facilityCode !== undefined) upsertPayload.facility_code = facilityCode;
 
-  const runUpdate = async (payload: any, selectFields: string) =>
-  const upsertPayload: any = {
-  id,
-  name: name || "Unknown",
-  rank,
-  ord_date: ordDate,
-  is_technician: isTechnician,
-};
+  const runUpsert = async (payload: any, selectFields: string) =>
+    supabase
+      .from(table)
+      .upsert(payload, {
+        onConflict: "id",
+        ignoreDuplicates: false,
+      })
+      .select(selectFields)
+      .single<UserProfile>();
 
-if (phone !== undefined) {
-  upsertPayload.phone = phone;
-}
-
-if (unit !== undefined) {
-  upsertPayload.unit = unit;
-}
-
-if (facilityCode !== undefined) {
-  upsertPayload.facility_code = facilityCode;
-}
-
-const runUpsert = async (payload: any, selectFields: string) =>
-  supabase
-    .from(table)
-    .upsert(payload, {
-      onConflict: "id",
-      ignoreDuplicates: false,
-    })
-    .select(selectFields)
-    .single<UserProfile>();
-
-let { data, error } = await runUpsert(upsertPayload, USER_PROFILE_SELECT);
-
-  let { data, error } = await runUpdate(updatePayload, USER_PROFILE_SELECT);
+  let { data, error } = await runUpsert(upsertPayload, USER_PROFILE_SELECT);
 
   if (error && isMissingFacilityColumnError(error.message)) {
-    const noFacilityPayload = { ...updatePayload };
+    const noFacilityPayload = { ...upsertPayload };
     delete noFacilityPayload.facility_code;
-    const noFacilityResult = await runUpdate(
+    const noFacilityResult = await runUpsert(
       noFacilityPayload,
       NO_FACILITY_USER_PROFILE_SELECT,
     );
@@ -372,12 +350,12 @@ let { data, error } = await runUpsert(upsertPayload, USER_PROFILE_SELECT);
       : null;
     error = noFacilityResult.error;
   } else if (error && error.message.toLowerCase().includes("unit")) {
-    const legacyPayload = { ...updatePayload };
+    const legacyPayload = { ...upsertPayload };
     if (legacyPayload.unit !== undefined) {
       legacyPayload.depot = legacyPayload.unit;
       delete legacyPayload.unit;
     }
-    const legacyResult = await runUpdate(legacyPayload, LEGACY_USER_PROFILE_SELECT);
+    const legacyResult = await runUpsert(legacyPayload, LEGACY_USER_PROFILE_SELECT);
     data = legacyResult.data
       ? ({ ...legacyResult.data, unit: legacyResult.data.depot ?? null } as UserProfile)
       : null;

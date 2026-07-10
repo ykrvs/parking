@@ -103,37 +103,3 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-
-const response = await fetch("/api/users/me");
-
-if (!response.ok) {
-  router.replace("/");
-  return;
-}
-
-const data = await response.json();
-
-if (!data.registrationComplete) {
-  router.replace("/register");
-  return;
-}
-
-if (!data.profile?.is_verified) {
-  setVerificationPending(true);
-  return;
-}
-
-// Only load parking/vehicle data after this point
-
-if (verificationPending) {
-  return (
-    <main className="flex min-h-screen items-center justify-center p-6">
-      <div className="max-w-md rounded-xl border bg-white p-6 text-center shadow-sm">
-        <h1 className="text-xl font-semibold">Pending verification</h1>
-        <p className="mt-3 text-sm text-gray-600">
-          Your profile has been submitted. An admin needs to verify your account before you can view parking data.
-        </p>
-      </div>
-    </main>
-  );
-}
