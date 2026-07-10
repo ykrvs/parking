@@ -512,12 +512,31 @@ export async function resolveFacilityCode(
   return profile.facility_code || "11FMD";
 }
 
-// Every vehicle's id is prefixed with its depot's facility code (see
-// app/api/vehicles/route.ts), so the vehicle's own facility can be read
-// straight off its id without an extra lookup.
+// New vehicle ids are prefixed with their depot's facility code (see
+// app/api/vehicles/route.ts). Legacy rows may still have old MID-prefixed
+// ids, so callers that need an authoritative answer should use
+// resolveVehicleFacilityCode instead of trusting the id shape.
 export function getFacilityCodeFromVehicleId(id: string) {
+  if (!id.includes("-")) return null;
   const [prefix] = id.split("-");
   return prefix;
+}
+
+export async function resolveVehicleFacilityCode(vehicleId: string) {
+  const facilityFromId = getFacilityCodeFromVehicleId(vehicleId);
+  if (facilityFromId) return facilityFromId;
+
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return "11FMD";
+
+  const { data, error } = await supabase
+    .from("vehicles")
+    .select("facility_code")
+    .eq("id", vehicleId)
+    .maybeSingle<{ facility_code: string | null }>();
+
+  if (error) throw error;
+  return data?.facility_code || "11FMD";
 }
 
 // Non-admins may only update/checkout vehicles that belong to their own
@@ -529,7 +548,7 @@ export async function assertVehicleFacilityAccess(actorId: string, vehicleId: st
   }
   if (profile.is_admin) return;
 
-  const vehicleFacility = getFacilityCodeFromVehicleId(vehicleId);
+  const vehicleFacility = await resolveVehicleFacilityCode(vehicleId);
   if (vehicleFacility !== profile.facility_code) {
     throw new Error("This vehicle belongs to a different depot.");
   }
