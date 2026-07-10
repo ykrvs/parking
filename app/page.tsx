@@ -785,7 +785,7 @@ useEffect(() => {
   void checkRegistration();
 
   return () => controller.abort();
-}, [auth.isAuthenticated, auth.openid, router, auth]);
+}, [auth.isAuthenticated, auth.openid, auth.rank, router]);
 
   // Load Vehicles & dashboard metrics
   const fetchDashboardData = async () => {
