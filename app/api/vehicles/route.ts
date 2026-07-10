@@ -146,6 +146,7 @@ export async function POST(request: NextRequest) {
     const data = await checkinVehicle({
       id: plate,
       facility_code: facilityCode,
+      vehicle_unit: body.vehicle_unit?.trim() || null,
       variant: body.variant?.trim() || "—",
       driver_id: session.openid,
       driver: body.driver?.trim() || "—",

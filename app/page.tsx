@@ -15,7 +15,6 @@ import {
   Flame,
   History,
   IdCard,
-  LogIn,
   LogOut,
   MapPin,
   Menu,
@@ -31,11 +30,15 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
 
 import { FireExpiryPicker } from "@/components/dashboard/fire-expiry-picker";
+import { LoginGate } from "@/components/dashboard/login-gate";
 import { RequiredMark } from "@/components/dashboard/required-mark";
+import {
+  PercentDot,
+  Skeleton,
+  UnverifiedDot,
+} from "@/components/dashboard/status-indicators";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -60,481 +63,33 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
-import defaultParkingConfig from "@/lib/parking-config.json";
+import {
+  AUDIT_ACTION_LABELS,
+  DEFAULT_PARKING_LEVELS,
+  PLATE_MASK_ENABLED,
+  PLATE_MAX_DIGITS,
+  RANK_CATEGORIES,
+  RANK_OPTIONS,
+  SAFETY_MESSAGES,
+  VEHICLE_VARIANT_OPTIONS,
+  exportDriveoutHistoryCSV,
+  exportDriveoutHistoryPDF,
+  formatPlateDisplay,
+  getLevelLots,
+  getLotOccupancyClasses,
+  localInputToUtcIso,
+  normalizeParkingValue,
+  parseDateInput,
+  toDateInputValue,
+  utcIsoToLocalInput,
+  vehicleMatchesLevel,
+  type AdminUserRecord,
+  type AuditLogEntry,
+  type ParkingLayoutColumn,
+  type ParkingLevelConfig,
+  type SafetyMessageRecord,
+} from "@/lib/dashboard/dashboard-data";
 import { cn } from "@/lib/utils";
-
-// Static Data
-const SAFETY_MESSAGES = [
-  "Always check your mirrors before reversing. A moment of caution prevents a lifetime of regret.",
-  "Keep walkways clear at all times. Pedestrians share this space — give them room.",
-  "Do not exceed 10 km/h on all levels. Speed limits exist for your safety and others'.",
-  "Report any oil spills or wet floors immediately to prevent slips and falls.",
-  "Ensure your vehicle is in park with the handbrake engaged before leaving it.",
-  "Never leave engines running in enclosed spaces. Carbon monoxide is invisible and deadly.",
-  "Wear your high-visibility vest when working in the car park outside your vehicle.",
-];
-
-// --- Vehicle Plate Display Config -----------------------------------------
-// Vehicle IDs are stored internally with a "MID" prefix (e.g. "MID087").
-// While the project is scoped to a single unit, we hide that prefix in the
-// UI and only ask for/show a short 3-digit "Vehicle Plate" number instead.
-//
-// To remove this feature later (e.g. when scaling up to support longer or
-// differently-formatted plate numbers), simply set PLATE_MASK_ENABLED to
-// false below — everything else in the file reads from these two values.
-const PLATE_MASK_ENABLED = true;
-const PLATE_MAX_DIGITS = 3;
-
-// Variant / Model options shown in the Log Vehicle In dropdown.
-const VEHICLE_VARIANT_OPTIONS = ["HFV", "HARV", "2BT", "B", "BN"];
-
-function formatPlateDisplay(plate?: string | null): string {
-  if (!plate) return "—";
-  if (!PLATE_MASK_ENABLED) return plate;
-  // New scheme: "{FACILITY_CODE}-{plate}" (e.g. "11FMD-087") — strip the
-  // depot prefix so two depots can each show a plain "087". Falls back to
-  // stripping the older "MID" prefix for pre-multi-depot records.
-  const facilityPrefixMatch = plate.match(/^[A-Za-z0-9]+-(.+)$/);
-  if (facilityPrefixMatch) return facilityPrefixMatch[1];
-  return plate.replace(/^MID/i, "");
-}
-
-// --- Safety Message Scheduling Helpers -------------------------------------
-// <input type="datetime-local"> values (e.g. "2026-07-02T07:52") have no
-// timezone attached — they represent whatever the browser's local wall-clock
-// time is. `new Date(...)` on such a string is interpreted as local time by
-// spec, so converting to ISO before sending to the server stores the correct
-// UTC instant instead of misreading the local digits as UTC (which was
-// causing the displayed time to drift by the local UTC offset, e.g. +8h in
-// Singapore).
-function localInputToUtcIso(value: string): string | null {
-  if (!value) return null;
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toISOString();
-}
-
-function utcIsoToLocalInput(value?: string | null): string {
-  if (!value) return "";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
-    d.getHours(),
-  )}:${pad(d.getMinutes())}`;
-}
-
-// Shared colour thresholds for percentage indicators (fuel, battery, etc.)
-// so battery readings can use the same green/amber/red logic as fuel level.
-function percentIndicatorColor(pct: number | null | undefined): string {
-  const value = pct ?? 0;
-  if (value > 50) return "bg-emerald-500";
-  if (value > 20) return "bg-amber-500";
-  return "bg-red-500";
-}
-
-function PercentDot({ pct }: { pct: number | null | undefined }) {
-  return (
-    <span
-      className={cn(
-        "inline-block size-2.5 rounded-full shrink-0",
-        percentIndicatorColor(pct),
-      )}
-      aria-hidden="true"
-    />
-  );
-}
-
-// Small red dot shown next to a user's name anywhere it appears in the app,
-// flagging accounts an admin hasn't verified yet. Renders nothing once
-// `isVerified` is true (or unknown, since most name displays don't have
-// verification data joined in).
-function UnverifiedDot({ isVerified }: { isVerified?: boolean }) {
-  if (isVerified !== false) return null;
-  return (
-    <span
-      title="Not yet verified by an admin"
-      aria-label="Not yet verified by an admin"
-      className="inline-block size-2 rounded-full bg-red-600 shrink-0"
-    />
-  );
-}
-
-// Lot occupancy colour tiers: boxes stay neutral below 50% occupied, then
-// step through green -> yellow -> red as fewer lots remain (50% / 75% / 90%
-// thresholds).
-// Simple pulsing placeholder used while initial data is still loading.
-function Skeleton({ className }: { className?: string }) {
-  return (
-    <div
-      className={cn("animate-pulse rounded-md bg-zinc-200/70", className)}
-      aria-hidden="true"
-    />
-  );
-}
-
-function getLotOccupancyClasses(occupied: number, total: number) {
-  if (!total) return { box: "", text: "" };
-  const pct = (occupied / total) * 100;
-  if (pct >= 90) {
-    return { box: "bg-red-50 border-red-300", text: "text-red-700" };
-  }
-  if (pct >= 75) {
-    return { box: "bg-amber-50 border-amber-300", text: "text-amber-700" };
-  }
-  if (pct >= 50) {
-    return { box: "bg-emerald-50 border-emerald-300", text: "text-emerald-700" };
-  }
-  return { box: "", text: "" };
-}
-
-// --- Drive-out History Export -----------------------------------------
-const HISTORY_EXPORT_COLUMNS = [
-  { key: "plate", label: "Vehicle Plate" },
-  { key: "variant", label: "Variant" },
-  { key: "level", label: "Level" },
-  { key: "lot", label: "Lot" },
-  { key: "driver", label: "Driver" },
-  { key: "driver_unit", label: "Unit" },
-  { key: "check_in", label: "Check In" },
-  { key: "check_out", label: "Check Out" },
-  { key: "odometer", label: "Odometer" },
-  { key: "engine_hours", label: "Engine Hours" },
-  { key: "starter_v", label: "Starter V" },
-  { key: "starter_pct", label: "Starter %" },
-  { key: "aux_v", label: "Aux V" },
-  { key: "aux_pct", label: "Aux %" },
-  { key: "fuel_l", label: "Fuel L" },
-  { key: "fuel_pct", label: "Fuel %" },
-  { key: "fire_ext_expiry", label: "Fire Ext Expiry" },
-  { key: "notes", label: "Notes" },
-] as const;
-
-function historyExportRow(record: any): string[] {
-  return HISTORY_EXPORT_COLUMNS.map(({ key }) => {
-    const value = record[key];
-    if (value === null || value === undefined) return "";
-    if (key === "plate") return formatPlateDisplay(value);
-    if (key === "check_in" || key === "check_out") {
-      return format(new Date(value), "dd MMM yyyy HH:mm");
-    }
-    return String(value);
-  });
-}
-
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-}
-
-function csvEscape(value: string): string {
-  if (/[",\n]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-  return value;
-}
-
-function exportDriveoutHistoryCSV(records: any[]) {
-  const header = HISTORY_EXPORT_COLUMNS.map((c) => c.label);
-  const rows = records.map(historyExportRow);
-  const csv = [header, ...rows]
-    .map((row) => row.map(csvEscape).join(","))
-    .join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  downloadBlob(blob, `trackr-drive-out-history-${format(new Date(), "yyyy-MM-dd")}.csv`);
-}
-
-function exportDriveoutHistoryPDF(records: any[]) {
-  const doc = new jsPDF({ orientation: "landscape" });
-  doc.setFontSize(14);
-  doc.text("Trackr — Drive-out History", 14, 14);
-  doc.setFontSize(9);
-  doc.text(`Generated ${format(new Date(), "dd MMM yyyy HH:mm")}`, 14, 20);
-
-  autoTable(doc, {
-    startY: 26,
-    head: [HISTORY_EXPORT_COLUMNS.map((c) => c.label)],
-    body: records.map(historyExportRow),
-    styles: { fontSize: 7, cellPadding: 2 },
-    headStyles: { fillColor: [220, 38, 38] },
-    margin: { left: 10, right: 10 },
-  });
-
-  doc.save(`trackr-drive-out-history-${format(new Date(), "yyyy-MM-dd")}.pdf`);
-}
-
-// Human-readable labels for audit_log action codes.
-const AUDIT_ACTION_LABELS: Record<string, string> = {
-  "user.verify": "verified",
-  "user.unverify": "marked unverified",
-  "user.admin.grant": "granted admin access to",
-  "user.admin.revoke": "revoked admin access from",
-  "safety_message.create": "created safety message:",
-  "safety_message.update": "rescheduled safety message:",
-  "safety_message.delete": "deleted safety message",
-};
-
-type ParkingLevelConfig = {
-  id: string;
-  label: string;
-  desc?: string;
-  icon?: string;
-  totalLots?: number;
-  lots?: string[];
-  layout?: {
-    columns: ParkingLayoutColumn[];
-  };
-};
-
-type ParkingLayoutColumn =
-  | {
-      type: "lots";
-      id: string;
-      label?: string;
-      lots: string[];
-    }
-  | {
-      type: "mixed";
-      id: string;
-      label?: string;
-      cells: ParkingLayoutCell[];
-    }
-  | {
-      type: "driveway";
-      id: string;
-      label?: string;
-    }
-  | {
-      type: "spacer";
-      id: string;
-    };
-
-type ParkingLayoutCell =
-  | {
-      type: "lot";
-      id: string;
-      label?: string;
-    }
-  | {
-      type: "area";
-      id: string;
-      label: string;
-      rowSpan?: number;
-    };
-
-type SafetyMessageRecord = {
-  id: string;
-  message: string;
-  starts_at: string | null;
-  ends_at: string | null;
-  is_active: boolean;
-  created_at: string;
-};
-
-type AuditLogEntry = {
-  id: string;
-  actor_id: string | null;
-  actor_name: string | null;
-  action: string;
-  target_id: string | null;
-  target_label: string | null;
-  details: Record<string, unknown> | null;
-  created_at: string;
-};
-
-type AdminUserRecord = {
-  id: string;
-  rank: string | null;
-  name: string;
-  is_admin: boolean;
-  is_technician: boolean;
-  is_verified: boolean;
-  facility_code: string;
-  ord_date: string | null;
-  phone: string | null;
-  unit: string | null;
-  depot?: string | null;
-};
-
-function parseDateInput(dateStr: string) {
-  if (!dateStr) return undefined;
-  const parts = dateStr.split("-");
-  if (parts.length !== 3) return undefined;
-
-  return new Date(
-    parseInt(parts[0], 10),
-    parseInt(parts[1], 10) - 1,
-    parseInt(parts[2], 10),
-  );
-}
-
-function toDateInputValue(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
-}
-
-const DEFAULT_PARKING_LEVELS =
-  defaultParkingConfig.levels as ParkingLevelConfig[];
-
-function getLevelLots(level?: ParkingLevelConfig) {
-  if (!level) return [];
-
-  if (level.layout?.columns?.length) {
-    return level.layout.columns.flatMap((column) =>
-      column.type === "lots"
-        ? column.lots
-        : column.type === "mixed"
-          ? column.cells
-              .filter((cell) => cell.type === "lot")
-              .map((cell) => cell.id)
-          : [],
-    );
-  }
-
-  return level.lots ?? [];
-}
-
-function normalizeParkingValue(value: unknown) {
-  return String(value ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/[\s_-]+/g, "");
-}
-
-function getLevelAliases(level?: ParkingLevelConfig) {
-  if (!level) return new Set<string>();
-
-  return new Set(
-    [level.id, level.label, level.icon]
-      .filter(Boolean)
-      .map((value) => normalizeParkingValue(value)),
-  );
-}
-
-function vehicleMatchesLevel(vehicle: any, level?: ParkingLevelConfig) {
-  return getLevelAliases(level).has(normalizeParkingValue(vehicle?.level));
-}
-
-const RANK_OPTIONS = [
-  "REC",
-  "PTE",
-  "LCP",
-  "CPL",
-  "CFC",
-  "SCT",
-  "3SG",
-  "2SG",
-  "1SG",
-  "SSG",
-  "MSG",
-  "3WO",
-  "2WO",
-  "1WO",
-  "MWO",
-  "SWO",
-  "CWO",
-  "2LT",
-  "LTA",
-  "CPT",
-  "MAJ",
-  "LTC",
-  "SLTC",
-  "COL",
-  "BG",
-];
-
-const RANK_CATEGORIES = [
-  {
-    label: "Enlisted",
-    ranks: ["REC", "PTE", "LCP", "CPL", "CFC"],
-  },
-  {
-    label: "Specialists",
-    ranks: ["3SG", "2SG", "1SG", "SSG", "MSG", "SCT"],
-  },
-  {
-    label: "Warrant Officers",
-    ranks: ["3WO", "2WO", "1WO", "MWO", "SWO", "CWO"],
-  },
-  {
-    label: "Officers",
-    ranks: [
-      "2LT",
-      "LTA",
-      "CPT",
-      "MAJ",
-      "LTC",
-      "SLTC",
-      "COL",
-      "BG",
-      "GEN",
-      "ADM",
-      "OCT",
-    ],
-  },
-  {
-    label: "Military Experts",
-    ranks: [
-      "ME1T",
-      "ME1",
-      "ME2",
-      "ME3",
-      "ME4T",
-      "ME4A",
-      "ME4",
-      "ME5",
-      "ME6",
-      "ME7",
-      "ME8",
-    ],
-  },
-];
-
-function LoginGate({
-  isLoading,
-  onLogin,
-}: {
-  isLoading: boolean;
-  onLogin: () => void;
-}) {
-  return (
-    <main className="flex min-h-screen items-center justify-center bg-zinc-100 px-6 py-12">
-      <Card className="w-full max-w-sm rounded-lg border-zinc-200 shadow-sm">
-        <CardHeader className="gap-4">
-          <div className="flex size-10 items-center justify-center rounded-lg bg-red-600 text-white">
-            <ShieldCheck className="size-5" aria-hidden="true" />
-          </div>
-          <div className="space-y-1">
-            <CardTitle className="text-xl">Sign in to Parking</CardTitle>
-            <CardDescription>
-              Use Singpass once to continue to the parking dashboard.
-            </CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Button
-            size="lg"
-            className="h-11 w-full bg-red-600 hover:bg-red-700"
-            onClick={onLogin}
-            disabled={isLoading}
-          >
-            <LogIn className="size-4" aria-hidden="true" />
-            {isLoading ? "Checking login..." : "Sign in with Singpass"}
-          </Button>
-        </CardContent>
-      </Card>
-    </main>
-  );
-}
 
 export default function Home() {
   const auth = useAuth();
@@ -583,6 +138,9 @@ export default function Home() {
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [recentVehicles, setRecentVehicles] = useState<any[]>([]);
   const [driveoutRecords, setDriveoutRecords] = useState<any[]>([]);
+  const [vehicleUnits, setVehicleUnits] = useState<
+    { id: string; name: string }[]
+  >([]);
   const [selectedVehicle, setSelectedVehicle] = useState<any>(null);
   const [selectedDriveout, setSelectedDriveout] = useState<any>(null);
 
@@ -629,6 +187,7 @@ export default function Home() {
   // Check-in input states
   const [ciPlate, setCiPlate] = useState("");
   const [ciVariant, setCiVariant] = useState("");
+  const [ciVehicleUnit, setCiVehicleUnit] = useState("");
   const [ciDriver, setCiDriver] = useState("");
   const [ciDriverPhone, setCiDriverPhone] = useState("");
   const [ciDriverUnit, setCiDriverUnit] = useState("");
@@ -647,6 +206,7 @@ export default function Home() {
 
   // Update input states
   const [upVariant, setUpVariant] = useState("");
+  const [upVehicleUnit, setUpVehicleUnit] = useState("");
   const [upDriver, setUpDriver] = useState("");
   const [upDriverPhone, setUpDriverPhone] = useState("");
   const [upDriverUnit, setUpDriverUnit] = useState("");
@@ -956,6 +516,26 @@ useEffect(() => {
   fetchParkingConfig();
   fetchSafetyMessages();
 
+  fetch(`/api/vehicle-units?facility=${encodeURIComponent(activeFacility)}`)
+    .then((res) => (res.ok ? res.json() : null))
+    .then(
+      (
+        data: {
+          vehicleUnits?: { id: string; name: string }[];
+          error?: string;
+        } | null,
+      ) => {
+        setVehicleUnits(data?.vehicleUnits || []);
+        if (data?.error) {
+          console.error("Failed to load vehicle units:", data.error);
+        }
+      },
+    )
+    .catch((err) => {
+      console.error("Failed to load vehicle units:", err);
+      setVehicleUnits([]);
+    });
+
   // Admins need the full user list so ORD reminders can show on Home
   // without first opening the Admin tab.
   if (profile.is_admin) {
@@ -1192,6 +772,9 @@ if (isVerificationPending) {
     };
   };
 
+  const vehicleUnitLabel = (vehicle: { vehicle_unit?: string | null }) =>
+    vehicle.vehicle_unit || "No vehicle unit";
+
   // Fire extinguishers expired, or expiring within the next 14 days, on
   // vehicles currently parked in the facility.
   const FIRE_EXT_WARNING_DAYS = 14;
@@ -1389,6 +972,10 @@ if (isVerificationPending) {
       setFormError("Plate, Level and Lot are required");
       return;
     }
+    if (vehicleUnits.length > 0 && !ciVehicleUnit) {
+      setFormError("Vehicle unit is required");
+      return;
+    }
     if (!/^\d{1,3}(\(\d{1,2}\))?$/.test(ciPlate)) {
       setFormError(
         "Vehicle plate must be up to 3 digits, optionally followed by a bracketed number, e.g. 675(1)",
@@ -1416,6 +1003,7 @@ if (isVerificationPending) {
     const payload = {
       plate: ciPlate,
       variant: ciVariant,
+      vehicle_unit: ciVehicleUnit || null,
       driver: profile.name,
       driver_phone: profile.phone,
       driver_unit: profileUnit,
@@ -1450,6 +1038,7 @@ if (isVerificationPending) {
       // Clear inputs
       setCiPlate("");
       setCiVariant("");
+      setCiVehicleUnit("");
       setCiDriver("");
       setCiDriverPhone("");
       setCiDriverUnit("");
@@ -1474,10 +1063,12 @@ if (isVerificationPending) {
   };
 
   // Open Update Modal and populate states
-  const handleOpenUpdate = () => {
-    if (!selectedVehicle) return;
-    const v = selectedVehicle;
+  const handleOpenUpdate = (vehicleOverride?: any) => {
+    const v = vehicleOverride || selectedVehicle;
+    if (!v) return;
+    setSelectedVehicle(v);
     setUpVariant(v.variant || "");
+    setUpVehicleUnit(v.vehicle_unit || "");
     setUpDriver(v.driver || "");
     setUpDriverPhone(v.driver_phone || "");
     setUpDriverUnit(v.driver_unit || v.driver_depot || "");
@@ -1519,6 +1110,7 @@ if (isVerificationPending) {
 
     const payload = {
       variant: upVariant || null,
+      vehicle_unit: upVehicleUnit || null,
       driver: upDriver || null,
       driver_phone: upDriverPhone || null,
       driver_unit: upDriverUnit || null,
@@ -1536,6 +1128,7 @@ if (isVerificationPending) {
       historyRow: {
         vehicle_id: selectedVehicle.id,
         variant: upVariant || selectedVehicle.variant,
+        vehicle_unit: upVehicleUnit || selectedVehicle.vehicle_unit || null,
         driver_id: selectedVehicle.driver_id || null,
         driver: upDriver || selectedVehicle.driver,
         driver_phone: upDriverPhone || selectedVehicle.driver_phone,
@@ -1614,6 +1207,7 @@ if (isVerificationPending) {
         historyRow: {
           vehicle_id: selectedVehicle.id,
           variant: selectedVehicle.variant,
+          vehicle_unit: selectedVehicle.vehicle_unit || null,
           level: selectedVehicle.level,
           lot: selectedVehicle.lot,
           check_in: selectedVehicle.check_in,
@@ -2028,6 +1622,9 @@ if (isVerificationPending) {
     (v) =>
       (v.plate || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (v.driver || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (v.vehicle_unit || "")
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase()) ||
       (v.variant || "").toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
@@ -2298,6 +1895,11 @@ if (isVerificationPending) {
                     icon: <Search className="size-4" />,
                   },
                   {
+                    id: "bos",
+                    label: "BOS",
+                    icon: <Battery className="size-4" />,
+                  },
+                  {
                     id: "parking",
                     label: "Parking Overview",
                     icon: <MapPin className="size-4" />,
@@ -2433,8 +2035,11 @@ if (isVerificationPending) {
                       className="flex items-center justify-between gap-2 rounded-lg bg-white/70 border border-red-100 px-3 py-2 cursor-pointer hover:bg-white transition"
                     >
                       <span className="text-sm font-bold text-zinc-800">
-                        {formatPlateDisplay(vehicle.plate)}{" "}
-                        <span className="font-medium text-zinc-500">
+                        {formatPlateDisplay(vehicle.plate)}
+                        <span className="ml-2 text-xs font-semibold text-zinc-400">
+                          {vehicleUnitLabel(vehicle)}
+                        </span>
+                        <span className="ml-2 font-medium text-zinc-500">
                           ({vehicle.variant})
                         </span>
                       </span>
@@ -2640,6 +2245,9 @@ if (isVerificationPending) {
                           <div className="font-bold text-zinc-900">
                             {formatPlateDisplay(v.plate)}
                           </div>
+                          <p className="text-[11px] font-semibold text-zinc-400">
+                            {vehicleUnitLabel(v)}
+                          </p>
                           <p className="text-xs text-zinc-500 font-medium">
                             {v.variant} &nbsp;·&nbsp; {v.level} · Lot {v.lot}
                           </p>
@@ -2674,7 +2282,7 @@ if (isVerificationPending) {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search vehicle plate, variant or driver..."
+                placeholder="Search vehicle plate, unit, variant or driver..."
                 className="w-full h-10 pl-9 pr-4 rounded-lg border border-zinc-200 bg-white text-sm outline-none transition focus:border-red-600 focus:ring-3 focus:ring-red-600/15 shadow-xs"
               />
             </div>
@@ -2705,7 +2313,12 @@ if (isVerificationPending) {
                         <CarFront className="size-5" />
                       </div>
                       <div>
-                        <div className="font-bold text-zinc-900">{formatPlateDisplay(v.plate)}</div>
+                        <div className="font-bold text-zinc-900">
+                          {formatPlateDisplay(v.plate)}
+                        </div>
+                        <p className="text-[11px] font-semibold text-zinc-400">
+                          {vehicleUnitLabel(v)}
+                        </p>
                         <p className="text-xs text-zinc-500 font-medium">
                           {v.variant} &nbsp;·&nbsp; {v.level} · Lot {v.lot}
                         </p>
@@ -2724,6 +2337,168 @@ if (isVerificationPending) {
               ) : (
                 <p className="text-zinc-500 text-sm py-8 text-center col-span-full font-medium">
                   No active vehicles found matching search.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: BOS READINGS */}
+        {activeTab === "bos" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-extrabold tracking-tight text-zinc-900">
+                  BOS Readings
+                </h2>
+                <p className="text-xs font-medium text-zinc-500">
+                  Active vehicles in {activeFacilityName}
+                </p>
+              </div>
+              <Button
+                type="button"
+                onClick={() => guardVerifiedAction(openCheckinModal)}
+                className={cn(
+                  "h-9 text-sm",
+                  isUnverified
+                    ? "bg-zinc-300 hover:bg-zinc-300 text-zinc-600 cursor-not-allowed"
+                    : "bg-red-600 hover:bg-red-700",
+                )}
+              >
+                <Plus className="size-4 mr-1.5" />
+                Log Vehicle In
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              {isLoadingDashboard ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="rounded-xl border border-zinc-200 bg-white p-4"
+                  >
+                    <Skeleton className="h-16 w-full rounded-lg" />
+                  </div>
+                ))
+              ) : vehicles.length > 0 ? (
+                vehicles.map((v) => {
+                  const fireStatus = getFireExtStatus(v.fire_ext_expiry);
+
+                  return (
+                    <div
+                      key={v.id}
+                      onClick={() => handleOpenVehicle(v)}
+                      className="cursor-pointer rounded-xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:border-zinc-300 hover:shadow-md"
+                    >
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex min-w-0 items-center gap-3 lg:w-52">
+                          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-600">
+                            <CarFront className="size-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-base font-extrabold text-zinc-900">
+                              {formatPlateDisplay(v.plate)}
+                            </p>
+                            <p className="truncate text-[11px] font-semibold text-zinc-400">
+                              {vehicleUnitLabel(v)}
+                            </p>
+                            <p className="truncate text-xs font-medium text-zinc-500">
+                              {v.variant} · {v.level} · Lot {v.lot}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="grid flex-1 grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+                          <div className="rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2">
+                            <p className="text-[10px] font-bold uppercase text-zinc-400">
+                              Odometer
+                            </p>
+                            <p className="mt-1 text-sm font-extrabold text-zinc-800">
+                              {v.odometer !== null
+                                ? Number(v.odometer).toLocaleString()
+                                : "-"}{" "}
+                              <span className="text-[10px] font-medium text-zinc-500">
+                                km
+                              </span>
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2">
+                            <p className="text-[10px] font-bold uppercase text-zinc-400">
+                              Engine
+                            </p>
+                            <p className="mt-1 text-sm font-extrabold text-zinc-800">
+                              {v.engine_hours ?? "-"}{" "}
+                              <span className="text-[10px] font-medium text-zinc-500">
+                                hrs
+                              </span>
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2">
+                            <p className="text-[10px] font-bold uppercase text-zinc-400">
+                              Starter
+                            </p>
+                            <p className="mt-1 flex items-center gap-1.5 text-sm font-extrabold text-zinc-800">
+                              {v.starter_v ?? "--"}V · {v.starter_pct ?? 0}%
+                              <PercentDot pct={v.starter_pct} />
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2">
+                            <p className="text-[10px] font-bold uppercase text-zinc-400">
+                              Auxiliary
+                            </p>
+                            <p className="mt-1 flex items-center gap-1.5 text-sm font-extrabold text-zinc-800">
+                              {v.aux_v ?? "--"}V · {v.aux_pct ?? 0}%
+                              <PercentDot pct={v.aux_pct} />
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2">
+                            <p className="text-[10px] font-bold uppercase text-zinc-400">
+                              Fuel
+                            </p>
+                            <p className="mt-1 flex items-center gap-1.5 text-sm font-extrabold text-zinc-800">
+                              {v.fuel_l ?? "--"}L · {v.fuel_pct ?? 0}%
+                              <PercentDot pct={v.fuel_pct} />
+                            </p>
+                          </div>
+                          <div
+                            className={cn(
+                              "rounded-lg border px-3 py-2",
+                              fireStatus.bg,
+                            )}
+                          >
+                            <p className="text-[10px] font-bold uppercase text-zinc-400">
+                              Fire Ext.
+                            </p>
+                            <p className={cn("mt-1 text-xs", fireStatus.color)}>
+                              {v.fire_ext_expiry
+                                ? format(
+                                    new Date(v.fire_ext_expiry + "T00:00:00"),
+                                    "dd MMM yyyy",
+                                  )
+                                : "Not recorded"}
+                            </p>
+                          </div>
+                        </div>
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            guardVerifiedAction(() => handleOpenUpdate(v));
+                          }}
+                          className="h-9 shrink-0 border-zinc-200 text-xs font-bold"
+                        >
+                          <Edit2 className="size-3.5 mr-1.5" />
+                          Update Record
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="rounded-xl border border-zinc-200 bg-white py-8 text-center text-sm font-medium text-zinc-500">
+                  No active vehicles checked in yet.
                 </p>
               )}
             </div>
@@ -3798,6 +3573,9 @@ if (isVerificationPending) {
               <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900">
                 {formatPlateDisplay(selectedVehicle.plate)}
               </h2>
+              <p className="text-sm text-zinc-400 font-semibold mt-1">
+                {vehicleUnitLabel(selectedVehicle)}
+              </p>
               <p className="text-sm text-zinc-500 font-semibold mt-1">
                 {selectedVehicle.variant}
               </p>
@@ -4430,6 +4208,11 @@ if (isVerificationPending) {
             icon: <Search className="size-5" />,
           },
           {
+            id: "bos",
+            label: "BOS",
+            icon: <Battery className="size-5" />,
+          },
+          {
             id: "parking",
             label: "Parking",
             icon: <MapPin className="size-5" />,
@@ -4537,6 +4320,31 @@ if (isVerificationPending) {
                       ))}
                     </select>
                   </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-zinc-700">
+                    Vehicle Unit
+                    {vehicleUnits.length > 0 && <RequiredMark />}
+                  </label>
+                  <select
+                    value={ciVehicleUnit}
+                    onChange={(e) => setCiVehicleUnit(e.target.value)}
+                    required={vehicleUnits.length > 0}
+                    disabled={vehicleUnits.length === 0}
+                    className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600 disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-400"
+                  >
+                    <option value="" disabled>
+                      {vehicleUnits.length
+                        ? "Select vehicle unit"
+                        : "No vehicle units configured"}
+                    </option>
+                    {vehicleUnits.map((unit) => (
+                      <option key={unit.id} value={unit.name}>
+                        {unit.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="space-y-1">
@@ -4870,6 +4678,29 @@ if (isVerificationPending) {
                       className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
                     />
                   </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-zinc-700">
+                    Vehicle Unit
+                  </label>
+                  <select
+                    value={upVehicleUnit}
+                    onChange={(e) => setUpVehicleUnit(e.target.value)}
+                    disabled={vehicleUnits.length === 0}
+                    className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600 disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-400"
+                  >
+                    <option value="">
+                      {vehicleUnits.length
+                        ? "Select vehicle unit"
+                        : "No vehicle units configured"}
+                    </option>
+                    {vehicleUnits.map((unit) => (
+                      <option key={unit.id} value={unit.name}>
+                        {unit.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="space-y-1">

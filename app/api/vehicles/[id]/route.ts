@@ -27,6 +27,7 @@ const PERCENTAGE_FIELDS = [
 
 const VEHICLE_UPDATE_FIELDS = [
   "variant",
+  "vehicle_unit",
   "driver",
   "driver_phone",
   "driver_unit",
