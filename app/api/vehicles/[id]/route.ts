@@ -8,7 +8,7 @@ import {
   insertHistory,
   requireVerified,
   assertVehicleFacilityAccess,
-  getFacilityCodeFromVehicleId,
+  resolveVehicleFacilityCode,
 } from "@/lib/supabase/server";
 
 const NUMERIC_FIELDS = [
@@ -138,7 +138,7 @@ export async function PATCH(
     if (historyRow) {
       await insertHistory({
         ...historyRow,
-        facility_code: getFacilityCodeFromVehicleId(id),
+        facility_code: await resolveVehicleFacilityCode(id),
         created_at: new Date().toISOString(),
       });
     }
@@ -184,7 +184,7 @@ export async function DELETE(
     if (historyRow) {
       await insertHistory({
         ...historyRow,
-        facility_code: getFacilityCodeFromVehicleId(id),
+        facility_code: await resolveVehicleFacilityCode(id),
         check_out: new Date().toISOString(),
         created_at: new Date().toISOString(),
       });
