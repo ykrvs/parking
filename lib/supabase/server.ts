@@ -41,6 +41,14 @@ export type Facility = {
   name: string;
 };
 
+export type VehicleUnit = {
+  id: string;
+  facility_code: string;
+  name: string;
+  is_active: boolean;
+  sort_order: number | null;
+};
+
 export type SafetyMessage = {
   id: string;
   message: string;
@@ -451,6 +459,34 @@ export async function getFacilities(): Promise<{
     return { facilities: [], error: message };
   }
   return { facilities: (data || []) as Facility[] };
+}
+
+export async function getVehicleUnits(
+  facilityCode: string,
+): Promise<{ vehicleUnits: VehicleUnit[]; error?: string }> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) {
+    return {
+      vehicleUnits: [],
+      error: "Supabase admin client is not configured.",
+    };
+  }
+
+  const { data, error } = await supabase
+    .from("vehicle_units")
+    .select("id, facility_code, name, is_active, sort_order")
+    .eq("facility_code", facilityCode)
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true })
+    .order("name", { ascending: true });
+
+  if (error) {
+    const message = toErrorMessage(error);
+    console.error("Failed to load vehicle units:", message);
+    return { vehicleUnits: [], error: message };
+  }
+
+  return { vehicleUnits: (data || []) as VehicleUnit[] };
 }
 
 // Figures out which depot a request should operate on. Regular users are

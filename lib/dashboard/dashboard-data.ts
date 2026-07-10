@@ -303,6 +303,7 @@ export function vehicleMatchesLevel(
 
 const HISTORY_EXPORT_COLUMNS = [
   { key: "plate", label: "Vehicle Plate" },
+  { key: "vehicle_unit", label: "Vehicle Unit" },
   { key: "variant", label: "Variant" },
   { key: "level", label: "Level" },
   { key: "lot", label: "Lot" },

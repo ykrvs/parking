@@ -138,6 +138,9 @@ export default function Home() {
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [recentVehicles, setRecentVehicles] = useState<any[]>([]);
   const [driveoutRecords, setDriveoutRecords] = useState<any[]>([]);
+  const [vehicleUnits, setVehicleUnits] = useState<
+    { id: string; name: string }[]
+  >([]);
   const [selectedVehicle, setSelectedVehicle] = useState<any>(null);
   const [selectedDriveout, setSelectedDriveout] = useState<any>(null);
 
@@ -184,6 +187,7 @@ export default function Home() {
   // Check-in input states
   const [ciPlate, setCiPlate] = useState("");
   const [ciVariant, setCiVariant] = useState("");
+  const [ciVehicleUnit, setCiVehicleUnit] = useState("");
   const [ciDriver, setCiDriver] = useState("");
   const [ciDriverPhone, setCiDriverPhone] = useState("");
   const [ciDriverUnit, setCiDriverUnit] = useState("");
@@ -202,6 +206,7 @@ export default function Home() {
 
   // Update input states
   const [upVariant, setUpVariant] = useState("");
+  const [upVehicleUnit, setUpVehicleUnit] = useState("");
   const [upDriver, setUpDriver] = useState("");
   const [upDriverPhone, setUpDriverPhone] = useState("");
   const [upDriverUnit, setUpDriverUnit] = useState("");
@@ -511,6 +516,26 @@ useEffect(() => {
   fetchParkingConfig();
   fetchSafetyMessages();
 
+  fetch(`/api/vehicle-units?facility=${encodeURIComponent(activeFacility)}`)
+    .then((res) => (res.ok ? res.json() : null))
+    .then(
+      (
+        data: {
+          vehicleUnits?: { id: string; name: string }[];
+          error?: string;
+        } | null,
+      ) => {
+        setVehicleUnits(data?.vehicleUnits || []);
+        if (data?.error) {
+          console.error("Failed to load vehicle units:", data.error);
+        }
+      },
+    )
+    .catch((err) => {
+      console.error("Failed to load vehicle units:", err);
+      setVehicleUnits([]);
+    });
+
   // Admins need the full user list so ORD reminders can show on Home
   // without first opening the Admin tab.
   if (profile.is_admin) {
@@ -747,6 +772,9 @@ if (isVerificationPending) {
     };
   };
 
+  const vehicleUnitLabel = (vehicle: { vehicle_unit?: string | null }) =>
+    vehicle.vehicle_unit || "No vehicle unit";
+
   // Fire extinguishers expired, or expiring within the next 14 days, on
   // vehicles currently parked in the facility.
   const FIRE_EXT_WARNING_DAYS = 14;
@@ -944,6 +972,10 @@ if (isVerificationPending) {
       setFormError("Plate, Level and Lot are required");
       return;
     }
+    if (vehicleUnits.length > 0 && !ciVehicleUnit) {
+      setFormError("Vehicle unit is required");
+      return;
+    }
     if (!/^\d{1,3}(\(\d{1,2}\))?$/.test(ciPlate)) {
       setFormError(
         "Vehicle plate must be up to 3 digits, optionally followed by a bracketed number, e.g. 675(1)",
@@ -971,6 +1003,7 @@ if (isVerificationPending) {
     const payload = {
       plate: ciPlate,
       variant: ciVariant,
+      vehicle_unit: ciVehicleUnit || null,
       driver: profile.name,
       driver_phone: profile.phone,
       driver_unit: profileUnit,
@@ -1005,6 +1038,7 @@ if (isVerificationPending) {
       // Clear inputs
       setCiPlate("");
       setCiVariant("");
+      setCiVehicleUnit("");
       setCiDriver("");
       setCiDriverPhone("");
       setCiDriverUnit("");
@@ -1029,10 +1063,12 @@ if (isVerificationPending) {
   };
 
   // Open Update Modal and populate states
-  const handleOpenUpdate = () => {
-    if (!selectedVehicle) return;
-    const v = selectedVehicle;
+  const handleOpenUpdate = (vehicleOverride?: any) => {
+    const v = vehicleOverride || selectedVehicle;
+    if (!v) return;
+    setSelectedVehicle(v);
     setUpVariant(v.variant || "");
+    setUpVehicleUnit(v.vehicle_unit || "");
     setUpDriver(v.driver || "");
     setUpDriverPhone(v.driver_phone || "");
     setUpDriverUnit(v.driver_unit || v.driver_depot || "");
@@ -1074,6 +1110,7 @@ if (isVerificationPending) {
 
     const payload = {
       variant: upVariant || null,
+      vehicle_unit: upVehicleUnit || null,
       driver: upDriver || null,
       driver_phone: upDriverPhone || null,
       driver_unit: upDriverUnit || null,
@@ -1091,6 +1128,7 @@ if (isVerificationPending) {
       historyRow: {
         vehicle_id: selectedVehicle.id,
         variant: upVariant || selectedVehicle.variant,
+        vehicle_unit: upVehicleUnit || selectedVehicle.vehicle_unit || null,
         driver_id: selectedVehicle.driver_id || null,
         driver: upDriver || selectedVehicle.driver,
         driver_phone: upDriverPhone || selectedVehicle.driver_phone,
@@ -1169,6 +1207,7 @@ if (isVerificationPending) {
         historyRow: {
           vehicle_id: selectedVehicle.id,
           variant: selectedVehicle.variant,
+          vehicle_unit: selectedVehicle.vehicle_unit || null,
           level: selectedVehicle.level,
           lot: selectedVehicle.lot,
           check_in: selectedVehicle.check_in,
@@ -1583,6 +1622,9 @@ if (isVerificationPending) {
     (v) =>
       (v.plate || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (v.driver || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (v.vehicle_unit || "")
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase()) ||
       (v.variant || "").toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
@@ -1853,6 +1895,11 @@ if (isVerificationPending) {
                     icon: <Search className="size-4" />,
                   },
                   {
+                    id: "bos",
+                    label: "BOS",
+                    icon: <Battery className="size-4" />,
+                  },
+                  {
                     id: "parking",
                     label: "Parking Overview",
                     icon: <MapPin className="size-4" />,
@@ -1988,8 +2035,11 @@ if (isVerificationPending) {
                       className="flex items-center justify-between gap-2 rounded-lg bg-white/70 border border-red-100 px-3 py-2 cursor-pointer hover:bg-white transition"
                     >
                       <span className="text-sm font-bold text-zinc-800">
-                        {formatPlateDisplay(vehicle.plate)}{" "}
-                        <span className="font-medium text-zinc-500">
+                        {formatPlateDisplay(vehicle.plate)}
+                        <span className="ml-2 text-xs font-semibold text-zinc-400">
+                          {vehicleUnitLabel(vehicle)}
+                        </span>
+                        <span className="ml-2 font-medium text-zinc-500">
                           ({vehicle.variant})
                         </span>
                       </span>
@@ -2195,6 +2245,9 @@ if (isVerificationPending) {
                           <div className="font-bold text-zinc-900">
                             {formatPlateDisplay(v.plate)}
                           </div>
+                          <p className="text-[11px] font-semibold text-zinc-400">
+                            {vehicleUnitLabel(v)}
+                          </p>
                           <p className="text-xs text-zinc-500 font-medium">
                             {v.variant} &nbsp;·&nbsp; {v.level} · Lot {v.lot}
                           </p>
@@ -2229,7 +2282,7 @@ if (isVerificationPending) {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search vehicle plate, variant or driver..."
+                placeholder="Search vehicle plate, unit, variant or driver..."
                 className="w-full h-10 pl-9 pr-4 rounded-lg border border-zinc-200 bg-white text-sm outline-none transition focus:border-red-600 focus:ring-3 focus:ring-red-600/15 shadow-xs"
               />
             </div>
@@ -2260,7 +2313,12 @@ if (isVerificationPending) {
                         <CarFront className="size-5" />
                       </div>
                       <div>
-                        <div className="font-bold text-zinc-900">{formatPlateDisplay(v.plate)}</div>
+                        <div className="font-bold text-zinc-900">
+                          {formatPlateDisplay(v.plate)}
+                        </div>
+                        <p className="text-[11px] font-semibold text-zinc-400">
+                          {vehicleUnitLabel(v)}
+                        </p>
                         <p className="text-xs text-zinc-500 font-medium">
                           {v.variant} &nbsp;·&nbsp; {v.level} · Lot {v.lot}
                         </p>
@@ -2279,6 +2337,168 @@ if (isVerificationPending) {
               ) : (
                 <p className="text-zinc-500 text-sm py-8 text-center col-span-full font-medium">
                   No active vehicles found matching search.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: BOS READINGS */}
+        {activeTab === "bos" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-extrabold tracking-tight text-zinc-900">
+                  BOS Readings
+                </h2>
+                <p className="text-xs font-medium text-zinc-500">
+                  Active vehicles in {activeFacilityName}
+                </p>
+              </div>
+              <Button
+                type="button"
+                onClick={() => guardVerifiedAction(openCheckinModal)}
+                className={cn(
+                  "h-9 text-sm",
+                  isUnverified
+                    ? "bg-zinc-300 hover:bg-zinc-300 text-zinc-600 cursor-not-allowed"
+                    : "bg-red-600 hover:bg-red-700",
+                )}
+              >
+                <Plus className="size-4 mr-1.5" />
+                Log Vehicle In
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              {isLoadingDashboard ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="rounded-xl border border-zinc-200 bg-white p-4"
+                  >
+                    <Skeleton className="h-16 w-full rounded-lg" />
+                  </div>
+                ))
+              ) : vehicles.length > 0 ? (
+                vehicles.map((v) => {
+                  const fireStatus = getFireExtStatus(v.fire_ext_expiry);
+
+                  return (
+                    <div
+                      key={v.id}
+                      onClick={() => handleOpenVehicle(v)}
+                      className="cursor-pointer rounded-xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:border-zinc-300 hover:shadow-md"
+                    >
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex min-w-0 items-center gap-3 lg:w-52">
+                          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-600">
+                            <CarFront className="size-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-base font-extrabold text-zinc-900">
+                              {formatPlateDisplay(v.plate)}
+                            </p>
+                            <p className="truncate text-[11px] font-semibold text-zinc-400">
+                              {vehicleUnitLabel(v)}
+                            </p>
+                            <p className="truncate text-xs font-medium text-zinc-500">
+                              {v.variant} · {v.level} · Lot {v.lot}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="grid flex-1 grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+                          <div className="rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2">
+                            <p className="text-[10px] font-bold uppercase text-zinc-400">
+                              Odometer
+                            </p>
+                            <p className="mt-1 text-sm font-extrabold text-zinc-800">
+                              {v.odometer !== null
+                                ? Number(v.odometer).toLocaleString()
+                                : "-"}{" "}
+                              <span className="text-[10px] font-medium text-zinc-500">
+                                km
+                              </span>
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2">
+                            <p className="text-[10px] font-bold uppercase text-zinc-400">
+                              Engine
+                            </p>
+                            <p className="mt-1 text-sm font-extrabold text-zinc-800">
+                              {v.engine_hours ?? "-"}{" "}
+                              <span className="text-[10px] font-medium text-zinc-500">
+                                hrs
+                              </span>
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2">
+                            <p className="text-[10px] font-bold uppercase text-zinc-400">
+                              Starter
+                            </p>
+                            <p className="mt-1 flex items-center gap-1.5 text-sm font-extrabold text-zinc-800">
+                              {v.starter_v ?? "--"}V · {v.starter_pct ?? 0}%
+                              <PercentDot pct={v.starter_pct} />
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2">
+                            <p className="text-[10px] font-bold uppercase text-zinc-400">
+                              Auxiliary
+                            </p>
+                            <p className="mt-1 flex items-center gap-1.5 text-sm font-extrabold text-zinc-800">
+                              {v.aux_v ?? "--"}V · {v.aux_pct ?? 0}%
+                              <PercentDot pct={v.aux_pct} />
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2">
+                            <p className="text-[10px] font-bold uppercase text-zinc-400">
+                              Fuel
+                            </p>
+                            <p className="mt-1 flex items-center gap-1.5 text-sm font-extrabold text-zinc-800">
+                              {v.fuel_l ?? "--"}L · {v.fuel_pct ?? 0}%
+                              <PercentDot pct={v.fuel_pct} />
+                            </p>
+                          </div>
+                          <div
+                            className={cn(
+                              "rounded-lg border px-3 py-2",
+                              fireStatus.bg,
+                            )}
+                          >
+                            <p className="text-[10px] font-bold uppercase text-zinc-400">
+                              Fire Ext.
+                            </p>
+                            <p className={cn("mt-1 text-xs", fireStatus.color)}>
+                              {v.fire_ext_expiry
+                                ? format(
+                                    new Date(v.fire_ext_expiry + "T00:00:00"),
+                                    "dd MMM yyyy",
+                                  )
+                                : "Not recorded"}
+                            </p>
+                          </div>
+                        </div>
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            guardVerifiedAction(() => handleOpenUpdate(v));
+                          }}
+                          className="h-9 shrink-0 border-zinc-200 text-xs font-bold"
+                        >
+                          <Edit2 className="size-3.5 mr-1.5" />
+                          Update Record
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="rounded-xl border border-zinc-200 bg-white py-8 text-center text-sm font-medium text-zinc-500">
+                  No active vehicles checked in yet.
                 </p>
               )}
             </div>
@@ -3353,6 +3573,9 @@ if (isVerificationPending) {
               <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900">
                 {formatPlateDisplay(selectedVehicle.plate)}
               </h2>
+              <p className="text-sm text-zinc-400 font-semibold mt-1">
+                {vehicleUnitLabel(selectedVehicle)}
+              </p>
               <p className="text-sm text-zinc-500 font-semibold mt-1">
                 {selectedVehicle.variant}
               </p>
@@ -3985,6 +4208,11 @@ if (isVerificationPending) {
             icon: <Search className="size-5" />,
           },
           {
+            id: "bos",
+            label: "BOS",
+            icon: <Battery className="size-5" />,
+          },
+          {
             id: "parking",
             label: "Parking",
             icon: <MapPin className="size-5" />,
@@ -4092,6 +4320,31 @@ if (isVerificationPending) {
                       ))}
                     </select>
                   </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-zinc-700">
+                    Vehicle Unit
+                    {vehicleUnits.length > 0 && <RequiredMark />}
+                  </label>
+                  <select
+                    value={ciVehicleUnit}
+                    onChange={(e) => setCiVehicleUnit(e.target.value)}
+                    required={vehicleUnits.length > 0}
+                    disabled={vehicleUnits.length === 0}
+                    className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600 disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-400"
+                  >
+                    <option value="" disabled>
+                      {vehicleUnits.length
+                        ? "Select vehicle unit"
+                        : "No vehicle units configured"}
+                    </option>
+                    {vehicleUnits.map((unit) => (
+                      <option key={unit.id} value={unit.name}>
+                        {unit.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="space-y-1">
@@ -4425,6 +4678,29 @@ if (isVerificationPending) {
                       className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
                     />
                   </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-zinc-700">
+                    Vehicle Unit
+                  </label>
+                  <select
+                    value={upVehicleUnit}
+                    onChange={(e) => setUpVehicleUnit(e.target.value)}
+                    disabled={vehicleUnits.length === 0}
+                    className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600 disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-400"
+                  >
+                    <option value="">
+                      {vehicleUnits.length
+                        ? "Select vehicle unit"
+                        : "No vehicle units configured"}
+                    </option>
+                    {vehicleUnits.map((unit) => (
+                      <option key={unit.id} value={unit.name}>
+                        {unit.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="space-y-1">

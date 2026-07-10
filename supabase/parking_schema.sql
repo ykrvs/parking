@@ -45,6 +45,7 @@ end $$;
 create table if not exists public.vehicles (
   id text primary key,
   variant text null,
+  vehicle_unit text null,
   driver text null,
   driver_id text null references public.users(id) on delete set null,
   driver_phone text null,
@@ -73,6 +74,7 @@ where lot is not null;
 drop index if exists vehicles_plate_idx;
 create index if not exists vehicles_check_in_idx on public.vehicles (check_in desc);
 alter table public.vehicles add column if not exists driver_unit text null;
+alter table public.vehicles add column if not exists vehicle_unit text null;
 alter table public.vehicles add column if not exists driver_id text null references public.users(id) on delete set null;
 alter table public.vehicles add column if not exists facility_code text not null default '11FMD' references public.facilities(code);
 create index if not exists vehicles_facility_code_idx on public.vehicles (facility_code);
@@ -97,6 +99,7 @@ create table if not exists public.history (
   id uuid primary key default gen_random_uuid(),
   vehicle_id text null,
   variant text null,
+  vehicle_unit text null,
   level text null,
   lot text null,
   check_in timestamp with time zone null,
@@ -119,8 +122,22 @@ create table if not exists public.history (
 );
 
 alter table public.history add column if not exists facility_code text null references public.facilities(code);
+alter table public.history add column if not exists vehicle_unit text null;
 create index if not exists history_facility_code_idx on public.history (facility_code);
 create index if not exists history_vehicle_id_idx on public.history (vehicle_id);
+
+create table if not exists public.vehicle_units (
+  id uuid primary key default gen_random_uuid(),
+  facility_code text not null references public.facilities(code) on delete cascade,
+  name text not null,
+  is_active boolean not null default true,
+  sort_order integer null,
+  created_at timestamp with time zone not null default now(),
+  unique (facility_code, name)
+);
+
+create index if not exists vehicle_units_facility_active_idx
+on public.vehicle_units (facility_code, is_active, sort_order, name);
 
 -- Audit trail for admin actions (verifying users, granting/revoking admin,
 -- managing safety messages). actor_name/target_label are snapshotted at
@@ -1287,6 +1304,7 @@ alter table public.turret_esc_logs enable row level security;
 alter table public.parking_config enable row level security;
 alter table public.safety_messages enable row level security;
 alter table public.facilities enable row level security;
+alter table public.vehicle_units enable row level security;
 
 grant usage on schema public to service_role;
 grant select, insert, update on table public.users to service_role;
@@ -1295,6 +1313,7 @@ grant select, insert, update, delete on table public.history to service_role;
 grant select, insert, update, delete on table public.turret_esc_logs to service_role;
 grant select, insert, update, delete on table public.parking_config to service_role;
 grant select, insert, update, delete on table public.safety_messages to service_role;
+grant select, insert, update, delete on table public.vehicle_units to service_role;
 
 create or replace function public.is_admin(user_id text)
 returns boolean
