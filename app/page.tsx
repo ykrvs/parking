@@ -1129,6 +1129,16 @@ if (isVerificationPending) {
     );
   }
 
+  if (!profile || isCheckingProfile) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-zinc-100 px-6 py-12">
+        <p className="text-sm font-medium text-zinc-500">
+          Loading your profile...
+        </p>
+      </main>
+    );
+  }
+
   // Safety Message calculations
   const dayOfYear = Math.floor(
     (Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) /
