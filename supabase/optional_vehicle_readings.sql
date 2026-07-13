@@ -7,7 +7,9 @@ alter table public.vehicles
   alter column starter_v drop not null,
   alter column starter_pct drop not null,
   alter column aux_v drop not null,
-  alter column aux_pct drop not null;
+  alter column aux_pct drop not null,
+  alter column fuel_l drop not null,
+  alter column fuel_pct drop not null;
 
 alter table public.vehicles
   drop constraint if exists vehicles_non_negative_values;
@@ -21,7 +23,6 @@ alter table public.vehicles
     (starter_pct is null or (starter_pct >= 0 and starter_pct <= 100)) and
     (aux_v is null or aux_v >= 0) and
     (aux_pct is null or (aux_pct >= 0 and aux_pct <= 100)) and
-    fuel_l >= 0 and
-    fuel_pct >= 0 and fuel_pct <= 100
+    (fuel_l is null or fuel_l >= 0) and
+    (fuel_pct is null or (fuel_pct >= 0 and fuel_pct <= 100))
   ) not valid;
-

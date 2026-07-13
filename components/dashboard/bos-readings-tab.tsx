@@ -183,9 +183,13 @@ export function BosReadingsTab({
                         Fuel
                       </p>
                       <p className="mt-1 flex items-center gap-1.5 text-sm font-extrabold text-zinc-800">
-                        {vehicle.fuel_l ?? "-"}L · {vehicle.fuel_pct ?? "-"}
+                        {vehicle.fuel_l ?? "-"}
+                        {vehicle.fuel_l == null ? "" : "L"} ·{" "}
+                        {vehicle.fuel_pct ?? "-"}
                         {vehicle.fuel_pct == null ? "" : "%"}
-                        <PercentDot pct={vehicle.fuel_pct} />
+                        {vehicle.fuel_pct != null && (
+                          <PercentDot pct={vehicle.fuel_pct} />
+                        )}
                       </p>
                     </div>
                     <div
