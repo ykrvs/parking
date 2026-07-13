@@ -151,6 +151,7 @@ export default function Home() {
 
   // Forms and Modals state
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [searchVehicleUnit, setSearchVehicleUnit] = useState<string>("all");
   const [driveoutSearchQuery, setDriveoutSearchQuery] = useState<string>("");
   const [isCheckingIn, setIsCheckingIn] = useState<boolean>(false);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
@@ -986,17 +987,8 @@ if (isVerificationPending) {
       );
       return;
     }
-    if (
-      !ciOdometer ||
-      !ciEngineHours ||
-      !ciBattStarterV ||
-      !ciBattStarterPct ||
-      !ciBattAuxV ||
-      !ciBattAuxPct ||
-      !ciFuelL ||
-      !ciFuelPct
-    ) {
-      setFormError("Odometer, engine hours, battery and fuel are required");
+    if (!ciFuelL || !ciFuelPct) {
+      setFormError("Fuel level is required");
       return;
     }
 
@@ -1093,17 +1085,8 @@ if (isVerificationPending) {
   const handleUpdateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedVehicle) return;
-    if (
-      !upOdometer ||
-      !upEngineHours ||
-      !upBattStarterV ||
-      !upBattStarterPct ||
-      !upBattAuxV ||
-      !upBattAuxPct ||
-      !upFuelL ||
-      !upFuelPct
-    ) {
-      setFormError("Odometer, engine hours, battery and fuel are required");
+    if (!upFuelL || !upFuelPct) {
+      setFormError("Fuel level is required");
       return;
     }
 
@@ -1140,22 +1123,14 @@ if (isVerificationPending) {
           selectedVehicle.driver_depot,
         lot: upLot || selectedVehicle.lot,
         level: selectedVehicle.level,
-        odometer: upOdometer
-          ? parseFloat(upOdometer)
-          : selectedVehicle.odometer,
-        engine_hours: upEngineHours
-          ? parseFloat(upEngineHours)
-          : selectedVehicle.engine_hours,
-        starter_v: upBattStarterV
-          ? parseFloat(upBattStarterV)
-          : selectedVehicle.starter_v,
+        odometer: upOdometer ? parseFloat(upOdometer) : null,
+        engine_hours: upEngineHours ? parseFloat(upEngineHours) : null,
+        starter_v: upBattStarterV ? parseFloat(upBattStarterV) : null,
         starter_pct: upBattStarterPct
           ? parseInt(upBattStarterPct, 10)
-          : selectedVehicle.starter_pct,
-        aux_v: upBattAuxV ? parseFloat(upBattAuxV) : selectedVehicle.aux_v,
-        aux_pct: upBattAuxPct
-          ? parseInt(upBattAuxPct, 10)
-          : selectedVehicle.aux_pct,
+          : null,
+        aux_v: upBattAuxV ? parseFloat(upBattAuxV) : null,
+        aux_pct: upBattAuxPct ? parseInt(upBattAuxPct, 10) : null,
         fuel_l: upFuelL ? parseFloat(upFuelL) : selectedVehicle.fuel_l,
         fuel_pct: upFuelPct
           ? parseInt(upFuelPct, 10)
@@ -1620,15 +1595,19 @@ if (isVerificationPending) {
   };
 
   // Filter vehicles
-  const filteredVehicles = vehicles.filter(
-    (v) =>
+  const filteredVehicles = vehicles.filter((v) => {
+    const matchesSearch =
       (v.plate || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (v.driver || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (v.vehicle_unit || "")
         .toLowerCase()
         .includes(searchQuery.toLowerCase()) ||
-      (v.variant || "").toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+      (v.variant || "").toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesUnit =
+      searchVehicleUnit === "all" || v.vehicle_unit === searchVehicleUnit;
+
+    return matchesSearch && matchesUnit;
+  });
 
   const filteredDriveouts = driveoutRecords.filter(
     (r) =>
@@ -2093,15 +2072,39 @@ if (isVerificationPending) {
         {/* TAB 2: SEARCH VEHICLES */}
         {activeTab === "search" && (
           <div className="space-y-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 size-4 text-zinc-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search vehicle plate, unit, variant or driver..."
-                className="w-full h-10 pl-9 pr-4 rounded-lg border border-zinc-200 bg-white text-sm outline-none transition focus:border-red-600 focus:ring-3 focus:ring-red-600/15 shadow-xs"
-              />
+            <div className="grid gap-2 sm:grid-cols-[1fr_220px]">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 size-4 text-zinc-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search vehicle plate, unit, variant or driver..."
+                  className="w-full h-10 pl-9 pr-4 rounded-lg border border-zinc-200 bg-white text-sm outline-none transition focus:border-red-600 focus:ring-3 focus:ring-red-600/15 shadow-xs"
+                />
+              </div>
+              <Select
+                value={searchVehicleUnit}
+                onValueChange={setSearchVehicleUnit}
+              >
+                <SelectTrigger className="w-full h-10 bg-white border-zinc-200 focus:border-red-600 focus:ring-3 focus:ring-red-600/15 justify-between">
+                  <SelectValue placeholder="All vehicle units" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border border-zinc-200 shadow-md rounded-md">
+                  <SelectItem value="all" className="cursor-pointer">
+                    All vehicle units
+                  </SelectItem>
+                  {vehicleUnits.map((unit) => (
+                    <SelectItem
+                      key={unit.id}
+                      value={unit.name}
+                      className="cursor-pointer"
+                    >
+                      {unit.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid gap-2 sm:grid-cols-2">
@@ -2672,7 +2675,7 @@ if (isVerificationPending) {
                   <span className="font-semibold">{profile.phone || "—"}</span>
                 </div>
                 <div className="flex items-center justify-between py-2 border-b border-zinc-50">
-                  <span className="text-zinc-500 font-medium">Unit</span>
+                  <span className="text-zinc-500 font-medium">Platoon</span>
                   <span className="font-semibold">
                     {profile.unit || profile.depot || "—"}
                   </span>
@@ -2754,14 +2757,14 @@ if (isVerificationPending) {
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-zinc-700">
-                      Unit
+                      Platoon
                       <RequiredMark />
                     </label>
                     <input
                       type="text"
                       value={peUnit}
                       onChange={(e) => setPeUnit(e.target.value)}
-                      placeholder="e.g. Alpha Coy"
+                      placeholder="e.g. Platoon 1"
                       className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600 focus:ring-3 focus:ring-red-600/15"
                     />
                   </div>
@@ -3304,9 +3307,9 @@ if (isVerificationPending) {
                     Odometer
                   </div>
                   <div className="text-xl font-extrabold text-zinc-800 mt-1">
-                    {selectedVehicle.odometer !== null
+                    {selectedVehicle.odometer != null
                       ? Number(selectedVehicle.odometer).toLocaleString()
-                      : "—"}{" "}
+                      : "-"}{" "}
                     <span className="text-xs font-normal text-zinc-500">
                       km
                     </span>
@@ -3317,7 +3320,7 @@ if (isVerificationPending) {
                     Engine Hours
                   </div>
                   <div className="text-xl font-extrabold text-zinc-800 mt-1">
-                    {selectedVehicle.engine_hours || "—"}{" "}
+                    {selectedVehicle.engine_hours ?? "-"}{" "}
                     <span className="text-xs font-normal text-zinc-500">
                       hrs
                     </span>
@@ -3333,9 +3336,11 @@ if (isVerificationPending) {
                   Starter Battery (24V)
                 </span>
                 <span className="flex items-center gap-1.5 font-extrabold text-zinc-800">
-                  {selectedVehicle.starter_v || "--"}V &nbsp;·&nbsp;{" "}
-                  {selectedVehicle.starter_pct || 0}%
-                  <PercentDot pct={selectedVehicle.starter_pct} />
+                  {selectedVehicle.starter_v ?? "-"}{selectedVehicle.starter_v == null ? "" : "V"} &nbsp;·&nbsp;{" "}
+                  {selectedVehicle.starter_pct ?? "-"}{selectedVehicle.starter_pct == null ? "" : "%"}
+                  {selectedVehicle.starter_pct != null && (
+                    <PercentDot pct={selectedVehicle.starter_pct} />
+                  )}
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs">
@@ -3343,9 +3348,11 @@ if (isVerificationPending) {
                   Auxiliary Battery (24V)
                 </span>
                 <span className="flex items-center gap-1.5 font-extrabold text-zinc-800">
-                  {selectedVehicle.aux_v || "--"}V &nbsp;·&nbsp;{" "}
-                  {selectedVehicle.aux_pct || 0}%
-                  <PercentDot pct={selectedVehicle.aux_pct} />
+                  {selectedVehicle.aux_v ?? "-"}{selectedVehicle.aux_v == null ? "" : "V"} &nbsp;·&nbsp;{" "}
+                  {selectedVehicle.aux_pct ?? "-"}{selectedVehicle.aux_pct == null ? "" : "%"}
+                  {selectedVehicle.aux_pct != null && (
+                    <PercentDot pct={selectedVehicle.aux_pct} />
+                  )}
                 </span>
               </div>
             </div>
@@ -3631,15 +3638,15 @@ if (isVerificationPending) {
                         Odometer:{" "}
                         {r.odometer != null
                           ? `${Number(r.odometer).toLocaleString()} km`
-                          : "—"}
+                          : "-"}
                       </div>
-                      <div>Engine Hours: {r.engine_hours || "—"} hrs</div>
+                      <div>Engine Hours: {r.engine_hours ?? "-"} hrs</div>
                       <div>
-                        Starter Battery: {r.starter_v || "--"}V ·{" "}
-                        {r.starter_pct || 0}%
+                        Starter Battery: {r.starter_v ?? "-"}{r.starter_v == null ? "" : "V"} ·{" "}
+                        {r.starter_pct ?? "-"}{r.starter_pct == null ? "" : "%"}
                       </div>
                       <div>
-                        Aux Battery: {r.aux_v || "--"}V · {r.aux_pct || 0}%
+                        Aux Battery: {r.aux_v ?? "-"}{r.aux_v == null ? "" : "V"} · {r.aux_pct ?? "-"}{r.aux_pct == null ? "" : "%"}
                       </div>
                       <div>
                         Fuel Level: {r.fuel_pct || 0}% · {r.fuel_l || "—"}L
@@ -3780,9 +3787,9 @@ if (isVerificationPending) {
                     Odometer
                   </div>
                   <div className="text-xl font-extrabold text-zinc-800 mt-1">
-                    {selectedDriveout.odometer !== null
+                    {selectedDriveout.odometer != null
                       ? Number(selectedDriveout.odometer).toLocaleString()
-                      : "—"}{" "}
+                      : "-"}{" "}
                     <span className="text-xs font-normal text-zinc-500">
                       km
                     </span>
@@ -3793,7 +3800,7 @@ if (isVerificationPending) {
                     Engine Hours
                   </div>
                   <div className="text-xl font-extrabold text-zinc-800 mt-1">
-                    {selectedDriveout.engine_hours || "—"}{" "}
+                    {selectedDriveout.engine_hours ?? "-"}{" "}
                     <span className="text-xs font-normal text-zinc-500">
                       hrs
                     </span>
@@ -3807,17 +3814,21 @@ if (isVerificationPending) {
               <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
                 <span className="font-bold text-zinc-600">Starter Battery</span>
                 <span className="flex items-center gap-1.5 font-extrabold text-zinc-800">
-                  {selectedDriveout.starter_v || "--"}V &nbsp;·&nbsp;{" "}
-                  {selectedDriveout.starter_pct || 0}%
-                  <PercentDot pct={selectedDriveout.starter_pct} />
+                  {selectedDriveout.starter_v ?? "-"}{selectedDriveout.starter_v == null ? "" : "V"} &nbsp;·&nbsp;{" "}
+                  {selectedDriveout.starter_pct ?? "-"}{selectedDriveout.starter_pct == null ? "" : "%"}
+                  {selectedDriveout.starter_pct != null && (
+                    <PercentDot pct={selectedDriveout.starter_pct} />
+                  )}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="font-bold text-zinc-600">Aux Battery</span>
                 <span className="flex items-center gap-1.5 font-extrabold text-zinc-800">
-                  {selectedDriveout.aux_v || "--"}V &nbsp;·&nbsp;{" "}
-                  {selectedDriveout.aux_pct || 0}%
-                  <PercentDot pct={selectedDriveout.aux_pct} />
+                  {selectedDriveout.aux_v ?? "-"}{selectedDriveout.aux_v == null ? "" : "V"} &nbsp;·&nbsp;{" "}
+                  {selectedDriveout.aux_pct ?? "-"}{selectedDriveout.aux_pct == null ? "" : "%"}
+                  {selectedDriveout.aux_pct != null && (
+                    <PercentDot pct={selectedDriveout.aux_pct} />
+                  )}
                 </span>
               </div>
             </div>
@@ -4093,12 +4104,10 @@ if (isVerificationPending) {
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-zinc-700">
                       Odometer (km)
-                      <RequiredMark />
                     </label>
                     <input
                       type="number"
                       min="0"
-                      required
                       value={upOdometer}
                       onChange={(e) => setUpOdometer(e.target.value)}
                       className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
@@ -4107,13 +4116,11 @@ if (isVerificationPending) {
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-zinc-700">
                       Engine Hours
-                      <RequiredMark />
                     </label>
                     <input
                       type="number"
                       min="0"
                       step="0.1"
-                      required
                       value={upEngineHours}
                       onChange={(e) => setUpEngineHours(e.target.value)}
                       className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
@@ -4124,14 +4131,12 @@ if (isVerificationPending) {
                 <div className="border-t border-zinc-100 pt-3 space-y-3">
                   <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">
                     Starter Battery (24V)
-                    <RequiredMark />
                   </span>
                   <div className="grid grid-cols-2 gap-4">
                     <input
                       type="number"
                       min="0"
                       step="0.1"
-                      required
                       value={upBattStarterV}
                       onChange={(e) => setUpBattStarterV(e.target.value)}
                       placeholder="Volts"
@@ -4141,7 +4146,6 @@ if (isVerificationPending) {
                       type="number"
                       min="0"
                       max="100"
-                      required
                       value={upBattStarterPct}
                       onChange={(e) => setUpBattStarterPct(e.target.value)}
                       placeholder="Percentage %"
@@ -4153,14 +4157,12 @@ if (isVerificationPending) {
                 <div className="space-y-3">
                   <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">
                     Auxiliary Battery (24V)
-                    <RequiredMark />
                   </span>
                   <div className="grid grid-cols-2 gap-4">
                     <input
                       type="number"
                       min="0"
                       step="0.1"
-                      required
                       value={upBattAuxV}
                       onChange={(e) => setUpBattAuxV(e.target.value)}
                       placeholder="Volts"
@@ -4170,7 +4172,6 @@ if (isVerificationPending) {
                       type="number"
                       min="0"
                       max="100"
-                      required
                       value={upBattAuxPct}
                       onChange={(e) => setUpBattAuxPct(e.target.value)}
                       placeholder="Percentage %"

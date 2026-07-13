@@ -52,12 +52,12 @@ create table if not exists public.vehicles (
   driver_unit text null,
   level text not null,
   lot text null,
-  odometer numeric not null,
-  engine_hours numeric not null,
-  starter_v numeric not null,
-  starter_pct integer not null,
-  aux_v numeric not null,
-  aux_pct integer not null,
+  odometer numeric null,
+  engine_hours numeric null,
+  starter_v numeric null,
+  starter_pct integer null,
+  aux_v numeric null,
+  aux_pct integer null,
   fuel_l numeric not null,
   fuel_pct integer not null,
   fire_ext_expiry date null,
@@ -79,6 +79,12 @@ alter table public.vehicles add column if not exists driver_id text null referen
 alter table public.vehicles add column if not exists facility_code text not null default '11FMD' references public.facilities(code);
 create index if not exists vehicles_facility_code_idx on public.vehicles (facility_code);
 alter table public.vehicles alter column lot drop not null;
+alter table public.vehicles alter column odometer drop not null;
+alter table public.vehicles alter column engine_hours drop not null;
+alter table public.vehicles alter column starter_v drop not null;
+alter table public.vehicles alter column starter_pct drop not null;
+alter table public.vehicles alter column aux_v drop not null;
+alter table public.vehicles alter column aux_pct drop not null;
 alter table public.vehicles alter column fire_ext_expiry drop not null;
 alter table public.vehicles alter column id drop default;
 do $$

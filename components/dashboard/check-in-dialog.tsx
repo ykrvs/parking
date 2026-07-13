@@ -330,12 +330,10 @@ export function CheckInDialog({
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-zinc-700">
                   Odometer (km)
-                  <RequiredMark />
                 </label>
                 <input
                   type="number"
                   min="0"
-                  required
                   value={ciOdometer}
                   onChange={(event) => setCiOdometer(event.target.value)}
                   placeholder="e.g. 50000"
@@ -345,13 +343,11 @@ export function CheckInDialog({
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-zinc-700">
                   Engine Hours
-                  <RequiredMark />
                 </label>
                 <input
                   type="number"
                   min="0"
                   step="0.1"
-                  required
                   value={ciEngineHours}
                   onChange={(event) => setCiEngineHours(event.target.value)}
                   placeholder="e.g. 120.5"
@@ -363,14 +359,12 @@ export function CheckInDialog({
             <div className="border-t border-zinc-100 pt-3 space-y-3">
               <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">
                 Starter Battery (24V System)
-                <RequiredMark />
               </span>
               <div className="grid grid-cols-2 gap-4">
                 <input
                   type="number"
                   min="0"
                   step="0.1"
-                  required
                   value={ciBattStarterV}
                   onChange={(event) => setCiBattStarterV(event.target.value)}
                   placeholder="Volts (e.g. 24.0)"
@@ -380,7 +374,6 @@ export function CheckInDialog({
                   type="number"
                   min="0"
                   max="100"
-                  required
                   value={ciBattStarterPct}
                   onChange={(event) => setCiBattStarterPct(event.target.value)}
                   placeholder="Percentage %"
@@ -392,14 +385,12 @@ export function CheckInDialog({
             <div className="space-y-3">
               <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">
                 Auxiliary Battery (24V System)
-                <RequiredMark />
               </span>
               <div className="grid grid-cols-2 gap-4">
                 <input
                   type="number"
                   min="0"
                   step="0.1"
-                  required
                   value={ciBattAuxV}
                   onChange={(event) => setCiBattAuxV(event.target.value)}
                   placeholder="Volts (e.g. 24.0)"
@@ -409,7 +400,6 @@ export function CheckInDialog({
                   type="number"
                   min="0"
                   max="100"
-                  required
                   value={ciBattAuxPct}
                   onChange={(event) => setCiBattAuxPct(event.target.value)}
                   placeholder="Percentage %"

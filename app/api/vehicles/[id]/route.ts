@@ -71,18 +71,15 @@ function validateVehicleNumbers(row: Record<string, unknown> | undefined) {
   NUMERIC_FIELDS.forEach(([field, label]) => {
     if (field in row) {
       const parsed = parseNonNegativeNumber(row[field], label);
-      if (parsed === null) throw new Error(`${label} is required`);
       row[field] = parsed;
     }
   });
   PERCENTAGE_FIELDS.forEach(([field, label]) => {
     if (field in row) {
       const parsed = parsePercentage(row[field], label);
-      if (parsed === null) throw new Error(`${label} is required`);
       row[field] = parsed;
     }
   });
-
 }
 
 function isValidationError(error: unknown) {

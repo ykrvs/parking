@@ -235,7 +235,7 @@ export default function RegisterPage() {
     }
 
     if (!unit.trim()) {
-      setError("Please enter your unit.");
+      setError("Please enter your platoon.");
       return;
     }
 
@@ -431,14 +431,14 @@ export default function RegisterPage() {
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm font-medium">
                   <IdCard className="size-4 text-red-700" aria-hidden="true" />
-                  Unit
+                  Platoon
                   <RequiredMark />
                 </label>
                 <input
                   type="text"
                   value={unit}
                   onChange={(event) => setUnit(event.target.value)}
-                  placeholder="e.g. Alpha Coy"
+                  placeholder="e.g. Platoon 1"
                   className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600 focus:ring-3 focus:ring-red-600/15"
                 />
               </div>
