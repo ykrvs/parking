@@ -172,7 +172,7 @@ export function AppShellNavigation({
           </button>
           <div>
             <p className="text-xs text-zinc-500 font-semibold tracking-wider uppercase">
-              FleetOps
+              Trackr
             </p>
             {profile.is_admin && facilities.length > 0 ? (
               <select
@@ -229,7 +229,7 @@ export function AppShellNavigation({
             <div className="space-y-6">
               <div className="flex items-center justify-between pb-4 border-b border-zinc-100">
                 <div>
-                  <h2 className="text-lg font-bold tracking-tight">FleetOps</h2>
+                  <h2 className="text-lg font-bold tracking-tight">Trackr</h2>
                   <p className="text-xs text-zinc-500">
                     {activeFacilityName} Carpark
                   </p>
