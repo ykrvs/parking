@@ -162,8 +162,8 @@ export function AppShellNavigation({
             aria-label="Go to home page"
           >
             <Image
-              src="/unit-logo.jpeg"
-              alt="Parking unit logo"
+              src="/icon.png"
+              alt="Trackr app logo"
               width={40}
               height={40}
               className="size-10 rounded-md object-cover border border-zinc-200"
