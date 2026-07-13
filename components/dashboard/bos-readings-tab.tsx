@@ -118,7 +118,8 @@ export function BosReadingsTab({
                         {vehicleUnitLabel(vehicle)}
                       </p>
                       <p className="truncate text-xs font-medium text-zinc-500">
-                        {vehicle.variant} · {vehicle.level} · Lot {vehicle.lot}
+                        {vehicle.variant ?? "-"} · {vehicle.level ?? "-"} ·
+                        Lot {vehicle.lot ?? "-"}
                       </p>
                     </div>
                   </div>
@@ -154,8 +155,9 @@ export function BosReadingsTab({
                         Starter
                       </p>
                       <p className="mt-1 flex items-center gap-1.5 text-sm font-extrabold text-zinc-800">
-                        {vehicle.starter_v ?? "--"}V ·{" "}
-                        {vehicle.starter_pct ?? 0}%
+                        {vehicle.starter_v ?? "-"}V ·{" "}
+                        {vehicle.starter_pct ?? "-"}
+                        {vehicle.starter_pct == null ? "" : "%"}
                         <PercentDot pct={vehicle.starter_pct} />
                       </p>
                     </div>
@@ -164,7 +166,8 @@ export function BosReadingsTab({
                         Auxiliary
                       </p>
                       <p className="mt-1 flex items-center gap-1.5 text-sm font-extrabold text-zinc-800">
-                        {vehicle.aux_v ?? "--"}V · {vehicle.aux_pct ?? 0}%
+                        {vehicle.aux_v ?? "-"}V · {vehicle.aux_pct ?? "-"}
+                        {vehicle.aux_pct == null ? "" : "%"}
                         <PercentDot pct={vehicle.aux_pct} />
                       </p>
                     </div>
@@ -173,7 +176,8 @@ export function BosReadingsTab({
                         Fuel
                       </p>
                       <p className="mt-1 flex items-center gap-1.5 text-sm font-extrabold text-zinc-800">
-                        {vehicle.fuel_l ?? "--"}L · {vehicle.fuel_pct ?? 0}%
+                        {vehicle.fuel_l ?? "-"}L · {vehicle.fuel_pct ?? "-"}
+                        {vehicle.fuel_pct == null ? "" : "%"}
                         <PercentDot pct={vehicle.fuel_pct} />
                       </p>
                     </div>
@@ -192,7 +196,7 @@ export function BosReadingsTab({
                               new Date(vehicle.fire_ext_expiry + "T00:00:00"),
                               "dd MMM yyyy",
                             )
-                          : "Not recorded"}
+                          : "-"}
                       </p>
                     </div>
                   </div>

@@ -162,9 +162,7 @@ export async function POST(request: NextRequest) {
       aux_pct: parseRequiredPercentage(body.aux_pct, "Auxiliary percentage"),
       fuel_l: parseRequiredNonNegativeNumber(body.fuel_l, "Fuel litres"),
       fuel_pct: parseRequiredPercentage(body.fuel_pct, "Fuel percentage"),
-      fire_ext_expiry: body.fire_ext_expiry || (() => {
-        throw new Error("Fire extinguisher expiry date is required");
-      })(),
+      fire_ext_expiry: body.fire_ext_expiry || null,
       notes: body.notes || null,
       check_in: new Date().toISOString(),
     });

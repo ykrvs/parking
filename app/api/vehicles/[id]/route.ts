@@ -8,6 +8,7 @@ import {
   insertHistory,
   requireVerified,
   assertVehicleFacilityAccess,
+  assertVehicleDriveOutOwner,
   resolveVehicleFacilityCode,
 } from "@/lib/supabase/server";
 
@@ -82,9 +83,6 @@ function validateVehicleNumbers(row: Record<string, unknown> | undefined) {
     }
   });
 
-  if ("fire_ext_expiry" in row && !row.fire_ext_expiry) {
-    throw new Error("Fire extinguisher expiry date is required");
-  }
 }
 
 function isValidationError(error: unknown) {
@@ -177,6 +175,7 @@ export async function DELETE(
   try {
     await requireVerified(session.openid);
     await assertVehicleFacilityAccess(session.openid, id);
+    await assertVehicleDriveOutOwner(session.openid, id);
 
     const body = await request.json();
     const { historyRow } = body;
@@ -199,7 +198,9 @@ export async function DELETE(
       ? 403
       : message.includes("different depot")
         ? 403
-        : 500;
+        : message.includes("driver who logged this vehicle in")
+          ? 403
+          : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }

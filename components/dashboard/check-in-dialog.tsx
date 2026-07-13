@@ -461,7 +461,6 @@ export function CheckInDialog({
             <div className="space-y-1">
               <label className="text-xs font-semibold text-zinc-700">
                 Fire Extinguisher Expiry Date
-                <RequiredMark />
               </label>
               <FireExpiryPicker
                 value={ciFireExpiry}
