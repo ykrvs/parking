@@ -1,10 +1,9 @@
-﻿"use client";
+"use client";
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/set-state-in-effect, react-hooks/purity, react-hooks/exhaustive-deps, react/no-unescaped-entities */
 
 import {
   ArrowLeft,
-  Battery,
   Calendar,
   CarFront,
   Check,
@@ -16,8 +15,6 @@ import {
   History,
   IdCard,
   LogOut,
-  MapPin,
-  Menu,
   Phone,
   Plus,
   Search,
@@ -26,11 +23,13 @@ import {
   User,
   Wrench,
 } from "lucide-react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 
+import { AppShellNavigation } from "@/components/dashboard/app-shell-navigation";
+import { BosReadingsTab } from "@/components/dashboard/bos-readings-tab";
+import { CheckInDialog } from "@/components/dashboard/check-in-dialog";
 import { FireExpiryPicker } from "@/components/dashboard/fire-expiry-picker";
 import { LoginGate } from "@/components/dashboard/login-gate";
 import { RequiredMark } from "@/components/dashboard/required-mark";
@@ -66,12 +65,9 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   AUDIT_ACTION_LABELS,
   DEFAULT_PARKING_LEVELS,
-  PLATE_MASK_ENABLED,
-  PLATE_MAX_DIGITS,
   RANK_CATEGORIES,
   RANK_OPTIONS,
   SAFETY_MESSAGES,
-  VEHICLE_VARIANT_OPTIONS,
   exportDriveoutHistoryCSV,
   exportDriveoutHistoryPDF,
   formatPlateDisplay,
@@ -1786,204 +1782,19 @@ if (isVerificationPending) {
         </div>
       )}
 
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-white border-b border-zinc-200 px-6 py-4 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-3 rounded-lg">
-          <button
-            type="button"
-            onClick={() => goTab("home")}
-            className="rounded-lg transition hover:opacity-80 focus:outline-none focus:ring-3 focus:ring-red-600/15"
-            aria-label="Go to home page"
-          >
-            <Image
-              src="/unit-logo.jpeg"
-              alt="Parking unit logo"
-              width={40}
-              height={40}
-              className="size-10 rounded-md object-cover border border-zinc-200"
-              priority
-            />
-          </button>
-          <div>
-            <p className="text-xs text-zinc-500 font-semibold tracking-wider uppercase">
-              FleetOps
-            </p>
-            {profile.is_admin && facilities.length > 0 ? (
-              <select
-                value={activeFacility}
-                onChange={(e) => setActiveFacility(e.target.value)}
-                aria-label="Switch depot"
-                className="-ml-1 rounded-md border-none bg-transparent px-1 text-lg font-bold tracking-tight outline-none transition hover:bg-zinc-50 focus:ring-3 focus:ring-red-600/15"
-              >
-                {facilities.map((f) => (
-                  <option key={f.code} value={f.code}>
-                    {f.name}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <h1
-                onClick={() => goTab("home")}
-                className="cursor-pointer text-lg font-bold tracking-tight"
-              >
-                {activeFacilityName}
-              </h1>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsSidebarOpen(true)}
-            aria-label="Open menu"
-            className="hover:bg-zinc-100"
-          >
-            <Menu className="size-5" />
-          </Button>
-          <div
-            onClick={() => goTab("profile")}
-            className="flex size-9 cursor-pointer items-center justify-center rounded-full bg-red-100 border border-red-200 font-semibold text-red-700 text-sm hover:bg-red-200 transition"
-          >
-            {(profile.name || "U")
-              .split(" ")
-              .map((n: string) => n[0])
-              .join("")
-              .slice(0, 2)
-              .toUpperCase()}
-          </div>
-        </div>
-      </header>
-
-      {/* Sidebar navigation */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex animate-in fade-in duration-200"
-          onClick={() => setIsSidebarOpen(false)}
-        >
-          <aside
-            className="w-72 bg-white h-full border-r border-zinc-200 p-6 flex flex-col justify-between shadow-xl animate-in slide-in-from-left duration-250"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b border-zinc-100">
-                <div>
-                  <h2 className="text-lg font-bold tracking-tight">FleetOps</h2>
-                  <p className="text-xs text-zinc-500">{activeFacilityName} Carpark</p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setIsSidebarOpen(false)}
-                  className="rounded-full size-8"
-                >
-                  <span className="font-bold text-lg">×</span>
-                </Button>
-              </div>
-
-              <nav className="space-y-1.5">
-                {[
-                  {
-                    id: "home",
-                    label: "Home",
-                    icon: <CarFront className="size-4" />,
-                  },
-                  {
-                    id: "search",
-                    label: "Vehicles",
-                    icon: <Search className="size-4" />,
-                  },
-                  {
-                    id: "bos",
-                    label: "BOS",
-                    icon: <Battery className="size-4" />,
-                  },
-                  {
-                    id: "parking",
-                    label: "Parking Overview",
-                    icon: <MapPin className="size-4" />,
-                  },
-                  // Turret ESC Checklist tab — temporarily disabled.
-                  // Change `false &&` back to `profile.is_technician` to
-                  // restore this nav item.
-                  ...(false && profile.is_technician
-                    ? [
-                        {
-                          id: "turret-esc",
-                          label: "Turret ESC Checklist",
-                          icon: <Wrench className="size-4" />,
-                        },
-                      ]
-                    : []),
-                  {
-                    id: "driveout-history",
-                    label: "Drive-Out History",
-                    icon: <Clock className="size-4" />,
-                  },
-                  {
-                    id: "profile",
-                    label: "Profile",
-                    icon: <User className="size-4" />,
-                  },
-                  ...(profile.is_admin
-                    ? [
-                        {
-                          id: "admin",
-                          label: "Admin",
-                          icon: <ShieldCheck className="size-4" />,
-                        },
-                      ]
-                    : []),
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => goTab(item.id)}
-                    className={cn(
-                      "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition",
-                      activeTab === item.id
-                        ? "bg-red-50 text-red-700"
-                        : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950",
-                    )}
-                  >
-                    {item.icon}
-                    {item.label}
-                  </button>
-                ))}
-              </nav>
-            </div>
-
-            <div className="pt-4 border-t border-zinc-100 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="flex size-9 items-center justify-center rounded-full bg-red-100 border border-red-200 font-semibold text-red-700 text-sm">
-                  {(profile.name || "U").slice(0, 2).toUpperCase()}
-                </div>
-                <div className="min-w-0">
-                  <p className="flex items-center gap-1.5 text-sm font-bold truncate leading-none mb-1">
-                    {profile.name}
-                    <UnverifiedDot isVerified={profile.is_verified} />
-                  </p>
-                  <span className="inline-block bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase">
-                    {profile.is_admin
-                      ? "Admin"
-                      : profile.is_technician
-                        ? "Technician"
-                        : "Combatant"}
-                  </span>
-                </div>
-              </div>
-              <Button
-                variant="outline"
-                className="w-full text-zinc-600 hover:bg-red-50 hover:text-red-700 border-zinc-200"
-                onClick={auth.logout}
-              >
-                <LogOut className="size-4 mr-2" />
-                Sign out
-              </Button>
-            </div>
-          </aside>
-        </div>
-      )}
+      <AppShellNavigation
+        activeFacility={activeFacility}
+        activeFacilityName={activeFacilityName}
+        activeTab={activeTab}
+        facilities={facilities}
+        isSidebarOpen={isSidebarOpen}
+        profile={profile}
+        goTab={goTab}
+        logout={auth.logout}
+        setActiveFacility={setActiveFacility}
+        setActiveTab={setActiveTab}
+        setIsSidebarOpen={setIsSidebarOpen}
+      />
 
       {/* Main Tab Contents */}
       <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 pb-20">
@@ -2345,164 +2156,18 @@ if (isVerificationPending) {
 
         {/* TAB 3: BOS READINGS */}
         {activeTab === "bos" && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-extrabold tracking-tight text-zinc-900">
-                  BOS Readings
-                </h2>
-                <p className="text-xs font-medium text-zinc-500">
-                  Active vehicles in {activeFacilityName}
-                </p>
-              </div>
-              <Button
-                type="button"
-                onClick={() => guardVerifiedAction(openCheckinModal)}
-                className={cn(
-                  "h-9 text-sm",
-                  isUnverified
-                    ? "bg-zinc-300 hover:bg-zinc-300 text-zinc-600 cursor-not-allowed"
-                    : "bg-red-600 hover:bg-red-700",
-                )}
-              >
-                <Plus className="size-4 mr-1.5" />
-                Log Vehicle In
-              </Button>
-            </div>
-
-            <div className="space-y-2">
-              {isLoadingDashboard ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="rounded-xl border border-zinc-200 bg-white p-4"
-                  >
-                    <Skeleton className="h-16 w-full rounded-lg" />
-                  </div>
-                ))
-              ) : vehicles.length > 0 ? (
-                vehicles.map((v) => {
-                  const fireStatus = getFireExtStatus(v.fire_ext_expiry);
-
-                  return (
-                    <div
-                      key={v.id}
-                      onClick={() => handleOpenVehicle(v)}
-                      className="cursor-pointer rounded-xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:border-zinc-300 hover:shadow-md"
-                    >
-                      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                        <div className="flex min-w-0 items-center gap-3 lg:w-52">
-                          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-600">
-                            <CarFront className="size-5" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="truncate text-base font-extrabold text-zinc-900">
-                              {formatPlateDisplay(v.plate)}
-                            </p>
-                            <p className="truncate text-[11px] font-semibold text-zinc-400">
-                              {vehicleUnitLabel(v)}
-                            </p>
-                            <p className="truncate text-xs font-medium text-zinc-500">
-                              {v.variant} · {v.level} · Lot {v.lot}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="grid flex-1 grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
-                          <div className="rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2">
-                            <p className="text-[10px] font-bold uppercase text-zinc-400">
-                              Odometer
-                            </p>
-                            <p className="mt-1 text-sm font-extrabold text-zinc-800">
-                              {v.odometer !== null
-                                ? Number(v.odometer).toLocaleString()
-                                : "-"}{" "}
-                              <span className="text-[10px] font-medium text-zinc-500">
-                                km
-                              </span>
-                            </p>
-                          </div>
-                          <div className="rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2">
-                            <p className="text-[10px] font-bold uppercase text-zinc-400">
-                              Engine
-                            </p>
-                            <p className="mt-1 text-sm font-extrabold text-zinc-800">
-                              {v.engine_hours ?? "-"}{" "}
-                              <span className="text-[10px] font-medium text-zinc-500">
-                                hrs
-                              </span>
-                            </p>
-                          </div>
-                          <div className="rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2">
-                            <p className="text-[10px] font-bold uppercase text-zinc-400">
-                              Starter
-                            </p>
-                            <p className="mt-1 flex items-center gap-1.5 text-sm font-extrabold text-zinc-800">
-                              {v.starter_v ?? "--"}V · {v.starter_pct ?? 0}%
-                              <PercentDot pct={v.starter_pct} />
-                            </p>
-                          </div>
-                          <div className="rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2">
-                            <p className="text-[10px] font-bold uppercase text-zinc-400">
-                              Auxiliary
-                            </p>
-                            <p className="mt-1 flex items-center gap-1.5 text-sm font-extrabold text-zinc-800">
-                              {v.aux_v ?? "--"}V · {v.aux_pct ?? 0}%
-                              <PercentDot pct={v.aux_pct} />
-                            </p>
-                          </div>
-                          <div className="rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2">
-                            <p className="text-[10px] font-bold uppercase text-zinc-400">
-                              Fuel
-                            </p>
-                            <p className="mt-1 flex items-center gap-1.5 text-sm font-extrabold text-zinc-800">
-                              {v.fuel_l ?? "--"}L · {v.fuel_pct ?? 0}%
-                              <PercentDot pct={v.fuel_pct} />
-                            </p>
-                          </div>
-                          <div
-                            className={cn(
-                              "rounded-lg border px-3 py-2",
-                              fireStatus.bg,
-                            )}
-                          >
-                            <p className="text-[10px] font-bold uppercase text-zinc-400">
-                              Fire Ext.
-                            </p>
-                            <p className={cn("mt-1 text-xs", fireStatus.color)}>
-                              {v.fire_ext_expiry
-                                ? format(
-                                    new Date(v.fire_ext_expiry + "T00:00:00"),
-                                    "dd MMM yyyy",
-                                  )
-                                : "Not recorded"}
-                            </p>
-                          </div>
-                        </div>
-
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            guardVerifiedAction(() => handleOpenUpdate(v));
-                          }}
-                          className="h-9 shrink-0 border-zinc-200 text-xs font-bold"
-                        >
-                          <Edit2 className="size-3.5 mr-1.5" />
-                          Update Record
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <p className="rounded-xl border border-zinc-200 bg-white py-8 text-center text-sm font-medium text-zinc-500">
-                  No active vehicles checked in yet.
-                </p>
-              )}
-            </div>
-          </div>
+          <BosReadingsTab
+            activeFacilityName={activeFacilityName}
+            isLoading={isLoadingDashboard}
+            isUnverified={isUnverified}
+            vehicles={vehicles}
+            getFireExtStatus={getFireExtStatus}
+            onLogVehicleIn={() => guardVerifiedAction(openCheckinModal)}
+            onOpenVehicle={handleOpenVehicle}
+            onUpdateVehicle={(vehicle) =>
+              guardVerifiedAction(() => handleOpenUpdate(vehicle))
+            }
+          />
         )}
 
         {/* TAB 3: PARKING OVERVIEW & MAPS */}
@@ -4198,434 +3863,52 @@ if (isVerificationPending) {
         )}
       </main>
 
-      {/* Bottom Navigation for mobile screens */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-zinc-200 py-2 flex items-center justify-around shadow-lg">
-        {[
-          { id: "home", label: "Home", icon: <CarFront className="size-5" /> },
-          {
-            id: "search",
-            label: "Vehicles",
-            icon: <Search className="size-5" />,
-          },
-          {
-            id: "bos",
-            label: "BOS",
-            icon: <Battery className="size-5" />,
-          },
-          {
-            id: "parking",
-            label: "Parking",
-            icon: <MapPin className="size-5" />,
-          },
-          {
-            id: "profile",
-            label: "Profile",
-            icon: <User className="size-5" />,
-          },
-        ].map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setActiveTab(item.id)}
-            className={cn(
-              "flex flex-col items-center gap-1 text-[10px] font-bold transition uppercase tracking-wider w-16",
-              activeTab === item.id ||
-                (item.id === "search" && activeTab === "detail") ||
-                (item.id === "search" && activeTab === "history") ||
-                (item.id === "parking" && activeTab === "parking-level")
-                ? "text-red-600"
-                : "text-zinc-400 hover:text-zinc-600",
-            )}
-          >
-            {item.icon}
-            {item.label}
-          </button>
-        ))}
-      </nav>
-
-      {/* CHECK-IN DIALOG DIALOG OVERLAY */}
       {isCheckingIn && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
-          <Card className="w-full max-w-lg rounded-xl border-zinc-200 shadow-xl max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
-            <CardHeader className="border-b border-zinc-100 flex-shrink-0">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-xl">Log Vehicle In</CardTitle>
-                  <CardDescription>
-                    Record a vehicle parking at {activeFacilityName}
-                  </CardDescription>
-                </div>
-                <Button
-                  variant="ghost"
-                  onClick={() => setIsCheckingIn(false)}
-                  className="rounded-full size-8 p-0"
-                >
-                  ×
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="overflow-y-auto px-6 flex-1 space-y-4">
-              <form onSubmit={handleCheckinSubmit} className="space-y-4">
-                {formError && (
-                  <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                    {formError}
-                  </p>
-                )}
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-zinc-700">
-                      Vehicle Plate
-                      <RequiredMark />
-                    </label>
-                    <input
-                      type="text"
-                      value={ciPlate}
-                      onChange={(e) =>
-                        setCiPlate(
-                          e.target.value
-                            .replace(/[^\d()]/g, "")
-                            .slice(0, PLATE_MASK_ENABLED ? PLATE_MAX_DIGITS + 4 : undefined),
-                        )
-                      }
-                      placeholder="e.g. 087"
-                      inputMode="text"
-                      maxLength={PLATE_MASK_ENABLED ? PLATE_MAX_DIGITS + 4 : undefined}
-                      required
-                      className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600 focus:ring-3 focus:ring-red-600/15"
-                    />
-                    <p className="text-[10px] font-medium text-zinc-500">
-                      {PLATE_MASK_ENABLED
-                        ? `Enter up to ${PLATE_MAX_DIGITS} digits. If this plate is already in use by a different vehicle, add a number in brackets, e.g. 675(1).`
-                        : "Enter numbers only."}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-zinc-700">
-                      Variant / Model
-                      <RequiredMark />
-                    </label>
-                    <select
-                      value={ciVariant}
-                      onChange={(e) => setCiVariant(e.target.value)}
-                      required
-                      className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
-                    >
-                      <option value="" disabled>
-                        Select variant
-                      </option>
-                      {VEHICLE_VARIANT_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-zinc-700">
-                    Vehicle Unit
-                    {vehicleUnits.length > 0 && <RequiredMark />}
-                  </label>
-                  <select
-                    value={ciVehicleUnit}
-                    onChange={(e) => setCiVehicleUnit(e.target.value)}
-                    required={vehicleUnits.length > 0}
-                    disabled={vehicleUnits.length === 0}
-                    className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600 disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-400"
-                  >
-                    <option value="" disabled>
-                      {vehicleUnits.length
-                        ? "Select vehicle unit"
-                        : "No vehicle units configured"}
-                    </option>
-                    {vehicleUnits.map((unit) => (
-                      <option key={unit.id} value={unit.name}>
-                        {unit.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-zinc-700">
-                    Driver Name
-                    <RequiredMark />
-                  </label>
-                  <input
-                    type="text"
-                    value={ciDriver}
-                    readOnly
-                    placeholder="Full name"
-                    className="h-10 w-full cursor-not-allowed rounded-md border border-zinc-200 bg-zinc-50 px-3 text-sm outline-none text-zinc-600"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-zinc-700">
-                      Driver Phone
-                      <RequiredMark />
-                    </label>
-                    <input
-                      type="tel"
-                      value={ciDriverPhone}
-                      readOnly
-                      placeholder="+65 9XXX XXXX"
-                      className="h-10 w-full cursor-not-allowed rounded-md border border-zinc-200 bg-zinc-50 px-3 text-sm outline-none text-zinc-600"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-zinc-700">
-                      Driver Unit
-                      <RequiredMark />
-                    </label>
-                    <input
-                      type="text"
-                      value={ciDriverUnit}
-                      readOnly
-                      placeholder="e.g. 11FMD"
-                      className="h-10 w-full cursor-not-allowed rounded-md border border-zinc-200 bg-zinc-50 px-3 text-sm outline-none text-zinc-600"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-zinc-700">
-                      Level
-                      <RequiredMark />
-                    </label>
-                    <select
-                      value={ciLevel}
-                      onChange={(e) => {
-                        setCiLevel(e.target.value);
-                        setCiLot("");
-                      }}
-                      required
-                      className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
-                    >
-                      <option value="" disabled>
-                        Select level
-                      </option>
-                      {parkingLevels.map((level) => (
-                        <option key={level.id} value={level.id}>
-                          {level.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-zinc-700">
-                      Lot No.
-                      <RequiredMark />
-                    </label>
-                    <select
-                      value={ciLot}
-                      onChange={(e) => setCiLot(e.target.value)}
-                      required
-                      className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
-                    >
-                      <option value="" disabled>
-                        Select lot
-                      </option>
-                      {ciLevelLots.map((lot) => {
-                        const occupiedVehicle =
-                          ciOccupiedLots[normalizeParkingValue(lot)];
-
-                        return (
-                          <option
-                            key={lot}
-                            value={lot}
-                            disabled={Boolean(occupiedVehicle)}
-                          >
-                            {lot}
-                            {occupiedVehicle ? " (occupied)" : ""}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-zinc-700">
-                      Odometer (km)
-                      <RequiredMark />
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      required
-                      value={ciOdometer}
-                      onChange={(e) => setCiOdometer(e.target.value)}
-                      placeholder="e.g. 50000"
-                      className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-zinc-700">
-                      Engine Hours
-                      <RequiredMark />
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      required
-                      value={ciEngineHours}
-                      onChange={(e) => setCiEngineHours(e.target.value)}
-                      placeholder="e.g. 120.5"
-                      className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
-                    />
-                  </div>
-                </div>
-
-                <div className="border-t border-zinc-100 pt-3 space-y-3">
-                  <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">
-                    Starter Battery (24V System)
-                    <RequiredMark />
-                  </span>
-                  <div className="grid grid-cols-2 gap-4">
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      required
-                      value={ciBattStarterV}
-                      onChange={(e) => setCiBattStarterV(e.target.value)}
-                      placeholder="Volts (e.g. 24.0)"
-                      className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      required
-                      value={ciBattStarterPct}
-                      onChange={(e) => setCiBattStarterPct(e.target.value)}
-                      placeholder="Percentage %"
-                      className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">
-                    Auxiliary Battery (24V System)
-                    <RequiredMark />
-                  </span>
-                  <div className="grid grid-cols-2 gap-4">
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      required
-                      value={ciBattAuxV}
-                      onChange={(e) => setCiBattAuxV(e.target.value)}
-                      placeholder="Volts (e.g. 24.0)"
-                      className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      required
-                      value={ciBattAuxPct}
-                      onChange={(e) => setCiBattAuxPct(e.target.value)}
-                      placeholder="Percentage %"
-                      className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">
-                    Fuel Level
-                    <RequiredMark />
-                  </span>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-[10px] text-zinc-400 font-bold block mb-1">
-                        Litres (L)
-                        <RequiredMark />
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        required
-                        value={ciFuelL}
-                        onChange={(e) => setCiFuelL(e.target.value)}
-                        placeholder="e.g. 1140"
-                        className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-zinc-400 font-bold block mb-1">
-                        Percentage (%)
-                        <RequiredMark />
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        required
-                        value={ciFuelPct}
-                        onChange={(e) => setCiFuelPct(e.target.value)}
-                        placeholder="e.g. 100"
-                        className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-zinc-700">
-                    🧯 Fire Extinguisher Expiry Date
-                    <RequiredMark />
-                  </label>
-                  <FireExpiryPicker
-                    value={ciFireExpiry}
-                    onChange={setCiFireExpiry}
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-zinc-700">
-                    Notes / Faults
-                  </label>
-                  <textarea
-                    value={ciNotes}
-                    onChange={(e) => setCiNotes(e.target.value)}
-                    placeholder="Any notes on arrival..."
-                    className="w-full min-h-[60px] rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-red-600"
-                  />
-                </div>
-
-                <div className="flex gap-2 pt-2 border-t border-zinc-100 flex-shrink-0">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsCheckingIn(false)}
-                    className="flex-1 h-10"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1 bg-red-600 hover:bg-red-700 h-10 font-bold text-white"
-                  >
-                    {isSubmitting ? "Checking In..." : "Check In"}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
+        <CheckInDialog
+          activeFacilityName={activeFacilityName}
+          ciBattAuxPct={ciBattAuxPct}
+          ciBattAuxV={ciBattAuxV}
+          ciBattStarterPct={ciBattStarterPct}
+          ciBattStarterV={ciBattStarterV}
+          ciDriver={ciDriver}
+          ciDriverPhone={ciDriverPhone}
+          ciDriverUnit={ciDriverUnit}
+          ciEngineHours={ciEngineHours}
+          ciFireExpiry={ciFireExpiry}
+          ciFuelL={ciFuelL}
+          ciFuelPct={ciFuelPct}
+          ciLevel={ciLevel}
+          ciLevelLots={ciLevelLots}
+          ciLot={ciLot}
+          ciNotes={ciNotes}
+          ciOccupiedLots={ciOccupiedLots}
+          ciOdometer={ciOdometer}
+          ciPlate={ciPlate}
+          ciVariant={ciVariant}
+          ciVehicleUnit={ciVehicleUnit}
+          formError={formError}
+          isSubmitting={isSubmitting}
+          parkingLevels={parkingLevels}
+          vehicleUnits={vehicleUnits}
+          onClose={() => setIsCheckingIn(false)}
+          onSubmit={handleCheckinSubmit}
+          setCiBattAuxPct={setCiBattAuxPct}
+          setCiBattAuxV={setCiBattAuxV}
+          setCiBattStarterPct={setCiBattStarterPct}
+          setCiBattStarterV={setCiBattStarterV}
+          setCiEngineHours={setCiEngineHours}
+          setCiFireExpiry={setCiFireExpiry}
+          setCiFuelL={setCiFuelL}
+          setCiFuelPct={setCiFuelPct}
+          setCiLevel={setCiLevel}
+          setCiLot={setCiLot}
+          setCiNotes={setCiNotes}
+          setCiOdometer={setCiOdometer}
+          setCiPlate={setCiPlate}
+          setCiVariant={setCiVariant}
+          setCiVehicleUnit={setCiVehicleUnit}
+        />
       )}
-
       {/* UPDATE DIALOG OVERLAY */}
       {isUpdating && selectedVehicle && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
