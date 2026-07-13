@@ -851,6 +851,14 @@ if (isVerificationPending) {
     }
     action();
   };
+  const isOriginalVehicleDriver = (vehicle: any) => {
+    if (!profile || !vehicle) return false;
+    if (vehicle.driver_id) return vehicle.driver_id === profile.id;
+    return (
+      String(vehicle.driver || "").trim().toLowerCase() ===
+      String(profile.name || "").trim().toLowerCase()
+    );
+  };
   const currentYear = new Date().getFullYear();
   const profileOrdDate = parseDateInput(peOrdDate);
   const profileOrdYear = profileOrdDate?.getFullYear() ?? currentYear;
@@ -986,10 +994,9 @@ if (isVerificationPending) {
       !ciBattAuxV ||
       !ciBattAuxPct ||
       !ciFuelL ||
-      !ciFuelPct ||
-      !ciFireExpiry
+      !ciFuelPct
     ) {
-      setFormError("Odometer, engine hours, battery, fuel and fire extinguisher expiry are required");
+      setFormError("Odometer, engine hours, battery and fuel are required");
       return;
     }
 
@@ -1094,10 +1101,9 @@ if (isVerificationPending) {
       !upBattAuxV ||
       !upBattAuxPct ||
       !upFuelL ||
-      !upFuelPct ||
-      !upFireExpiry
+      !upFuelPct
     ) {
-      setFormError("Odometer, engine hours, battery, fuel and fire extinguisher expiry are required");
+      setFormError("Odometer, engine hours, battery and fuel are required");
       return;
     }
 
@@ -1154,7 +1160,7 @@ if (isVerificationPending) {
         fuel_pct: upFuelPct
           ? parseInt(upFuelPct, 10)
           : selectedVehicle.fuel_pct,
-        fire_ext_expiry: upFireExpiry || selectedVehicle.fire_ext_expiry,
+        fire_ext_expiry: upFireExpiry || null,
         notes: upNotes || selectedVehicle.notes,
       },
     };
@@ -3412,7 +3418,7 @@ if (isVerificationPending) {
                             ),
                             "dd MMM yyyy",
                           )
-                        : "Not recorded"}
+                        : "-"}
                     </p>
                     <p className={cn("text-xs mt-1", fs.color)}>{fs.label}</p>
                   </div>
@@ -3562,11 +3568,20 @@ if (isVerificationPending) {
               </Button>
               <Button
                 onClick={() =>
-                  guardVerifiedAction(() => setIsConfirmingDriveout(true))
+                  guardVerifiedAction(() => {
+                    if (!isOriginalVehicleDriver(selectedVehicle)) {
+                      triggerToast(
+                        "Only the driver who logged this vehicle in can drive it out.",
+                      );
+                      return;
+                    }
+                    setIsConfirmingDriveout(true);
+                  })
                 }
+                disabled={!isOriginalVehicleDriver(selectedVehicle)}
                 className={cn(
                   "w-full h-10 font-bold",
-                  isUnverified
+                  isUnverified || !isOriginalVehicleDriver(selectedVehicle)
                     ? "bg-zinc-100 text-zinc-400 border border-zinc-200 cursor-not-allowed"
                     : "bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800 border border-red-100",
                 )}
@@ -4205,7 +4220,6 @@ if (isVerificationPending) {
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-zinc-700">
                     🧯 Fire Extinguisher Expiry Date
-                    <RequiredMark />
                   </label>
                   <FireExpiryPicker
                     value={upFireExpiry}

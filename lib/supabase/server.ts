@@ -554,6 +554,40 @@ export async function assertVehicleFacilityAccess(actorId: string, vehicleId: st
   }
 }
 
+export async function assertVehicleDriveOutOwner(actorId: string, vehicleId: string) {
+  const profile = await getUserProfile(actorId);
+  if (!profile) {
+    throw new Error("User not found.");
+  }
+
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return;
+
+  const { data, error } = await supabase
+    .from("vehicles")
+    .select("driver_id, driver")
+    .eq("id", vehicleId)
+    .maybeSingle<{ driver_id: string | null; driver: string | null }>();
+
+  if (error) throw error;
+  if (!data) {
+    throw new Error("Vehicle not found.");
+  }
+
+  if (data.driver_id) {
+    if (data.driver_id !== actorId) {
+      throw new Error("Only the driver who logged this vehicle in can drive it out.");
+    }
+    return;
+  }
+
+  const storedDriver = (data.driver || "").trim().toLowerCase();
+  const actorName = (profile.name || "").trim().toLowerCase();
+  if (!storedDriver || storedDriver !== actorName) {
+    throw new Error("Only the driver who logged this vehicle in can drive it out.");
+  }
+}
+
 export async function requireAdmin(actorId: string) {
   const profile = await getUserProfile(actorId);
 

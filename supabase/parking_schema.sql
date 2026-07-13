@@ -60,7 +60,7 @@ create table if not exists public.vehicles (
   aux_pct integer not null,
   fuel_l numeric not null,
   fuel_pct integer not null,
-  fire_ext_expiry date not null,
+  fire_ext_expiry date null,
   notes text null,
   check_in timestamp with time zone not null default now(),
   created_at timestamp with time zone not null default now()
@@ -79,6 +79,7 @@ alter table public.vehicles add column if not exists driver_id text null referen
 alter table public.vehicles add column if not exists facility_code text not null default '11FMD' references public.facilities(code);
 create index if not exists vehicles_facility_code_idx on public.vehicles (facility_code);
 alter table public.vehicles alter column lot drop not null;
+alter table public.vehicles alter column fire_ext_expiry drop not null;
 alter table public.vehicles alter column id drop default;
 do $$
 begin
@@ -301,8 +302,7 @@ alter table public.vehicles
     aux_v >= 0 and
     aux_pct >= 0 and aux_pct <= 100 and
     fuel_l >= 0 and
-    fuel_pct >= 0 and fuel_pct <= 100 and
-    fire_ext_expiry is not null
+    fuel_pct >= 0 and fuel_pct <= 100
   ) not valid;
 
 alter table public.history drop constraint if exists history_non_negative_values;
@@ -316,8 +316,7 @@ alter table public.history
     aux_v >= 0 and
     aux_pct >= 0 and aux_pct <= 100 and
     fuel_l >= 0 and
-    fuel_pct >= 0 and fuel_pct <= 100 and
-    fire_ext_expiry is not null
+    fuel_pct >= 0 and fuel_pct <= 100
   ) not valid;
 
 alter table public.turret_esc_logs drop constraint if exists turret_esc_logs_non_negative_values;
