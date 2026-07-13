@@ -32,7 +32,9 @@ import { BosReadingsTab } from "@/components/dashboard/bos-readings-tab";
 import { CheckInDialog } from "@/components/dashboard/check-in-dialog";
 import { FireExpiryPicker } from "@/components/dashboard/fire-expiry-picker";
 import { LoginGate } from "@/components/dashboard/login-gate";
+import { ParkingTab } from "@/components/dashboard/parking-tab";
 import { RequiredMark } from "@/components/dashboard/required-mark";
+import { SearchVehiclesTab } from "@/components/dashboard/search-vehicles-tab";
 import {
   PercentDot,
   Skeleton,
@@ -81,7 +83,6 @@ import {
   vehicleMatchesLevel,
   type AdminUserRecord,
   type AuditLogEntry,
-  type ParkingLayoutColumn,
   type ParkingLevelConfig,
   type SafetyMessageRecord,
 } from "@/lib/dashboard/dashboard-data";
@@ -1623,129 +1624,6 @@ if (isVerificationPending) {
       adminDraftAdmins[user.id] !== user.is_admin,
   );
 
-  // SVG dynamic layout helpers
-  const drawLotRectJSX = (
-    level: string,
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    label: string,
-    occupiedMap: Record<string, any>,
-  ) => {
-    const veh = occupiedMap[label];
-    const isOccupied = !!veh;
-    const isSelected = selectedLevel === level && selectedLot === label;
-
-    const fill = isSelected ? "#FFF3CD" : isOccupied ? "#C8DFB0" : "#FFFFFF";
-    const stroke = isSelected ? "#D4860A" : isOccupied ? "#5C7A3E" : "#C8CDB8";
-    const textColor = isSelected
-      ? "#9c6200"
-      : isOccupied
-        ? "#3A5A20"
-        : "#6B7560";
-
-    return (
-      <g
-        key={label}
-        className="cursor-pointer select-none"
-        onClick={() => handleLotClick(label, veh || null)}
-      >
-        <rect
-          x={x}
-          y={y}
-          width={w}
-          height={h}
-          rx={3}
-          fill={fill}
-          stroke={stroke}
-          strokeWidth="1.2"
-          className="transition-colors duration-150"
-        />
-        <text
-          x={x + w / 2}
-          y={y + h / 2 + 1}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fontSize="8.5"
-          fontFamily="Inter,sans-serif"
-          fontWeight={isOccupied ? "700" : "500"}
-          fill={textColor}
-        >
-          {label}
-        </text>
-      </g>
-    );
-  };
-
-  const drawRoomRectJSX = (
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    label: string,
-    fill = "#EEF0E8",
-    textColor = "#5A6050",
-  ) => {
-    const lines = label.split("\n");
-    const lineH = 9;
-    const startY = y + h / 2 - ((lines.length - 1) * lineH) / 2;
-
-    return (
-      <g key={label}>
-        <rect
-          x={x}
-          y={y}
-          width={w}
-          height={h}
-          rx={4}
-          fill={fill}
-          stroke="#B8BEB0"
-          strokeWidth="1.2"
-        />
-        {lines.map((line, i) => (
-          <text
-            key={i}
-            x={x + w / 2}
-            y={startY + i * lineH}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fontSize="7.5"
-            fontFamily="Inter,sans-serif"
-            fontWeight="600"
-            fill={textColor}
-          >
-            {line}
-          </text>
-        ))}
-      </g>
-    );
-  };
-
-  const drawDrivewayLabelJSX = (
-    key: string,
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    vertical = false,
-  ) => (
-    <text
-      key={key}
-      x={x + w / 2}
-      y={y + h / 2}
-      textAnchor="middle"
-      dominantBaseline="middle"
-      fontSize="7.5"
-      fontFamily="Inter,sans-serif"
-      fill="#A0A89A"
-      letterSpacing="1"
-      transform={vertical ? `rotate(-90,${x + w / 2},${y + h / 2})` : undefined}
-    >
-      DRIVEWAY
-    </text>
-  );
-
   return (
     <div className="min-h-screen bg-zinc-100 text-zinc-950 font-sans flex flex-col antialiased">
       {/* Toast Alert */}
@@ -2059,96 +1937,18 @@ if (isVerificationPending) {
 
         {/* TAB 2: SEARCH VEHICLES */}
         {activeTab === "search" && (
-          <div className="space-y-4">
-            <div className="grid gap-2 sm:grid-cols-[1fr_220px]">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 size-4 text-zinc-400" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search vehicle plate, unit, variant or driver..."
-                  className="w-full h-10 pl-9 pr-4 rounded-lg border border-zinc-200 bg-white text-sm outline-none transition focus:border-red-600 focus:ring-3 focus:ring-red-600/15 shadow-xs"
-                />
-              </div>
-              <Select
-                value={searchVehicleUnit}
-                onValueChange={setSearchVehicleUnit}
-              >
-                <SelectTrigger className="w-full h-10 bg-white border-zinc-200 focus:border-red-600 focus:ring-3 focus:ring-red-600/15 justify-between">
-                  <SelectValue placeholder="All vehicle units" />
-                </SelectTrigger>
-                <SelectContent className="bg-white border border-zinc-200 shadow-md rounded-md">
-                  <SelectItem value="all" className="cursor-pointer">
-                    All vehicle units
-                  </SelectItem>
-                  {vehicleUnits.map((unit) => (
-                    <SelectItem
-                      key={unit.id}
-                      value={unit.name}
-                      className="cursor-pointer"
-                    >
-                      {unit.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-2 sm:grid-cols-2">
-              {isLoadingDashboard ? (
-                Array.from({ length: 6 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="bg-white border border-zinc-200 p-4 rounded-xl flex items-center gap-4"
-                  >
-                    <Skeleton className="size-10 rounded-lg shrink-0" />
-                    <div className="space-y-2 flex-1">
-                      <Skeleton className="h-3.5 w-24" />
-                      <Skeleton className="h-3 w-32" />
-                    </div>
-                  </div>
-                ))
-              ) : filteredVehicles.length > 0 ? (
-                filteredVehicles.map((v) => (
-                  <div
-                    key={v.id}
-                    onClick={() => handleOpenVehicle(v)}
-                    className="cursor-pointer bg-white border border-zinc-200 hover:border-zinc-300 hover:shadow-xs p-4 rounded-xl flex items-center justify-between gap-4 transition-all"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="size-10 bg-zinc-100 text-zinc-600 rounded-lg flex items-center justify-center">
-                        <CarFront className="size-5" />
-                      </div>
-                      <div>
-                        <div className="font-bold text-zinc-900">
-                          {formatPlateDisplay(v.plate)}
-                        </div>
-                        <p className="text-[11px] font-semibold text-zinc-400">
-                          {vehicleUnitLabel(v)}
-                        </p>
-                        <p className="text-xs text-zinc-500 font-medium">
-                          {v.variant} &nbsp;·&nbsp; {v.level} · Lot {v.lot}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-xs text-red-600 font-semibold">
-                        {formatTimeAgo(v.check_in)}
-                      </p>
-                      <p className="text-[10px] text-zinc-400 font-bold uppercase mt-1">
-                        {v.driver || "—"}
-                      </p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-zinc-500 text-sm py-8 text-center col-span-full font-medium">
-                  No active vehicles found matching search.
-                </p>
-              )}
-            </div>
-          </div>
+          <SearchVehiclesTab
+            filteredVehicles={filteredVehicles}
+            isLoading={isLoadingDashboard}
+            searchQuery={searchQuery}
+            searchVehicleUnit={searchVehicleUnit}
+            vehicleUnits={vehicleUnits}
+            formatTimeAgo={formatTimeAgo}
+            onOpenVehicle={handleOpenVehicle}
+            onSearchQueryChange={setSearchQuery}
+            onSearchVehicleUnitChange={setSearchVehicleUnit}
+            vehicleUnitLabel={vehicleUnitLabel}
+          />
         )}
 
         {/* TAB 3: BOS READINGS */}
@@ -2169,237 +1969,24 @@ if (isVerificationPending) {
 
         {/* TAB 3: PARKING OVERVIEW & MAPS */}
         {activeTab === "parking" && (
-          <div className="space-y-6">
-            {/* Level picking grid */}
-            <div className="grid grid-cols-2 sm:flex sm:items-center gap-3">
-              {parkingLevels.map((level) => {
-                const occ = counts[level.id] || 0;
-                const levelTotal = level.totalLots ?? getLevelLots(level).length;
-                const occupancyClasses = getLotOccupancyClasses(occ, levelTotal);
-                return (
-                  <div
-                    key={level.id}
-                    onClick={() => openParkingLevel(level.id)}
-                    className={cn(
-                      "cursor-pointer border p-3 w-full sm:w-36 rounded-xl flex items-center gap-3 shadow-xs transition-all",
-                      occupancyClasses.box ||
-                        "bg-white border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50/50",
-                      selectedLevel === level.id && "ring-2 ring-red-600/40",
-                    )}
-                  >
-                    <div className="size-9 bg-zinc-100 rounded-lg flex items-center justify-center text-sm font-semibold select-none">
-                      {level.icon || level.id}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="font-bold text-xs tracking-tight text-zinc-800 leading-tight">
-                        {level.label}
-                      </div>
-                      <p
-                        className={cn(
-                          "text-[10px] font-medium mt-0.5",
-                          occupancyClasses.text || "text-zinc-500",
-                        )}
-                      >
-                        {occ}/{levelTotal}{" "}
-                        lots
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Interactive SVG Layout */}
-            <div className="bg-white rounded-xl border border-zinc-200 p-4 sm:p-6 shadow-sm space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100">
-                <div>
-                  <h3 className="font-bold text-zinc-800">
-                    Parking Map —{" "}
-                    {selectedLevelConfig?.label ?? "Not configured"}
-                  </h3>
-                  <p className="text-xs text-zinc-500 font-medium">
-                    {selectedLevelConfig?.desc ??
-                      "Load layout configuration from Supabase."}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-3 flex-wrap">
-                  <span className="inline-flex items-center gap-1.5 text-[11px] text-zinc-500 font-medium">
-                    <span className="size-3.5 border-1.5 border-emerald-700 bg-emerald-100 rounded"></span>
-                    Occupied
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 text-[11px] text-zinc-500 font-medium">
-                    <span className="size-3.5 border-1.5 border-zinc-300 bg-white rounded"></span>
-                    Empty
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 text-[11px] text-zinc-500 font-medium">
-                    <span className="size-3.5 border-1.5 border-amber-500 bg-amber-100 rounded"></span>
-                    Selected
-                  </span>
-                </div>
-              </div>
-
-              {/* Scrollable Map Area */}
-              <div className="mx-auto w-full max-w-85 select-none bg-zinc-50 border border-zinc-100 rounded-lg p-2 flex justify-center">
-                {isLoadingParkingConfig ? (
-                  <p className="py-10 text-center text-sm font-medium text-zinc-500">
-                    Loading parking layout...
-                  </p>
-                ) : selectedLevelConfig ? (
-                  <div className="inline-flex w-fit gap-1 rounded-lg bg-white/70 p-2">
-                    {(selectedLevelConfig.layout?.columns?.length
-                      ? selectedLevelConfig.layout.columns
-                      : [
-                          {
-                            type: "lots" as const,
-                            id: "default",
-                            lots: selectedLevelLots,
-                          },
-                        ]
-                    ).map((column, columnIndex) => {
-                      const columnKey = `${column.id}-${column.type}-${columnIndex}`;
-
-                      if (column.type === "driveway") {
-                        return (
-                          <div
-                            key={columnKey}
-                            className="flex min-h-full w-4 items-center justify-center rounded-md bg-zinc-50 text-[9px] font-bold tracking-[0.12em] text-zinc-400"
-                          >
-                            <span className="[writing-mode:vertical-rl] rotate-180">
-                              {column.label || "DRIVEWAY"}
-                            </span>
-                          </div>
-                        );
-                      }
-
-                      if (column.type === "spacer") {
-                        return <div key={columnKey} className="w-3" />;
-                      }
-
-                      const cells =
-                        column.type === "mixed"
-                          ? column.cells
-                          : column.lots.map((lot) => ({
-                              type: "lot" as const,
-                              id: lot,
-                            }));
-
-                      return (
-                        <div
-                          key={columnKey}
-                          className="grid auto-rows-[1.5rem] gap-1 self-start"
-                        >
-                          {cells.map((cell, cellIndex) => {
-                            const cellKey = `${columnKey}-${cell.id}-${cellIndex}`;
-
-                            if (cell.type === "area") {
-                              return (
-                                <div
-                                  key={cellKey}
-                                  style={{
-                                    gridRow: `span ${cell.rowSpan ?? 1}`,
-                                  }}
-                                  className="flex w-8 flex-col items-center justify-center rounded-md border border-sky-200 bg-sky-50 px-0.5 text-center text-[8px] font-extrabold leading-tight text-sky-800"
-                                >
-                                  {cell.label.split("\n").map((line) => (
-                                    <span key={line}>{line}</span>
-                                  ))}
-                                </div>
-                              );
-                            }
-
-                            const lot = cell.id;
-                            const occ = occupiedLotsMap(selectedLevel);
-                            const vehicle = occ[normalizeParkingValue(lot)];
-                            return (
-                              <button
-                                key={cellKey}
-                                type="button"
-                                onClick={() => handleLotClick(lot, vehicle)}
-                                className={cn(
-                                  "h-full w-8 rounded-md border text-[10px] font-bold transition-colors",
-                                  vehicle
-                                    ? "border-emerald-700 bg-emerald-100 text-emerald-900"
-                                    : "border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50",
-                                  selectedLot === lot &&
-                                    "border-amber-500 bg-amber-100 text-amber-900",
-                                )}
-                              >
-                                {lot}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="py-10 text-center text-sm font-medium text-zinc-500">
-                    Parking layout is not configured.
-                  </p>
-                )}
-              </div>
-
-              {/* Lot occupancy detail card */}
-              <div
-                id="lot-detail-panel"
-                className="min-h-20 flex items-center justify-center"
-              >
-                {selectedLot ? (
-                  selectedLotVehicle ? (
-                    <div className="w-full bg-white border border-zinc-200 rounded-xl p-4 flex items-center justify-between gap-4 animate-in fade-in zoom-in-95 duration-150">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-extrabold text-lg text-zinc-900">
-                            {formatPlateDisplay(selectedLotVehicle.plate)}
-                          </span>
-                          <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded uppercase">
-                            Lot {selectedLot}
-                          </span>
-                        </div>
-                        <p className="text-xs text-zinc-500 font-medium mt-1">
-                          {selectedLotVehicle.variant || "—"}
-                        </p>
-                        <p className="text-[11px] text-zinc-400 font-semibold mt-0.5">
-                          {vehicleUnitLabel(selectedLotVehicle)}
-                        </p>
-                        <div className="flex items-center gap-1 text-[11px] text-zinc-500 font-medium mt-2">
-                          <span className="font-bold text-zinc-800">
-                            {selectedLotVehicle.driver}
-                          </span>
-                          &nbsp;·&nbsp;{" "}
-                          {selectedLotVehicle.driver_unit ||
-                            selectedLotVehicle.driver_depot}
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        onClick={() => handleOpenVehicle(selectedLotVehicle)}
-                        className="bg-red-600 hover:bg-red-700 h-8 text-xs font-semibold px-4 shrink-0"
-                      >
-                        View details
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="w-full py-4 text-center text-sm font-semibold text-zinc-400 bg-zinc-50 border border-dashed border-zinc-200 rounded-lg animate-in fade-in duration-100">
-                      Lot{" "}
-                      <span className="text-zinc-700 font-bold">
-                        {selectedLot}
-                      </span>{" "}
-                      is currently empty.
-                    </div>
-                  )
-                ) : (
-                  <div className="text-xs font-semibold text-zinc-400">
-                    Click any slot in the floor plan to view lot details.
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <ParkingTab
+            counts={counts}
+            isLoadingParkingConfig={isLoadingParkingConfig}
+            parkingLevels={parkingLevels}
+            selectedLevel={selectedLevel}
+            selectedLevelConfig={selectedLevelConfig}
+            selectedLevelLots={selectedLevelLots}
+            selectedLot={selectedLot}
+            selectedLotVehicle={selectedLotVehicle}
+            occupiedLotsMap={occupiedLotsMap}
+            onLotClick={handleLotClick}
+            onOpenParkingLevel={openParkingLevel}
+            onOpenVehicle={handleOpenVehicle}
+            vehicleUnitLabel={vehicleUnitLabel}
+          />
         )}
 
-        {/* TAB 4: TURRET CHECKLIST — temporarily disabled.
+        {/* TAB 4: TURRET CHECKLIST � temporarily disabled.
             Change `false &&` back to `activeTab === "turret-esc" &&` to
             restore this tab. */}
         {false && activeTab === "turret-esc" && profile.is_technician && (
