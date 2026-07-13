@@ -2360,6 +2360,9 @@ if (isVerificationPending) {
                         <p className="text-xs text-zinc-500 font-medium mt-1">
                           {selectedLotVehicle.variant || "—"}
                         </p>
+                        <p className="text-[11px] text-zinc-400 font-semibold mt-0.5">
+                          {vehicleUnitLabel(selectedLotVehicle)}
+                        </p>
                         <div className="flex items-center gap-1 text-[11px] text-zinc-500 font-medium mt-2">
                           <span className="font-bold text-zinc-800">
                             {selectedLotVehicle.driver}
