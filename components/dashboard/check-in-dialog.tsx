@@ -411,18 +411,15 @@ export function CheckInDialog({
             <div className="space-y-3">
               <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">
                 Fuel Level
-                <RequiredMark />
               </span>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-[10px] text-zinc-400 font-bold block mb-1">
                     Litres (L)
-                    <RequiredMark />
                   </label>
                   <input
                     type="number"
                     min="0"
-                    required
                     value={ciFuelL}
                     onChange={(event) => setCiFuelL(event.target.value)}
                     placeholder="e.g. 1140"
@@ -432,13 +429,11 @@ export function CheckInDialog({
                 <div>
                   <label className="text-[10px] text-zinc-400 font-bold block mb-1">
                     Percentage (%)
-                    <RequiredMark />
                   </label>
                   <input
                     type="number"
                     min="0"
                     max="100"
-                    required
                     value={ciFuelPct}
                     onChange={(event) => setCiFuelPct(event.target.value)}
                     placeholder="e.g. 100"

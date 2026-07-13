@@ -58,8 +58,8 @@ create table if not exists public.vehicles (
   starter_pct integer null,
   aux_v numeric null,
   aux_pct integer null,
-  fuel_l numeric not null,
-  fuel_pct integer not null,
+  fuel_l numeric null,
+  fuel_pct integer null,
   fire_ext_expiry date null,
   notes text null,
   check_in timestamp with time zone not null default now(),
@@ -85,6 +85,8 @@ alter table public.vehicles alter column starter_v drop not null;
 alter table public.vehicles alter column starter_pct drop not null;
 alter table public.vehicles alter column aux_v drop not null;
 alter table public.vehicles alter column aux_pct drop not null;
+alter table public.vehicles alter column fuel_l drop not null;
+alter table public.vehicles alter column fuel_pct drop not null;
 alter table public.vehicles alter column fire_ext_expiry drop not null;
 alter table public.vehicles alter column id drop default;
 do $$
@@ -301,28 +303,28 @@ alter table public.vehicles drop constraint if exists vehicles_non_negative_valu
 alter table public.vehicles
   add constraint vehicles_non_negative_values
   check (
-    odometer >= 0 and
-    engine_hours >= 0 and
-    starter_v >= 0 and
-    starter_pct >= 0 and starter_pct <= 100 and
-    aux_v >= 0 and
-    aux_pct >= 0 and aux_pct <= 100 and
-    fuel_l >= 0 and
-    fuel_pct >= 0 and fuel_pct <= 100
+    (odometer is null or odometer >= 0) and
+    (engine_hours is null or engine_hours >= 0) and
+    (starter_v is null or starter_v >= 0) and
+    (starter_pct is null or (starter_pct >= 0 and starter_pct <= 100)) and
+    (aux_v is null or aux_v >= 0) and
+    (aux_pct is null or (aux_pct >= 0 and aux_pct <= 100)) and
+    (fuel_l is null or fuel_l >= 0) and
+    (fuel_pct is null or (fuel_pct >= 0 and fuel_pct <= 100))
   ) not valid;
 
 alter table public.history drop constraint if exists history_non_negative_values;
 alter table public.history
   add constraint history_non_negative_values
   check (
-    odometer >= 0 and
-    engine_hours >= 0 and
-    starter_v >= 0 and
-    starter_pct >= 0 and starter_pct <= 100 and
-    aux_v >= 0 and
-    aux_pct >= 0 and aux_pct <= 100 and
-    fuel_l >= 0 and
-    fuel_pct >= 0 and fuel_pct <= 100
+    (odometer is null or odometer >= 0) and
+    (engine_hours is null or engine_hours >= 0) and
+    (starter_v is null or starter_v >= 0) and
+    (starter_pct is null or (starter_pct >= 0 and starter_pct <= 100)) and
+    (aux_v is null or aux_v >= 0) and
+    (aux_pct is null or (aux_pct >= 0 and aux_pct <= 100)) and
+    (fuel_l is null or fuel_l >= 0) and
+    (fuel_pct is null or (fuel_pct >= 0 and fuel_pct <= 100))
   ) not valid;
 
 alter table public.turret_esc_logs drop constraint if exists turret_esc_logs_non_negative_values;

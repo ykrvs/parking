@@ -987,11 +987,6 @@ if (isVerificationPending) {
       );
       return;
     }
-    if (!ciFuelL || !ciFuelPct) {
-      setFormError("Fuel level is required");
-      return;
-    }
-
     setIsSubmitting(true);
     setFormError(null);
 
@@ -1085,11 +1080,6 @@ if (isVerificationPending) {
   const handleUpdateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedVehicle) return;
-    if (!upFuelL || !upFuelPct) {
-      setFormError("Fuel level is required");
-      return;
-    }
-
     setIsSubmitting(true);
     setFormError(null);
 
@@ -1131,10 +1121,8 @@ if (isVerificationPending) {
           : null,
         aux_v: upBattAuxV ? parseFloat(upBattAuxV) : null,
         aux_pct: upBattAuxPct ? parseInt(upBattAuxPct, 10) : null,
-        fuel_l: upFuelL ? parseFloat(upFuelL) : selectedVehicle.fuel_l,
-        fuel_pct: upFuelPct
-          ? parseInt(upFuelPct, 10)
-          : selectedVehicle.fuel_pct,
+        fuel_l: upFuelL ? parseFloat(upFuelL) : null,
+        fuel_pct: upFuelPct ? parseInt(upFuelPct, 10) : null,
         fire_ext_expiry: upFireExpiry || null,
         notes: upNotes || selectedVehicle.notes,
       },
@@ -3362,9 +3350,9 @@ if (isVerificationPending) {
               <div className="flex justify-between items-center text-xs text-zinc-500">
                 <span className="font-bold">Fuel Level</span>
                 <span className="font-semibold">
-                  {selectedVehicle.fuel_l !== null
+                  {selectedVehicle.fuel_l != null
                     ? `${selectedVehicle.fuel_l}L`
-                    : "—"}{" "}
+                    : "-"}{" "}
                   remaining
                 </span>
               </div>
@@ -3379,7 +3367,7 @@ if (isVerificationPending) {
                         : "text-red-600",
                   )}
                 >
-                  {selectedVehicle.fuel_pct || 0}%
+                  {selectedVehicle.fuel_pct ?? "-"}{selectedVehicle.fuel_pct == null ? "" : "%"}
                 </div>
                 <div className="flex-1">
                   <div className="h-2 bg-zinc-100 border border-zinc-200 rounded-full overflow-hidden">
@@ -3392,7 +3380,7 @@ if (isVerificationPending) {
                             ? "bg-amber-500"
                             : "bg-red-500",
                       )}
-                      style={{ width: `${selectedVehicle.fuel_pct || 0}%` }}
+                      style={{ width: `${selectedVehicle.fuel_pct ?? 0}%` }}
                     />
                   </div>
                 </div>
@@ -3649,7 +3637,7 @@ if (isVerificationPending) {
                         Aux Battery: {r.aux_v ?? "-"}{r.aux_v == null ? "" : "V"} · {r.aux_pct ?? "-"}{r.aux_pct == null ? "" : "%"}
                       </div>
                       <div>
-                        Fuel Level: {r.fuel_pct || 0}% · {r.fuel_l || "—"}L
+                        Fuel Level: {r.fuel_pct ?? "-"}{r.fuel_pct == null ? "" : "%"} · {r.fuel_l ?? "-"}{r.fuel_l == null ? "" : "L"}
                       </div>
                       {r.fire_ext_expiry && (
                         <div className="col-span-2 text-zinc-500 font-semibold mt-1">
@@ -3838,9 +3826,9 @@ if (isVerificationPending) {
               <div className="flex justify-between items-center text-xs text-zinc-500">
                 <span className="font-bold">Fuel Level</span>
                 <span className="font-semibold">
-                  {selectedDriveout.fuel_l !== null
+                  {selectedDriveout.fuel_l != null
                     ? `${selectedDriveout.fuel_l}L`
-                    : "—"}
+                    : "-"}
                 </span>
               </div>
               <div className="flex items-center gap-3">
@@ -3854,7 +3842,7 @@ if (isVerificationPending) {
                         : "text-red-600",
                   )}
                 >
-                  {selectedDriveout.fuel_pct || 0}%
+                  {selectedDriveout.fuel_pct ?? "-"}{selectedDriveout.fuel_pct == null ? "" : "%"}
                 </div>
                 <div className="flex-1">
                   <div className="h-2 bg-zinc-100 border border-zinc-200 rounded-full overflow-hidden">
@@ -3867,7 +3855,7 @@ if (isVerificationPending) {
                             ? "bg-amber-500"
                             : "bg-red-500",
                       )}
-                      style={{ width: `${selectedDriveout.fuel_pct || 0}%` }}
+                      style={{ width: `${selectedDriveout.fuel_pct ?? 0}%` }}
                     />
                   </div>
                 </div>
@@ -4183,18 +4171,15 @@ if (isVerificationPending) {
                 <div className="space-y-3">
                   <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">
                     Fuel Level
-                    <RequiredMark />
                   </span>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-[10px] text-zinc-400 font-bold block mb-1">
                         Litres (L)
-                        <RequiredMark />
                       </label>
                       <input
                         type="number"
                         min="0"
-                        required
                         value={upFuelL}
                         onChange={(e) => setUpFuelL(e.target.value)}
                         className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
@@ -4203,13 +4188,11 @@ if (isVerificationPending) {
                     <div>
                       <label className="text-[10px] text-zinc-400 font-bold block mb-1">
                         Percentage (%)
-                        <RequiredMark />
                       </label>
                       <input
                         type="number"
                         min="0"
                         max="100"
-                        required
                         value={upFuelPct}
                         onChange={(e) => setUpFuelPct(e.target.value)}
                         className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
