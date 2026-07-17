@@ -27,6 +27,7 @@ import { format } from "date-fns";
 
 import { AppShellNavigation } from "@/components/dashboard/app-shell-navigation";
 import { BosReadingsTab } from "@/components/dashboard/bos-readings-tab";
+import { CheckedOutVehicleDetail } from "@/components/dashboard/checked-out-vehicle-detail";
 import { CheckInDialog } from "@/components/dashboard/check-in-dialog";
 import { FireExpiryPicker } from "@/components/dashboard/fire-expiry-picker";
 import { HomeTab } from "@/components/dashboard/home-tab";
@@ -35,6 +36,7 @@ import { ParkingTab } from "@/components/dashboard/parking-tab";
 import { ReminderTray } from "@/components/dashboard/reminder-tray";
 import { RequiredMark } from "@/components/dashboard/required-mark";
 import { SearchVehiclesTab } from "@/components/dashboard/search-vehicles-tab";
+import { VehicleHistoryTab } from "@/components/dashboard/vehicle-history-tab";
 import {
   PercentDot,
   UnverifiedDot,
@@ -2939,290 +2941,22 @@ if (isVerificationPending) {
 
         {/* TAB 8: VEHICLE HISTORICAL LOGS */}
         {activeTab === "history" && selectedVehicle && (
-          <div className="bg-white rounded-xl border border-zinc-200 p-6 shadow-sm space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-zinc-100">
-              <Button
-                variant="ghost"
-                onClick={() => setActiveTab("detail")}
-                className="h-8 px-2 font-semibold text-xs"
-              >
-                <ArrowLeft className="size-4 mr-1" />
-                Back to detail
-              </Button>
-              <h3 className="text-sm font-black text-zinc-800">
-                {formatPlateDisplay(selectedVehicle.plate)} History Log
-              </h3>
-            </div>
-
-            <div className="space-y-4">
-              {historyRecords.length > 0 ? (
-                historyRecords.map((r, i) => (
-                  <div
-                    key={r.id || i}
-                    className="border border-zinc-200 rounded-xl p-4 space-y-3 bg-zinc-50/25"
-                  >
-                    <div className="flex items-center justify-between text-xs font-semibold border-b border-zinc-100 pb-2">
-                      <span className="text-zinc-800">
-                        {r.created_at ? formatLocalTime(r.created_at) : "—"}
-                      </span>
-                      <span className="text-zinc-500">
-                        Updated by: {r.driver || "—"}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
-                      <div>
-                        Odometer:{" "}
-                        {r.odometer != null
-                          ? `${Number(r.odometer).toLocaleString()} km`
-                          : "-"}
-                      </div>
-                      <div>Engine Hours: {r.engine_hours ?? "-"} hrs</div>
-                      <div>
-                        Starter Battery: {r.starter_v ?? "-"}{r.starter_v == null ? "" : "V"} ·{" "}
-                        {r.starter_pct ?? "-"}{r.starter_pct == null ? "" : "%"}
-                      </div>
-                      <div>
-                        Aux Battery: {r.aux_v ?? "-"}{r.aux_v == null ? "" : "V"} · {r.aux_pct ?? "-"}{r.aux_pct == null ? "" : "%"}
-                      </div>
-                      <div>
-                        Fuel Level: {r.fuel_pct ?? "-"}{r.fuel_pct == null ? "" : "%"} · {r.fuel_l ?? "-"}{r.fuel_l == null ? "" : "L"}
-                      </div>
-                      {r.fire_ext_expiry && (
-                        <div className="col-span-2 text-zinc-500 font-semibold mt-1">
-                          🧯 Ext. Expiry:{" "}
-                          {format(
-                            new Date(r.fire_ext_expiry + "T00:00:00"),
-                            "dd MMM yyyy",
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {r.notes && (
-                      <p className="text-xs italic text-zinc-500 border-t border-zinc-100 pt-2 mt-2">
-                        {r.notes}
-                      </p>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <p className="text-zinc-500 text-sm py-8 text-center font-medium">
-                  No historical records found for this platform.
-                </p>
-              )}
-            </div>
-          </div>
+          <VehicleHistoryTab
+            historyRecords={historyRecords}
+            vehicle={selectedVehicle}
+            formatLocalTime={formatLocalTime}
+            onBack={() => setActiveTab("detail")}
+          />
         )}
 
         {/* TAB 9: CHECKED OUT VEHICLE DETAIL VIEW */}
         {activeTab === "driveout-detail" && selectedDriveout && (
-          <div className="bg-white rounded-xl border border-zinc-200 p-6 shadow-sm space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-zinc-100">
-              <Button
-                variant="ghost"
-                onClick={() => setActiveTab("driveout-history")}
-                className="h-8 px-2 font-semibold text-xs"
-              >
-                <ArrowLeft className="size-4 mr-1" />
-                Back to list
-              </Button>
-              <span className="inline-block bg-red-100 border border-red-200 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase">
-                Checked Out
-              </span>
-            </div>
-
-            <div>
-              <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900">
-                {formatPlateDisplay(selectedDriveout.plate)}
-              </h2>
-              <p className="text-sm text-zinc-500 font-semibold mt-1">
-                {selectedDriveout.variant}
-              </p>
-            </div>
-
-            {/* Timing Box */}
-            <div className="border border-zinc-200 rounded-xl p-4 bg-zinc-50/25 space-y-3">
-              <div className="grid grid-cols-2 gap-4 text-xs font-semibold">
-                <div>
-                  <span className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">
-                    Checked In
-                  </span>
-                  {selectedDriveout.check_in
-                    ? formatLocalTime(selectedDriveout.check_in)
-                    : "—"}
-                </div>
-                <div>
-                  <span className="text-[10px] text-red-500 uppercase tracking-wider block mb-1">
-                    Checked Out
-                  </span>
-                  {selectedDriveout.check_out
-                    ? formatLocalTime(selectedDriveout.check_out)
-                    : "—"}
-                </div>
-              </div>
-              {selectedDriveout.check_in && selectedDriveout.check_out && (
-                <div className="border-t border-zinc-100 pt-3 text-xs text-zinc-500 font-medium">
-                  Duration:{" "}
-                  <strong className="text-zinc-800">
-                    {getDuration(
-                      selectedDriveout.check_in,
-                      selectedDriveout.check_out,
-                    )}
-                  </strong>
-                  &nbsp;·&nbsp; Parked at{" "}
-                  <strong className="text-zinc-800">
-                    {selectedDriveout.level} – Lot {selectedDriveout.lot}
-                  </strong>
-                </div>
-              )}
-            </div>
-
-            {/* Driver Card */}
-            <div className="space-y-2">
-              <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                Checked Out By
-              </h3>
-              <div className="border border-zinc-200 rounded-xl p-4 flex items-center gap-4 bg-zinc-50/25">
-                <div className="flex size-11 items-center justify-center rounded-full bg-zinc-100 font-bold text-zinc-700 text-sm">
-                  {(selectedDriveout.driver || "UN")
-                    .split(" ")
-                    .map((n: string) => n[0])
-                    .join("")
-                    .slice(0, 2)
-                    .toUpperCase()}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-bold text-sm text-zinc-900">
-                    {selectedDriveout.driver}
-                  </p>
-                  <p className="text-xs text-zinc-500 font-semibold">
-                    {selectedDriveout.driver_unit ||
-                      selectedDriveout.driver_depot}
-                  </p>
-                  {selectedDriveout.driver_phone && (
-                    <a
-                      target="_blank"
-                      href={`https://wa.me/+65${selectedDriveout.driver_phone}`}
-                      className="text-xs text-red-600 font-bold mt-1 inline-block hover:underline"
-                    >
-                      {selectedDriveout.driver_phone}
-                    </a>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Stats */}
-            <div className="space-y-2">
-              <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                Readings at Check-Out
-              </h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-zinc-50/50 border border-zinc-200/50 rounded-xl p-4 text-center">
-                  <div className="text-xs text-zinc-400 font-bold uppercase">
-                    Odometer
-                  </div>
-                  <div className="text-xl font-extrabold text-zinc-800 mt-1">
-                    {selectedDriveout.odometer != null
-                      ? Number(selectedDriveout.odometer).toLocaleString()
-                      : "-"}{" "}
-                    <span className="text-xs font-normal text-zinc-500">
-                      km
-                    </span>
-                  </div>
-                </div>
-                <div className="bg-zinc-50/50 border border-zinc-200/50 rounded-xl p-4 text-center">
-                  <div className="text-xs text-zinc-400 font-bold uppercase">
-                    Engine Hours
-                  </div>
-                  <div className="text-xl font-extrabold text-zinc-800 mt-1">
-                    {selectedDriveout.engine_hours ?? "-"}{" "}
-                    <span className="text-xs font-normal text-zinc-500">
-                      hrs
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Battery Readings */}
-            <div className="border border-zinc-200 rounded-xl p-4 space-y-3 bg-zinc-50/25 text-xs">
-              <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
-                <span className="font-bold text-zinc-600">Starter Battery</span>
-                <span className="flex items-center gap-1.5 font-extrabold text-zinc-800">
-                  {selectedDriveout.starter_v ?? "-"}{selectedDriveout.starter_v == null ? "" : "V"} &nbsp;·&nbsp;{" "}
-                  {selectedDriveout.starter_pct ?? "-"}{selectedDriveout.starter_pct == null ? "" : "%"}
-                  {selectedDriveout.starter_pct != null && (
-                    <PercentDot pct={selectedDriveout.starter_pct} />
-                  )}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-zinc-600">Aux Battery</span>
-                <span className="flex items-center gap-1.5 font-extrabold text-zinc-800">
-                  {selectedDriveout.aux_v ?? "-"}{selectedDriveout.aux_v == null ? "" : "V"} &nbsp;·&nbsp;{" "}
-                  {selectedDriveout.aux_pct ?? "-"}{selectedDriveout.aux_pct == null ? "" : "%"}
-                  {selectedDriveout.aux_pct != null && (
-                    <PercentDot pct={selectedDriveout.aux_pct} />
-                  )}
-                </span>
-              </div>
-            </div>
-
-            {/* Fuel gauge */}
-            <div className="border border-zinc-200 rounded-xl p-4 space-y-2">
-              <div className="flex justify-between items-center text-xs text-zinc-500">
-                <span className="font-bold">Fuel Level</span>
-                <span className="font-semibold">
-                  {selectedDriveout.fuel_l != null
-                    ? `${selectedDriveout.fuel_l}L`
-                    : "-"}
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div
-                  className={cn(
-                    "text-2xl font-black shrink-0",
-                    (selectedDriveout.fuel_pct ?? 0) > 50
-                      ? "text-emerald-600"
-                      : (selectedDriveout.fuel_pct ?? 0) > 20
-                        ? "text-amber-500"
-                        : "text-red-600",
-                  )}
-                >
-                  {selectedDriveout.fuel_pct ?? "-"}{selectedDriveout.fuel_pct == null ? "" : "%"}
-                </div>
-                <div className="flex-1">
-                  <div className="h-2 bg-zinc-100 border border-zinc-200 rounded-full overflow-hidden">
-                    <div
-                      className={cn(
-                        "h-full rounded-full",
-                        (selectedDriveout.fuel_pct ?? 0) > 50
-                          ? "bg-emerald-500"
-                          : (selectedDriveout.fuel_pct ?? 0) > 20
-                            ? "bg-amber-500"
-                            : "bg-red-500",
-                      )}
-                      style={{ width: `${selectedDriveout.fuel_pct ?? 0}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Notes */}
-            {selectedDriveout.notes && (
-              <div className="space-y-2">
-                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                  Notes at Check-Out
-                </h3>
-                <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 text-xs font-medium text-zinc-700 leading-relaxed whitespace-pre-wrap">
-                  {selectedDriveout.notes}
-                </div>
-              </div>
-            )}
-          </div>
+          <CheckedOutVehicleDetail
+            record={selectedDriveout}
+            formatLocalTime={formatLocalTime}
+            getDuration={getDuration}
+            onBack={() => setActiveTab("driveout-history")}
+          />
         )}
       </main>
 
