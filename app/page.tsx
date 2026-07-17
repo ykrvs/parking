@@ -5,7 +5,6 @@
 import {
   ArrowLeft,
   Calendar,
-  CarFront,
   Check,
   ChevronDown,
   Clock,
@@ -18,7 +17,6 @@ import {
   Phone,
   Plus,
   Search,
-  ShieldCheck,
   Trash2,
   User,
   Wrench,
@@ -31,13 +29,14 @@ import { AppShellNavigation } from "@/components/dashboard/app-shell-navigation"
 import { BosReadingsTab } from "@/components/dashboard/bos-readings-tab";
 import { CheckInDialog } from "@/components/dashboard/check-in-dialog";
 import { FireExpiryPicker } from "@/components/dashboard/fire-expiry-picker";
+import { HomeTab } from "@/components/dashboard/home-tab";
 import { LoginGate } from "@/components/dashboard/login-gate";
 import { ParkingTab } from "@/components/dashboard/parking-tab";
+import { ReminderTray } from "@/components/dashboard/reminder-tray";
 import { RequiredMark } from "@/components/dashboard/required-mark";
 import { SearchVehiclesTab } from "@/components/dashboard/search-vehicles-tab";
 import {
   PercentDot,
-  Skeleton,
   UnverifiedDot,
 } from "@/components/dashboard/status-indicators";
 import { Button } from "@/components/ui/button";
@@ -74,7 +73,6 @@ import {
   exportDriveoutHistoryPDF,
   formatPlateDisplay,
   getLevelLots,
-  getLotOccupancyClasses,
   localInputToUtcIso,
   normalizeParkingValue,
   parseDateInput,
@@ -826,6 +824,7 @@ if (isVerificationPending) {
     myOrdDaysLeft <= ORD_WARNING_DAYS
       ? myOrdDaysLeft
       : null;
+  const visibleOrdAlerts = profile.is_admin ? ordAlerts : [];
 
   // Calculate Zone metrics
   const counts = parkingLevels.reduce<Record<string, number>>((acc, level) => {
@@ -1661,292 +1660,37 @@ if (isVerificationPending) {
         setIsSidebarOpen={setIsSidebarOpen}
       />
 
+      <ReminderTray
+        fireExtAlerts={fireExtAlerts}
+        myOrdReminder={myOrdReminder}
+        ordAlerts={visibleOrdAlerts}
+        ordWarningDays={ORD_WARNING_DAYS}
+        profileName={profile.name}
+        profileUnit={profileUnit}
+        onOpenVehicle={handleOpenVehicle}
+        vehicleUnitLabel={vehicleUnitLabel}
+      />
+
       {/* Main Tab Contents */}
       <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 pb-20">
         {/* TAB 1: HOME */}
         {activeTab === "home" && (
-          <div className="space-y-6">
-            {/* Unverified account notice */}
-            {isUnverified && (
-              <div className="bg-zinc-100 border border-zinc-200 rounded-xl p-4 sm:p-5 shadow-xs space-y-1">
-                <div className="flex items-center gap-2 text-zinc-700 font-bold text-xs uppercase tracking-wider">
-                  <User className="size-4" />
-                  Pending Verification
-                </div>
-                <p className="text-zinc-600 text-sm font-medium">
-                  Your account hasn't been verified by an admin yet. You can
-                  look around, but you won't be able to check vehicles
-                  in/out or edit records until you're verified.
-                </p>
-              </div>
-            )}
-
-            {/* Safety card of the day */}
-            <div className="bg-emerald-50 border border-emerald-200/50 rounded-xl p-4 sm:p-5 shadow-xs space-y-2">
-              <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs uppercase tracking-wider">
-                <ShieldCheck className="size-4" />
-                Safety Message of the Day
-              </div>
-              <p className="text-zinc-800 text-sm sm:text-base font-medium leading-relaxed italic">
-                "{safetyMessage}"
-              </p>
-              <p className="text-zinc-500 text-[11px] font-medium">
-                {safetyDate}
-              </p>
-            </div>
-
-            {/* Fire Extinguisher Expiry Alerts */}
-            {fireExtAlerts.length > 0 && (
-              <div className="bg-red-50 border border-red-200/70 rounded-xl p-4 sm:p-5 shadow-xs space-y-3">
-                <div className="flex items-center gap-2 text-red-800 font-bold text-xs uppercase tracking-wider">
-                  <Flame className="size-4" />
-                  Fire Extinguisher{fireExtAlerts.length > 1 ? "s" : ""} Needing
-                  Attention
-                </div>
-                <div className="space-y-1.5">
-                  {fireExtAlerts.map(({ vehicle, daysLeft }) => (
-                    <div
-                      key={vehicle.id}
-                      onClick={() => handleOpenVehicle(vehicle)}
-                      className="flex items-center justify-between gap-2 rounded-lg bg-white/70 border border-red-100 px-3 py-2 cursor-pointer hover:bg-white transition"
-                    >
-                      <span className="text-sm font-bold text-zinc-800">
-                        {formatPlateDisplay(vehicle.plate)}
-                        <span className="ml-2 text-xs font-semibold text-zinc-400">
-                          {vehicleUnitLabel(vehicle)}
-                        </span>
-                        <span className="ml-2 font-medium text-zinc-500">
-                          ({vehicle.variant})
-                        </span>
-                      </span>
-                      <span
-                        className={cn(
-                          "text-xs font-bold shrink-0",
-                          (daysLeft ?? 0) < 0
-                            ? "text-red-700"
-                            : "text-amber-700",
-                        )}
-                      >
-                        {(daysLeft ?? 0) < 0
-                          ? `Expired ${Math.abs(daysLeft ?? 0)}d ago`
-                          : `Expires in ${daysLeft}d`}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Personal ORD Reminder */}
-            {myOrdReminder !== null && (
-              <div
-                className={cn(
-                  "rounded-xl p-4 sm:p-5 shadow-xs space-y-1 border",
-                  myOrdReminder === 0
-                    ? "bg-red-50 border-red-200/70"
-                    : "bg-amber-50 border-amber-200/70",
-                )}
-              >
-                <div
-                  className={cn(
-                    "flex items-center gap-2 font-bold text-xs uppercase tracking-wider",
-                    myOrdReminder === 0 ? "text-red-800" : "text-amber-800",
-                  )}
-                >
-                  <User className="size-4" />
-                  ORD Reminder
-                </div>
-                <p className="text-zinc-800 text-sm font-medium">
-                  {profile.name}, {profileUnit || "No unit"} due to ORD{" "}
-                  {myOrdReminder === 0
-                    ? "today"
-                    : `within ${ORD_WARNING_DAYS} days`}
-                  .
-                </p>
-              </div>
-            )}
-
-            {/* Admin: ORD Reminders for all users */}
-            {profile.is_admin && ordAlerts.length > 0 && (
-              <div className="bg-amber-50 border border-amber-200/70 rounded-xl p-4 sm:p-5 shadow-xs space-y-3">
-                <div className="flex items-center gap-2 text-amber-800 font-bold text-xs uppercase tracking-wider">
-                  <User className="size-4" />
-                  ORD Reminders
-                </div>
-                <div className="space-y-1.5">
-                  {ordAlerts.map(({ user, daysLeft }) => (
-                    <div
-                      key={user.id}
-                      className={cn(
-                        "flex items-center justify-between gap-2 rounded-lg border px-3 py-2",
-                        daysLeft === 0
-                          ? "bg-red-50 border-red-200"
-                          : "bg-white/70 border-amber-100",
-                      )}
-                    >
-                      <span className="text-sm font-medium text-zinc-800">
-                        {user.name}, {user.unit || user.depot || "No unit"}{" "}
-                        due to ORD{" "}
-                        {daysLeft === 0
-                          ? "today"
-                          : `within ${ORD_WARNING_DAYS} days`}
-                      </span>
-                      <span
-                        className={cn(
-                          "text-xs font-bold shrink-0",
-                          daysLeft === 0 ? "text-red-700" : "text-amber-700",
-                        )}
-                      >
-                        {daysLeft === 0
-                          ? "Remove from database"
-                          : `${daysLeft}d left`}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Quick Actions Header */}
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-zinc-500 tracking-wider uppercase">
-                Quick Actions
-              </h2>
-              <Button
-                type="button"
-                onClick={() => guardVerifiedAction(openCheckinModal)}
-                className={cn(
-                  "h-9 text-sm",
-                  isUnverified
-                    ? "bg-zinc-300 hover:bg-zinc-300 text-zinc-600 cursor-not-allowed"
-                    : "bg-red-600 hover:bg-red-700",
-                )}
-              >
-                <Plus className="size-4 mr-1.5" />
-                Log Vehicle In
-              </Button>
-            </div>
-
-            {/* Active Totals Counter Card */}
-            {isLoadingDashboard ? (
-              <div className="bg-white rounded-xl border border-zinc-200 shadow-sm p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-                <div className="space-y-2">
-                  <Skeleton className="h-12 w-20" />
-                  <Skeleton className="h-3 w-48" />
-                </div>
-                <div className="grid grid-cols-2 sm:flex sm:items-center gap-3">
-                  {parkingLevels.map((level) => (
-                    <Skeleton
-                      key={level.id}
-                      className="h-16 w-full sm:w-24 rounded-lg"
-                    />
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="bg-white rounded-xl border border-zinc-200 shadow-sm p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-                <div className="space-y-1">
-                  <div className="text-5xl font-black tracking-tight text-red-600">
-                    {vehicles.length}
-                  </div>
-                  <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider">
-                    Vehicles currently parked in {activeFacilityName}
-                  </p>
-                </div>
-
-                {/* Levels chips */}
-                <div className="grid grid-cols-2 sm:flex sm:items-center gap-3">
-                  {parkingLevels.map((level) => {
-                    const c = counts[level.id] || 0;
-                    const levelTotal =
-                      level.totalLots ?? getLevelLots(level).length;
-                    const occupancyClasses = getLotOccupancyClasses(
-                      c,
-                      levelTotal,
-                    );
-                    return (
-                      <div
-                        key={level.id}
-                        onClick={() => openParkingLevel(level.id)}
-                        className={cn(
-                          "cursor-pointer border rounded-lg p-3 w-full sm:w-24 text-center transition-colors shadow-xs",
-                          occupancyClasses.box ||
-                            "border-zinc-200 hover:bg-zinc-50 hover:border-zinc-300",
-                        )}
-                      >
-                        <div className="text-lg font-black text-zinc-800">
-                          {c}
-                        </div>
-                        <div className="text-[10px] font-bold text-zinc-400 uppercase">
-                          {level.icon || level.id}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Recently Checked In List */}
-            <div className="space-y-3">
-              <h2 className="text-sm font-bold text-zinc-500 tracking-wider uppercase">
-                Recently Checked In
-              </h2>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {isLoadingDashboard ? (
-                  Array.from({ length: 4 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="bg-white border border-zinc-200 p-4 rounded-xl flex items-center gap-4"
-                    >
-                      <Skeleton className="size-10 rounded-lg shrink-0" />
-                      <div className="space-y-2 flex-1">
-                        <Skeleton className="h-3.5 w-24" />
-                        <Skeleton className="h-3 w-32" />
-                      </div>
-                    </div>
-                  ))
-                ) : recentVehicles.length > 0 ? (
-                  recentVehicles.map((v) => (
-                    <div
-                      key={v.id}
-                      onClick={() => handleOpenVehicle(v)}
-                      className="cursor-pointer bg-white border border-zinc-200 hover:border-zinc-300 hover:shadow-xs p-4 rounded-xl flex items-center justify-between gap-4 transition-all"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="size-10 bg-zinc-100 text-zinc-600 rounded-lg flex items-center justify-center">
-                          <CarFront className="size-5" />
-                        </div>
-                        <div>
-                          <div className="font-bold text-zinc-900">
-                            {formatPlateDisplay(v.plate)}
-                          </div>
-                          <p className="text-[11px] font-semibold text-zinc-400">
-                            {vehicleUnitLabel(v)}
-                          </p>
-                          <p className="text-xs text-zinc-500 font-medium">
-                            {v.variant} &nbsp;·&nbsp; {v.level} · Lot {v.lot}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-xs text-red-600 font-semibold">
-                          {formatTimeAgo(v.check_in)}
-                        </p>
-                        <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider mt-1">
-                          {v.driver || "—"}
-                        </p>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-zinc-500 text-sm py-4 text-center col-span-full font-medium">
-                    No active vehicles checked in yet.
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
+          <HomeTab
+            activeFacilityName={activeFacilityName}
+            counts={counts}
+            isLoading={isLoadingDashboard}
+            isUnverified={isUnverified}
+            parkingLevels={parkingLevels}
+            recentVehicles={recentVehicles}
+            safetyDate={safetyDate}
+            safetyMessage={safetyMessage}
+            vehicleCount={vehicles.length}
+            formatTimeAgo={formatTimeAgo}
+            onLogVehicleIn={() => guardVerifiedAction(openCheckinModal)}
+            onOpenParkingLevel={openParkingLevel}
+            onOpenVehicle={handleOpenVehicle}
+            vehicleUnitLabel={vehicleUnitLabel}
+          />
         )}
 
         {/* TAB 2: SEARCH VEHICLES */}
