@@ -109,6 +109,86 @@ export type AdminUserRecord = {
   phone: string | null;
   unit: string | null;
   depot?: string | null;
+  _auditLogged?: boolean;
+  _auditError?: string | null;
+};
+
+export type DashboardUserProfile = AdminUserRecord & {
+  depot?: string | null;
+};
+
+export type DashboardVehicle = {
+  id: string;
+  plate?: string | null;
+  facility_code?: string | null;
+  vehicle_unit?: string | null;
+  variant?: string | null;
+  driver_id?: string | null;
+  driver?: string | null;
+  driver_phone?: string | null;
+  driver_unit?: string | null;
+  driver_depot?: string | null;
+  level?: string | null;
+  lot?: string | null;
+  odometer?: number | string | null;
+  engine_hours?: number | string | null;
+  starter_v?: number | string | null;
+  starter_pct?: number | null;
+  aux_v?: number | string | null;
+  aux_pct?: number | null;
+  fuel_l?: number | string | null;
+  fuel_pct?: number | null;
+  fire_ext_expiry?: string | null;
+  notes?: string | null;
+  check_in?: string | null;
+  created_at?: string | null;
+};
+
+export type DriveoutRecord = DashboardVehicle & {
+  vehicle_id?: string | null;
+  check_out?: string | null;
+};
+
+type TurretEscCheckValue = boolean | null | undefined;
+
+export type TurretEscLogRecord = {
+  id?: string;
+  vehicle_id?: string | null;
+  plate?: string | null;
+  created_at?: string | null;
+  check_in?: string | null;
+  check_out?: string | null;
+  user_name?: string | null;
+  scu?: number | string | null;
+  dcu?: number | string | null;
+  fault_list?: string | null;
+  notes?: string | null;
+  ics?: TurretEscCheckValue;
+  gsu?: TurretEscCheckValue;
+  wim?: TurretEscCheckValue;
+  trav_actuator?: TurretEscCheckValue;
+  elev_actuator?: TurretEscCheckValue;
+  gcu?: TurretEscCheckValue;
+  mdcu?: TurretEscCheckValue;
+  psu?: TurretEscCheckValue;
+  gun_gyro?: TurretEscCheckValue;
+  conv_ass?: TurretEscCheckValue;
+  boost_box_ass?: TurretEscCheckValue;
+  slip_ring?: TurretEscCheckValue;
+  turr_estop?: TurretEscCheckValue;
+  upplink_echute?: TurretEscCheckValue;
+  upplink_splate?: TurretEscCheckValue;
+  lowlink_splate?: TurretEscCheckValue;
+  lowlink_echute?: TurretEscCheckValue;
+  uppflex_chute?: TurretEscCheckValue;
+  lowflex_chute?: TurretEscCheckValue;
+  lws_comp?: TurretEscCheckValue;
+  [key: string]: string | number | boolean | null | undefined;
+};
+
+export type VehicleUnitOption = {
+  id: string;
+  name: string;
 };
 
 type DashboardRecord = Record<string, unknown>;
