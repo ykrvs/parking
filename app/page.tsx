@@ -1,6 +1,6 @@
 "use client";
 
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/set-state-in-effect, react-hooks/purity, react-hooks/exhaustive-deps, react/no-unescaped-entities */
+/* eslint-disable @typescript-eslint/no-unused-vars, react-hooks/set-state-in-effect, react-hooks/purity, react-hooks/exhaustive-deps, react/no-unescaped-entities */
 
 import {
   ArrowLeft,
@@ -83,30 +83,36 @@ import {
   vehicleMatchesLevel,
   type AdminUserRecord,
   type AuditLogEntry,
+  type DashboardUserProfile,
+  type DashboardVehicle,
+  type DriveoutRecord,
   type ParkingLevelConfig,
   type SafetyMessageRecord,
+  type TurretEscLogRecord,
+  type VehicleUnitOption,
 } from "@/lib/dashboard/dashboard-data";
 import { cn } from "@/lib/utils";
 
 export default function Home() {
   const auth = useAuth();
   const router = useRouter();
+  const isTurretEscEnabled = Boolean(false);
 
   // App States
   const [activeTab, setActiveTab] = useState<string>("home");
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [isCheckingProfile, setIsCheckingProfile] = useState<boolean>(false);
   const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<DashboardUserProfile | null>(null);
   const [isVerificationPending, setIsVerificationPending] =
-  useState<boolean>(false);
+    useState<boolean>(false);
   // The depot whose data is currently shown. Regular users are always
   // locked to their own depot; admins can switch this via the header
   // dropdown to view/manage a different depot's operational data.
   const [activeFacility, setActiveFacility] = useState<string>("");
-  const [facilities, setFacilities] = useState<
-    { code: string; name: string }[]
-  >([]);
+  const [facilities, setFacilities] = useState<{ code: string; name: string }[]>(
+    [],
+  );
   const [parkingLevels, setParkingLevels] = useState<ParkingLevelConfig[]>(
     DEFAULT_PARKING_LEVELS,
   );
@@ -132,23 +138,24 @@ export default function Home() {
   const [isSavingAdminUsers, setIsSavingAdminUsers] = useState(false);
 
   // Dashboard vehicle data state
-  const [vehicles, setVehicles] = useState<any[]>([]);
-  const [recentVehicles, setRecentVehicles] = useState<any[]>([]);
-  const [driveoutRecords, setDriveoutRecords] = useState<any[]>([]);
-  const [vehicleUnits, setVehicleUnits] = useState<
-    { id: string; name: string }[]
-  >([]);
-  const [selectedVehicle, setSelectedVehicle] = useState<any>(null);
-  const [selectedDriveout, setSelectedDriveout] = useState<any>(null);
+  const [vehicles, setVehicles] = useState<DashboardVehicle[]>([]);
+  const [recentVehicles, setRecentVehicles] = useState<DashboardVehicle[]>([]);
+  const [driveoutRecords, setDriveoutRecords] = useState<DriveoutRecord[]>([]);
+  const [vehicleUnits, setVehicleUnits] = useState<VehicleUnitOption[]>([]);
+  const [selectedVehicle, setSelectedVehicle] =
+    useState<DashboardVehicle | null>(null);
+  const [selectedDriveout, setSelectedDriveout] =
+    useState<DriveoutRecord | null>(null);
 
   // Checklist Logs and history records
-  const [latestEsc, setLatestEsc] = useState<any>(null);
-  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+  const [latestEsc, setLatestEsc] = useState<TurretEscLogRecord | null>(null);
+  const [historyRecords, setHistoryRecords] = useState<DriveoutRecord[]>([]);
 
   // Interactive parking states
   const [selectedLevel, setSelectedLevel] = useState<string>("");
   const [selectedLot, setSelectedLot] = useState<string | null>(null);
-  const [selectedLotVehicle, setSelectedLotVehicle] = useState<any>(null);
+  const [selectedLotVehicle, setSelectedLotVehicle] =
+    useState<DashboardVehicle | null>(null);
 
   // Forms and Modals state
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -736,7 +743,7 @@ if (isVerificationPending) {
   });
 
   // Fire Extinguisher Status calculation
-  const getFireExtDaysLeft = (dateStr: string | null) => {
+  const getFireExtDaysLeft = (dateStr?: string | null) => {
     if (!dateStr) return null;
     return Math.floor(
       (new Date(dateStr + "T00:00:00").getTime() -
@@ -745,7 +752,7 @@ if (isVerificationPending) {
     );
   };
 
-  const getFireExtStatus = (dateStr: string | null) => {
+  const getFireExtStatus = (dateStr?: string | null) => {
     if (!dateStr)
       return { label: "Unknown", color: "text-zinc-500", bg: "bg-zinc-100/50" };
     const days = getFireExtDaysLeft(dateStr) ?? 0;
@@ -853,7 +860,10 @@ if (isVerificationPending) {
     }
     action();
   };
-  const isOriginalVehicleDriver = (vehicle: any) => {
+  const getErrorMessage = (error: unknown) =>
+    error instanceof Error ? error.message : "Unknown error";
+
+  const isOriginalVehicleDriver = (vehicle: DashboardVehicle) => {
     if (!profile || !vehicle) return false;
     if (vehicle.driver_id) return vehicle.driver_id === profile.id;
     return (
@@ -874,16 +884,16 @@ if (isVerificationPending) {
   );
 
   // Handle open vehicle details
-  const handleOpenVehicle = async (vehicle: any) => {
+  const handleOpenVehicle = async (vehicle: DashboardVehicle) => {
     setSelectedVehicle(vehicle);
     setSelectedDriveout(null);
     setLatestEsc(null);
     setHistoryRecords([]);
 
     // Turret ESC feature temporarily disabled. Flip this condition back to
-    // `profile.is_technician` to restore fetching the latest Turret ESC
+    // `profile?.is_technician` to restore fetching the latest Turret ESC
     // checklist when a vehicle is opened.
-    if (false && profile.is_technician) {
+    if (isTurretEscEnabled && profile?.is_technician) {
       try {
         const res = await fetch(`/api/turret-esc?vehicle_id=${vehicle.id}`);
         if (res.ok) {
@@ -912,7 +922,7 @@ if (isVerificationPending) {
   };
 
   // Open checked out vehicle details
-  const handleOpenDriveoutDetail = (record: any) => {
+  const handleOpenDriveoutDetail = (record: DriveoutRecord) => {
     setSelectedDriveout(record);
     setSelectedVehicle(null);
     setActiveTab("driveout-detail");
@@ -927,7 +937,7 @@ if (isVerificationPending) {
           normalizeParkingValue(parkingLevel.id) ===
           normalizeParkingValue(level),
       );
-    const map: Record<string, any> = {};
+    const map: Record<string, DashboardVehicle> = {};
     vehicles
       .filter((v) => vehicleMatchesLevel(v, levelConfig))
       .forEach((v) => {
@@ -953,10 +963,11 @@ if (isVerificationPending) {
     ]),
   );
   const updateOccupiedLots = selectedVehicle
-    ? occupiedLotsMap(selectedVehicle.level)
+    ? occupiedLotsMap(selectedVehicle.level ?? "")
     : {};
 
   const openCheckinModal = () => {
+    if (!profile) return;
     setCiDriver(profile.name || "");
     setCiDriverPhone(profile.phone || "");
     setCiDriverUnit(profileUnit);
@@ -966,9 +977,12 @@ if (isVerificationPending) {
     setIsCheckingIn(true);
   };
 
-  const handleLotClick = (lotId: string, occupiedVeh: any) => {
+  const handleLotClick = (
+    lotId: string,
+    occupiedVeh?: DashboardVehicle | null,
+  ) => {
     setSelectedLot(lotId);
-    setSelectedLotVehicle(occupiedVeh);
+    setSelectedLotVehicle(occupiedVeh ?? null);
   };
 
   // Submit check-in handler
@@ -1046,15 +1060,15 @@ if (isVerificationPending) {
       setCiNotes("");
 
       fetchDashboardData();
-    } catch (err: any) {
-      setFormError(err.message || "Failed to submit check-in");
+    } catch (err: unknown) {
+      setFormError(getErrorMessage(err) || "Failed to submit check-in");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   // Open Update Modal and populate states
-  const handleOpenUpdate = (vehicleOverride?: any) => {
+  const handleOpenUpdate = (vehicleOverride?: DashboardVehicle) => {
     const v = vehicleOverride || selectedVehicle;
     if (!v) return;
     setSelectedVehicle(v);
@@ -1156,8 +1170,8 @@ if (isVerificationPending) {
       }
 
       fetchDashboardData();
-    } catch (err: any) {
-      setFormError(err.message || "Failed to update record");
+    } catch (err: unknown) {
+      setFormError(getErrorMessage(err) || "Failed to update record");
     } finally {
       setIsSubmitting(false);
     }
@@ -1209,13 +1223,13 @@ if (isVerificationPending) {
         throw new Error(d.error || "Drive-out checkout failed");
       }
 
-      triggerToast(`✓ ${formatPlateDisplay(selectedVehicle.plate)} driven out`);
+      triggerToast(`${formatPlateDisplay(selectedVehicle.plate)} driven out`);
       setIsConfirmingDriveout(false);
       setSelectedVehicle(null);
       setActiveTab("search");
       fetchDashboardData();
-    } catch (err: any) {
-      triggerToast(`⚠ Check-out failed: ${err.message}`);
+    } catch (err: unknown) {
+      triggerToast(`Check-out failed: ${getErrorMessage(err)}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -1277,15 +1291,15 @@ if (isVerificationPending) {
       setEscVehicleId("");
 
       fetchDashboardData();
-    } catch (err: any) {
-      triggerToast(`⚠ Failed to submit: ${err.message}`);
+    } catch (err: unknown) {
+      triggerToast(`Failed to submit: ${getErrorMessage(err)}`);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleEditTurretEsc = () => {
-    if (!selectedVehicle || !profile.is_technician) return;
+    if (!selectedVehicle || !profile?.is_technician) return;
 
     setEscVehicleId(String(selectedVehicle.id));
     setEscChecks(
@@ -1299,8 +1313,8 @@ if (isVerificationPending) {
     );
     setEscScu(latestEsc?.scu != null ? String(latestEsc.scu) : "");
     setEscDcu(latestEsc?.dcu != null ? String(latestEsc.dcu) : "");
-    setEscFaultList(latestEsc?.fault_list || "");
-    setEscNotes(latestEsc?.notes || "");
+    setEscFaultList(latestEsc?.fault_list ?? "");
+    setEscNotes(latestEsc?.notes ?? "");
     setActiveTab("turret-esc");
   };
 
@@ -1326,16 +1340,16 @@ if (isVerificationPending) {
       if (!res.ok) throw new Error(d.error || "Save profile failed");
 
       setProfile(d.profile);
-      // If a non-admin just switched their own depot, follow them there —
+      // If a non-admin just switched their own depot, follow them there -
       // otherwise they'd keep viewing the old depot's data until reload.
       // (Admins keep whatever depot they've toggled to in the header.)
       if (!profile?.is_admin && d.profile?.facility_code) {
         setActiveFacility(d.profile.facility_code);
       }
       setIsEditingProfile(false);
-      triggerToast("✓ Profile saved");
-    } catch (err: any) {
-      triggerToast(`⚠ Profile update failed: ${err.message}`);
+      triggerToast("Profile saved");
+    } catch (err: unknown) {
+      triggerToast(`Profile update failed: ${getErrorMessage(err)}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -1378,15 +1392,15 @@ if (isVerificationPending) {
         ),
       );
       const auditFailure = updatedUsers.find(
-        (u: any) => u._auditLogged === false,
-      ) as any;
+        (user) => user._auditLogged === false,
+      );
       triggerToast(
         auditFailure
           ? `Admin changes saved (audit log failed: ${auditFailure._auditError || "unknown error"})`
           : "Admin changes saved",
       );
-    } catch (err: any) {
-      triggerToast(`Admin update failed: ${err.message}`);
+    } catch (err: unknown) {
+      triggerToast(`Admin update failed: ${getErrorMessage(err)}`);
     } finally {
       setIsSavingAdminUsers(false);
     }
@@ -1422,14 +1436,14 @@ if (isVerificationPending) {
             ? "User verified"
             : "User marked unverified",
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Roll back on failure.
       setAdminUsers((users) =>
         users.map((user) =>
           user.id === userId ? { ...user, is_verified: !isVerified } : user,
         ),
       );
-      triggerToast(`Verification update failed: ${err.message}`);
+      triggerToast(`Verification update failed: ${getErrorMessage(err)}`);
     }
   };
 
@@ -1460,8 +1474,8 @@ if (isVerificationPending) {
           ? `Safety message scheduled (audit log failed: ${d.auditError || "unknown error"})`
           : "Safety message scheduled",
       );
-    } catch (err: any) {
-      triggerToast(`Safety message failed: ${err.message}`);
+    } catch (err: unknown) {
+      triggerToast(`Safety message failed: ${getErrorMessage(err)}`);
     }
   };
 
@@ -1499,8 +1513,8 @@ if (isVerificationPending) {
           ? `Safety message rescheduled (audit log failed: ${d.auditError || "unknown error"})`
           : "Safety message rescheduled",
       );
-    } catch (err: any) {
-      triggerToast(`Reschedule failed: ${err.message}`);
+    } catch (err: unknown) {
+      triggerToast(`Reschedule failed: ${getErrorMessage(err)}`);
     }
   };
 
@@ -1524,8 +1538,8 @@ if (isVerificationPending) {
           ? `Safety message deleted (audit log failed: ${d.auditError || "unknown error"})`
           : "Safety message deleted",
       );
-    } catch (err: any) {
-      triggerToast(`Delete failed: ${err.message}`);
+    } catch (err: unknown) {
+      triggerToast(`Delete failed: ${getErrorMessage(err)}`);
     }
   };
 
@@ -1549,7 +1563,7 @@ if (isVerificationPending) {
   };
 
   // Helpers
-  const formatTimeAgo = (iso: string) => {
+  const formatTimeAgo = (iso?: string | null) => {
     if (!iso) return "—";
     const diff = Date.now() - new Date(iso).getTime();
     const mins = Math.floor(diff / 60000);
@@ -1560,7 +1574,7 @@ if (isVerificationPending) {
     return `${Math.floor(hrs / 24)}d ago`;
   };
 
-  const formatLocalTime = (iso: string) => {
+  const formatLocalTime = (iso?: string | null) => {
     if (!iso) return "—";
     return new Date(iso).toLocaleString("en-SG", {
       day: "numeric",
@@ -1986,10 +2000,12 @@ if (isVerificationPending) {
           />
         )}
 
-        {/* TAB 4: TURRET CHECKLIST � temporarily disabled.
-            Change `false &&` back to `activeTab === "turret-esc" &&` to
+        {/* TAB 4: TURRET CHECKLIST - temporarily disabled.
+            Change `isTurretEscEnabled` to true and restore the tab trigger to
             restore this tab. */}
-        {false && activeTab === "turret-esc" && profile.is_technician && (
+        {isTurretEscEnabled &&
+          activeTab === "turret-esc" &&
+          profile?.is_technician && (
           <form
             onSubmit={handleChecklistSubmit}
             className="bg-white rounded-xl border border-zinc-200 p-6 shadow-sm space-y-6"
@@ -2950,9 +2966,9 @@ if (isVerificationPending) {
                 <div
                   className={cn(
                     "text-2xl font-black shrink-0",
-                    selectedVehicle.fuel_pct > 50
+                    (selectedVehicle.fuel_pct ?? 0) > 50
                       ? "text-emerald-600"
-                      : selectedVehicle.fuel_pct > 20
+                      : (selectedVehicle.fuel_pct ?? 0) > 20
                         ? "text-amber-500"
                         : "text-red-600",
                   )}
@@ -2964,9 +2980,9 @@ if (isVerificationPending) {
                     <div
                       className={cn(
                         "h-full rounded-full transition-all duration-300",
-                        selectedVehicle.fuel_pct > 50
+                        (selectedVehicle.fuel_pct ?? 0) > 50
                           ? "bg-emerald-500"
-                          : selectedVehicle.fuel_pct > 20
+                          : (selectedVehicle.fuel_pct ?? 0) > 20
                             ? "bg-amber-500"
                             : "bg-red-500",
                       )}
@@ -3012,9 +3028,9 @@ if (isVerificationPending) {
             })()}
 
             {/* Latest Turret ESC Section — temporarily disabled.
-                Change `false &&` back to `profile.is_technician &&` to
+                Change `isTurretEscEnabled` to true to
                 restore this section. */}
-            {false && profile.is_technician && (
+            {isTurretEscEnabled && profile?.is_technician && (
               <div className="space-y-2">
                 <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
                   Latest Turret ESC Checklist
@@ -3127,10 +3143,9 @@ if (isVerificationPending) {
                 Update Vehicle Record
               </Button>
               {/* Edit Turret ESC button — temporarily disabled along with
-                  the rest of the Turret ESC feature (see other `false &&`
-                  guards for this feature throughout the file). Change
-                  `false &&` back to `profile.is_technician &&` to restore. */}
-              {false && profile.is_technician && (
+                  the rest of the Turret ESC feature. Change
+                  `isTurretEscEnabled` to true to restore. */}
+              {isTurretEscEnabled && profile?.is_technician && (
                 <Button
                   type="button"
                   variant="outline"
@@ -3425,9 +3440,9 @@ if (isVerificationPending) {
                 <div
                   className={cn(
                     "text-2xl font-black shrink-0",
-                    selectedDriveout.fuel_pct > 50
+                    (selectedDriveout.fuel_pct ?? 0) > 50
                       ? "text-emerald-600"
-                      : selectedDriveout.fuel_pct > 20
+                      : (selectedDriveout.fuel_pct ?? 0) > 20
                         ? "text-amber-500"
                         : "text-red-600",
                   )}
@@ -3439,9 +3454,9 @@ if (isVerificationPending) {
                     <div
                       className={cn(
                         "h-full rounded-full",
-                        selectedDriveout.fuel_pct > 50
+                        (selectedDriveout.fuel_pct ?? 0) > 50
                           ? "bg-emerald-500"
-                          : selectedDriveout.fuel_pct > 20
+                          : (selectedDriveout.fuel_pct ?? 0) > 20
                             ? "bg-amber-500"
                             : "bg-red-500",
                       )}
@@ -3634,7 +3649,7 @@ if (isVerificationPending) {
                     </label>
                     <input
                       type="text"
-                      value={selectedVehicle.level}
+                      value={selectedVehicle.level ?? ""}
                       disabled
                       className="h-10 w-full rounded-md border border-zinc-200 bg-zinc-50 px-3 text-sm outline-none cursor-not-allowed"
                     />

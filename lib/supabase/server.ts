@@ -1,7 +1,5 @@
 import "server-only";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import { createClient } from "@supabase/supabase-js";
 
 const DEFAULT_TABLE = "users";
@@ -188,8 +186,10 @@ function getUsersTable() {
   return process.env.SUPABASE_USERS_TABLE || DEFAULT_TABLE;
 }
 
-function toLegacyUnitPayload(payload: Record<string, any>) {
-  const legacyPayload: Record<string, any> = { ...payload };
+type SupabasePayload = Record<string, unknown>;
+
+function toLegacyUnitPayload(payload: SupabasePayload) {
+  const legacyPayload: SupabasePayload = { ...payload };
 
   if (legacyPayload.unit !== undefined) {
     legacyPayload.depot = legacyPayload.unit;
@@ -204,13 +204,13 @@ function toLegacyUnitPayload(payload: Record<string, any>) {
   return legacyPayload;
 }
 
-function withoutLegacyPlate(payload: Record<string, any>) {
-  const nextPayload: Record<string, any> = { ...payload };
+function withoutLegacyPlate(payload: SupabasePayload) {
+  const nextPayload: SupabasePayload = { ...payload };
   delete nextPayload.plate;
   return nextPayload;
 }
 
-function withVehiclePlate(record: Record<string, any>) {
+function withVehiclePlate<T extends SupabasePayload>(record: T) {
   // History rows have their own primary key (`id`) separate from the
   // vehicle they refer to (`vehicle_id` holds the actual plate). Vehicle
   // rows don't have a `vehicle_id` column at all — their `id` IS the plate.
@@ -323,7 +323,7 @@ export async function updateUserRegistration(
   if (!supabase) return null;
 
   const table = getUsersTable();
-  const upsertPayload: any = {
+  const upsertPayload: SupabasePayload = {
     id,
     name: name || "Unknown",
     rank,
@@ -334,7 +334,7 @@ export async function updateUserRegistration(
   if (unit !== undefined) upsertPayload.unit = unit;
   if (facilityCode !== undefined) upsertPayload.facility_code = facilityCode;
 
-  const runUpsert = async (payload: any, selectFields: string) =>
+  const runUpsert = async (payload: SupabasePayload, selectFields: string) =>
     supabase
       .from(table)
       .upsert(payload, {
@@ -802,7 +802,7 @@ export async function getVehicles(facilityCode: string) {
   return (data || []).map(withVehiclePlate);
 }
 
-export async function checkinVehicle(vehicleData: any) {
+export async function checkinVehicle(vehicleData: SupabasePayload) {
   const supabase = getSupabaseAdmin();
   if (!supabase) return null;
   const vehiclePayload = withoutLegacyPlate(vehicleData);
@@ -826,7 +826,7 @@ export async function checkinVehicle(vehicleData: any) {
   return data ? withVehiclePlate(data) : data;
 }
 
-export async function updateVehicle(id: string, updateData: any) {
+export async function updateVehicle(id: string, updateData: SupabasePayload) {
   const supabase = getSupabaseAdmin();
   if (!supabase) return null;
   let { data, error } = await supabase
@@ -894,7 +894,7 @@ export async function getHistory(
   return (data || []).map(withVehiclePlate);
 }
 
-export async function insertHistory(historyData: any) {
+export async function insertHistory(historyData: SupabasePayload) {
   const supabase = getSupabaseAdmin();
   if (!supabase) return null;
   const historyPayload = withoutLegacyPlate(historyData);
@@ -932,7 +932,7 @@ export async function getLatestTurretEscLog(vehicleId: string) {
   return data ? withVehiclePlate(data) : data;
 }
 
-export async function insertTurretEscLog(logData: any) {
+export async function insertTurretEscLog(logData: SupabasePayload) {
   const supabase = getSupabaseAdmin();
   if (!supabase) return null;
   const logPayload = withoutLegacyPlate(logData);
