@@ -1,7 +1,8 @@
 "use client";
 
 import { format } from "date-fns";
-import { CarFront, Edit2, Plus } from "lucide-react";
+import { CarFront, Edit2, Plus, Search } from "lucide-react";
+import { useMemo, useState } from "react";
 
 import { PercentDot, Skeleton } from "@/components/dashboard/status-indicators";
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,26 @@ export function BosReadingsTab({
   onOpenVehicle,
   onUpdateVehicle,
 }: BosReadingsTabProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const filteredVehicles = useMemo(() => {
+    if (!normalizedSearchQuery) return vehicles;
+
+    return vehicles.filter((vehicle) =>
+      [
+        vehicle.plate,
+        vehicle.vehicle_unit,
+        vehicle.variant,
+        vehicle.level,
+        vehicle.lot,
+      ].some((value) =>
+        String(value ?? "")
+          .toLowerCase()
+          .includes(normalizedSearchQuery),
+      ),
+    );
+  }, [normalizedSearchQuery, vehicles]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -83,6 +104,18 @@ export function BosReadingsTab({
         </Button>
       </div>
 
+      <div className="relative">
+        <Search className="absolute left-3 top-3 size-4 text-zinc-400" />
+        <input
+          type="search"
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+          placeholder="Search plate, vehicle unit, variant, level or lot..."
+          aria-label="Search BOS vehicles"
+          className="h-10 w-full rounded-lg border border-zinc-200 bg-white pl-9 pr-4 text-sm shadow-xs outline-none transition focus:border-red-600 focus:ring-3 focus:ring-red-600/15"
+        />
+      </div>
+
       <div className="space-y-2">
         {isLoading ? (
           Array.from({ length: 5 }).map((_, i) => (
@@ -93,8 +126,8 @@ export function BosReadingsTab({
               <Skeleton className="h-16 w-full rounded-lg" />
             </div>
           ))
-        ) : vehicles.length > 0 ? (
-          vehicles.map((vehicle) => {
+        ) : filteredVehicles.length > 0 ? (
+          filteredVehicles.map((vehicle) => {
             const fireStatus = getFireExtStatus(
               vehicle.fire_ext_expiry ?? null,
             );
@@ -230,7 +263,9 @@ export function BosReadingsTab({
           })
         ) : (
           <p className="rounded-xl border border-zinc-200 bg-white py-8 text-center text-sm font-medium text-zinc-500">
-            No active vehicles checked in yet.
+            {normalizedSearchQuery
+              ? "No BOS vehicles found matching search."
+              : "No active vehicles checked in yet."}
           </p>
         )}
       </div>
