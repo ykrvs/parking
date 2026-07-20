@@ -3,43 +3,37 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, react-hooks/set-state-in-effect, react-hooks/purity, react-hooks/exhaustive-deps, react/no-unescaped-entities */
 
 import {
-  ArrowLeft,
   Calendar,
-  CarFront,
   Check,
   ChevronDown,
   Clock,
   Edit2,
   FileText,
-  Flame,
-  History,
   IdCard,
   LogOut,
-  Phone,
   Plus,
   Search,
-  ShieldCheck,
   Trash2,
   User,
-  Wrench,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 
+import { ActiveVehicleDetail } from "@/components/dashboard/active-vehicle-detail";
 import { AppShellNavigation } from "@/components/dashboard/app-shell-navigation";
 import { BosReadingsTab } from "@/components/dashboard/bos-readings-tab";
+import { CheckedOutVehicleDetail } from "@/components/dashboard/checked-out-vehicle-detail";
 import { CheckInDialog } from "@/components/dashboard/check-in-dialog";
 import { FireExpiryPicker } from "@/components/dashboard/fire-expiry-picker";
+import { HomeTab } from "@/components/dashboard/home-tab";
 import { LoginGate } from "@/components/dashboard/login-gate";
 import { ParkingTab } from "@/components/dashboard/parking-tab";
+import { ReminderTray } from "@/components/dashboard/reminder-tray";
 import { RequiredMark } from "@/components/dashboard/required-mark";
 import { SearchVehiclesTab } from "@/components/dashboard/search-vehicles-tab";
-import {
-  PercentDot,
-  Skeleton,
-  UnverifiedDot,
-} from "@/components/dashboard/status-indicators";
+import { VehicleHistoryTab } from "@/components/dashboard/vehicle-history-tab";
+import { UnverifiedDot } from "@/components/dashboard/status-indicators";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -74,7 +68,6 @@ import {
   exportDriveoutHistoryPDF,
   formatPlateDisplay,
   getLevelLots,
-  getLotOccupancyClasses,
   localInputToUtcIso,
   normalizeParkingValue,
   parseDateInput,
@@ -826,6 +819,7 @@ if (isVerificationPending) {
     myOrdDaysLeft <= ORD_WARNING_DAYS
       ? myOrdDaysLeft
       : null;
+  const visibleOrdAlerts = profile.is_admin ? ordAlerts : [];
 
   // Calculate Zone metrics
   const counts = parkingLevels.reduce<Record<string, number>>((acc, level) => {
@@ -1661,292 +1655,37 @@ if (isVerificationPending) {
         setIsSidebarOpen={setIsSidebarOpen}
       />
 
+      <ReminderTray
+        fireExtAlerts={fireExtAlerts}
+        myOrdReminder={myOrdReminder}
+        ordAlerts={visibleOrdAlerts}
+        ordWarningDays={ORD_WARNING_DAYS}
+        profileName={profile.name}
+        profileUnit={profileUnit}
+        onOpenVehicle={handleOpenVehicle}
+        vehicleUnitLabel={vehicleUnitLabel}
+      />
+
       {/* Main Tab Contents */}
       <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 pb-20">
         {/* TAB 1: HOME */}
         {activeTab === "home" && (
-          <div className="space-y-6">
-            {/* Unverified account notice */}
-            {isUnverified && (
-              <div className="bg-zinc-100 border border-zinc-200 rounded-xl p-4 sm:p-5 shadow-xs space-y-1">
-                <div className="flex items-center gap-2 text-zinc-700 font-bold text-xs uppercase tracking-wider">
-                  <User className="size-4" />
-                  Pending Verification
-                </div>
-                <p className="text-zinc-600 text-sm font-medium">
-                  Your account hasn't been verified by an admin yet. You can
-                  look around, but you won't be able to check vehicles
-                  in/out or edit records until you're verified.
-                </p>
-              </div>
-            )}
-
-            {/* Safety card of the day */}
-            <div className="bg-emerald-50 border border-emerald-200/50 rounded-xl p-4 sm:p-5 shadow-xs space-y-2">
-              <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs uppercase tracking-wider">
-                <ShieldCheck className="size-4" />
-                Safety Message of the Day
-              </div>
-              <p className="text-zinc-800 text-sm sm:text-base font-medium leading-relaxed italic">
-                "{safetyMessage}"
-              </p>
-              <p className="text-zinc-500 text-[11px] font-medium">
-                {safetyDate}
-              </p>
-            </div>
-
-            {/* Fire Extinguisher Expiry Alerts */}
-            {fireExtAlerts.length > 0 && (
-              <div className="bg-red-50 border border-red-200/70 rounded-xl p-4 sm:p-5 shadow-xs space-y-3">
-                <div className="flex items-center gap-2 text-red-800 font-bold text-xs uppercase tracking-wider">
-                  <Flame className="size-4" />
-                  Fire Extinguisher{fireExtAlerts.length > 1 ? "s" : ""} Needing
-                  Attention
-                </div>
-                <div className="space-y-1.5">
-                  {fireExtAlerts.map(({ vehicle, daysLeft }) => (
-                    <div
-                      key={vehicle.id}
-                      onClick={() => handleOpenVehicle(vehicle)}
-                      className="flex items-center justify-between gap-2 rounded-lg bg-white/70 border border-red-100 px-3 py-2 cursor-pointer hover:bg-white transition"
-                    >
-                      <span className="text-sm font-bold text-zinc-800">
-                        {formatPlateDisplay(vehicle.plate)}
-                        <span className="ml-2 text-xs font-semibold text-zinc-400">
-                          {vehicleUnitLabel(vehicle)}
-                        </span>
-                        <span className="ml-2 font-medium text-zinc-500">
-                          ({vehicle.variant})
-                        </span>
-                      </span>
-                      <span
-                        className={cn(
-                          "text-xs font-bold shrink-0",
-                          (daysLeft ?? 0) < 0
-                            ? "text-red-700"
-                            : "text-amber-700",
-                        )}
-                      >
-                        {(daysLeft ?? 0) < 0
-                          ? `Expired ${Math.abs(daysLeft ?? 0)}d ago`
-                          : `Expires in ${daysLeft}d`}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Personal ORD Reminder */}
-            {myOrdReminder !== null && (
-              <div
-                className={cn(
-                  "rounded-xl p-4 sm:p-5 shadow-xs space-y-1 border",
-                  myOrdReminder === 0
-                    ? "bg-red-50 border-red-200/70"
-                    : "bg-amber-50 border-amber-200/70",
-                )}
-              >
-                <div
-                  className={cn(
-                    "flex items-center gap-2 font-bold text-xs uppercase tracking-wider",
-                    myOrdReminder === 0 ? "text-red-800" : "text-amber-800",
-                  )}
-                >
-                  <User className="size-4" />
-                  ORD Reminder
-                </div>
-                <p className="text-zinc-800 text-sm font-medium">
-                  {profile.name}, {profileUnit || "No unit"} due to ORD{" "}
-                  {myOrdReminder === 0
-                    ? "today"
-                    : `within ${ORD_WARNING_DAYS} days`}
-                  .
-                </p>
-              </div>
-            )}
-
-            {/* Admin: ORD Reminders for all users */}
-            {profile.is_admin && ordAlerts.length > 0 && (
-              <div className="bg-amber-50 border border-amber-200/70 rounded-xl p-4 sm:p-5 shadow-xs space-y-3">
-                <div className="flex items-center gap-2 text-amber-800 font-bold text-xs uppercase tracking-wider">
-                  <User className="size-4" />
-                  ORD Reminders
-                </div>
-                <div className="space-y-1.5">
-                  {ordAlerts.map(({ user, daysLeft }) => (
-                    <div
-                      key={user.id}
-                      className={cn(
-                        "flex items-center justify-between gap-2 rounded-lg border px-3 py-2",
-                        daysLeft === 0
-                          ? "bg-red-50 border-red-200"
-                          : "bg-white/70 border-amber-100",
-                      )}
-                    >
-                      <span className="text-sm font-medium text-zinc-800">
-                        {user.name}, {user.unit || user.depot || "No unit"}{" "}
-                        due to ORD{" "}
-                        {daysLeft === 0
-                          ? "today"
-                          : `within ${ORD_WARNING_DAYS} days`}
-                      </span>
-                      <span
-                        className={cn(
-                          "text-xs font-bold shrink-0",
-                          daysLeft === 0 ? "text-red-700" : "text-amber-700",
-                        )}
-                      >
-                        {daysLeft === 0
-                          ? "Remove from database"
-                          : `${daysLeft}d left`}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Quick Actions Header */}
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-zinc-500 tracking-wider uppercase">
-                Quick Actions
-              </h2>
-              <Button
-                type="button"
-                onClick={() => guardVerifiedAction(openCheckinModal)}
-                className={cn(
-                  "h-9 text-sm",
-                  isUnverified
-                    ? "bg-zinc-300 hover:bg-zinc-300 text-zinc-600 cursor-not-allowed"
-                    : "bg-red-600 hover:bg-red-700",
-                )}
-              >
-                <Plus className="size-4 mr-1.5" />
-                Log Vehicle In
-              </Button>
-            </div>
-
-            {/* Active Totals Counter Card */}
-            {isLoadingDashboard ? (
-              <div className="bg-white rounded-xl border border-zinc-200 shadow-sm p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-                <div className="space-y-2">
-                  <Skeleton className="h-12 w-20" />
-                  <Skeleton className="h-3 w-48" />
-                </div>
-                <div className="grid grid-cols-2 sm:flex sm:items-center gap-3">
-                  {parkingLevels.map((level) => (
-                    <Skeleton
-                      key={level.id}
-                      className="h-16 w-full sm:w-24 rounded-lg"
-                    />
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="bg-white rounded-xl border border-zinc-200 shadow-sm p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-                <div className="space-y-1">
-                  <div className="text-5xl font-black tracking-tight text-red-600">
-                    {vehicles.length}
-                  </div>
-                  <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider">
-                    Vehicles currently parked in {activeFacilityName}
-                  </p>
-                </div>
-
-                {/* Levels chips */}
-                <div className="grid grid-cols-2 sm:flex sm:items-center gap-3">
-                  {parkingLevels.map((level) => {
-                    const c = counts[level.id] || 0;
-                    const levelTotal =
-                      level.totalLots ?? getLevelLots(level).length;
-                    const occupancyClasses = getLotOccupancyClasses(
-                      c,
-                      levelTotal,
-                    );
-                    return (
-                      <div
-                        key={level.id}
-                        onClick={() => openParkingLevel(level.id)}
-                        className={cn(
-                          "cursor-pointer border rounded-lg p-3 w-full sm:w-24 text-center transition-colors shadow-xs",
-                          occupancyClasses.box ||
-                            "border-zinc-200 hover:bg-zinc-50 hover:border-zinc-300",
-                        )}
-                      >
-                        <div className="text-lg font-black text-zinc-800">
-                          {c}
-                        </div>
-                        <div className="text-[10px] font-bold text-zinc-400 uppercase">
-                          {level.icon || level.id}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Recently Checked In List */}
-            <div className="space-y-3">
-              <h2 className="text-sm font-bold text-zinc-500 tracking-wider uppercase">
-                Recently Checked In
-              </h2>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {isLoadingDashboard ? (
-                  Array.from({ length: 4 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="bg-white border border-zinc-200 p-4 rounded-xl flex items-center gap-4"
-                    >
-                      <Skeleton className="size-10 rounded-lg shrink-0" />
-                      <div className="space-y-2 flex-1">
-                        <Skeleton className="h-3.5 w-24" />
-                        <Skeleton className="h-3 w-32" />
-                      </div>
-                    </div>
-                  ))
-                ) : recentVehicles.length > 0 ? (
-                  recentVehicles.map((v) => (
-                    <div
-                      key={v.id}
-                      onClick={() => handleOpenVehicle(v)}
-                      className="cursor-pointer bg-white border border-zinc-200 hover:border-zinc-300 hover:shadow-xs p-4 rounded-xl flex items-center justify-between gap-4 transition-all"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="size-10 bg-zinc-100 text-zinc-600 rounded-lg flex items-center justify-center">
-                          <CarFront className="size-5" />
-                        </div>
-                        <div>
-                          <div className="font-bold text-zinc-900">
-                            {formatPlateDisplay(v.plate)}
-                          </div>
-                          <p className="text-[11px] font-semibold text-zinc-400">
-                            {vehicleUnitLabel(v)}
-                          </p>
-                          <p className="text-xs text-zinc-500 font-medium">
-                            {v.variant} &nbsp;·&nbsp; {v.level} · Lot {v.lot}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-xs text-red-600 font-semibold">
-                          {formatTimeAgo(v.check_in)}
-                        </p>
-                        <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider mt-1">
-                          {v.driver || "—"}
-                        </p>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-zinc-500 text-sm py-4 text-center col-span-full font-medium">
-                    No active vehicles checked in yet.
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
+          <HomeTab
+            activeFacilityName={activeFacilityName}
+            counts={counts}
+            isLoading={isLoadingDashboard}
+            isUnverified={isUnverified}
+            parkingLevels={parkingLevels}
+            recentVehicles={recentVehicles}
+            safetyDate={safetyDate}
+            safetyMessage={safetyMessage}
+            vehicleCount={vehicles.length}
+            formatTimeAgo={formatTimeAgo}
+            onLogVehicleIn={() => guardVerifiedAction(openCheckinModal)}
+            onOpenParkingLevel={openParkingLevel}
+            onOpenVehicle={handleOpenVehicle}
+            vehicleUnitLabel={vehicleUnitLabel}
+          />
         )}
 
         {/* TAB 2: SEARCH VEHICLES */}
@@ -2821,664 +2560,52 @@ if (isVerificationPending) {
 
         {/* TAB 7: ACTIVE VEHICLE DETAILS VIEW */}
         {activeTab === "detail" && selectedVehicle && (
-          <div className="bg-white rounded-xl border border-zinc-200 p-6 shadow-sm space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-zinc-100">
-              <Button
-                variant="ghost"
-                onClick={() => setActiveTab("search")}
-                className="h-8 px-2 font-semibold text-xs"
-              >
-                <ArrowLeft className="size-4 mr-1" />
-                Back to search
-              </Button>
-              <span className="inline-block bg-red-50 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase">
-                {selectedVehicle.level} · Lot {selectedVehicle.lot}
-              </span>
-            </div>
-
-            <div>
-              <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900">
-                {formatPlateDisplay(selectedVehicle.plate)}
-              </h2>
-              <p className="text-sm text-zinc-400 font-semibold mt-1">
-                {vehicleUnitLabel(selectedVehicle)}
-              </p>
-              <p className="text-sm text-zinc-500 font-semibold mt-1">
-                {selectedVehicle.variant}
-              </p>
-              <p className="text-[11px] text-zinc-400 font-medium mt-1">
-                Checked in:{" "}
-                {selectedVehicle.check_in
-                  ? formatLocalTime(selectedVehicle.check_in)
-                  : "—"}
-              </p>
-            </div>
-
-            {/* Driver Card */}
-            <div className="space-y-2">
-              <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                Last Operator
-              </h3>
-              <div className="border border-zinc-200 rounded-xl p-4 flex items-center gap-4 bg-zinc-50/25">
-                <div className="flex size-11 items-center justify-center rounded-full bg-zinc-100 font-bold text-zinc-700 text-sm">
-                  {(selectedVehicle.driver || "UN")
-                    .split(" ")
-                    .map((n: string) => n[0])
-                    .join("")
-                    .slice(0, 2)
-                    .toUpperCase()}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-bold text-sm text-zinc-900">
-                    {selectedVehicle.driver}
-                  </p>
-                  <p className="text-xs text-zinc-500 font-semibold">
-                    {selectedVehicle.driver_unit ||
-                      selectedVehicle.driver_depot}
-                  </p>
-                  {selectedVehicle.driver_phone && (
-                    <a
-                      target="_blank"
-                      href={`https://wa.me/+65${selectedVehicle.driver_phone}`}
-                      className="text-xs text-red-600 font-bold mt-1 inline-block hover:underline"
-                    >
-                      {selectedVehicle.driver_phone}
-                    </a>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Stat Readings */}
-            <div className="space-y-2">
-              <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                Latest Readings
-              </h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-zinc-50/50 border border-zinc-200/50 rounded-xl p-4 text-center">
-                  <div className="text-xs text-zinc-400 font-bold uppercase">
-                    Odometer
-                  </div>
-                  <div className="text-xl font-extrabold text-zinc-800 mt-1">
-                    {selectedVehicle.odometer != null
-                      ? Number(selectedVehicle.odometer).toLocaleString()
-                      : "-"}{" "}
-                    <span className="text-xs font-normal text-zinc-500">
-                      km
-                    </span>
-                  </div>
-                </div>
-                <div className="bg-zinc-50/50 border border-zinc-200/50 rounded-xl p-4 text-center">
-                  <div className="text-xs text-zinc-400 font-bold uppercase">
-                    Engine Hours
-                  </div>
-                  <div className="text-xl font-extrabold text-zinc-800 mt-1">
-                    {selectedVehicle.engine_hours ?? "-"}{" "}
-                    <span className="text-xs font-normal text-zinc-500">
-                      hrs
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Battery Readings */}
-            <div className="border border-zinc-200 rounded-xl p-4 space-y-3 bg-zinc-50/25">
-              <div className="flex items-center justify-between text-xs border-b border-zinc-100 pb-2">
-                <span className="font-bold text-zinc-600">
-                  Starter Battery (24V)
-                </span>
-                <span className="flex items-center gap-1.5 font-extrabold text-zinc-800">
-                  {selectedVehicle.starter_v ?? "-"}{selectedVehicle.starter_v == null ? "" : "V"} &nbsp;·&nbsp;{" "}
-                  {selectedVehicle.starter_pct ?? "-"}{selectedVehicle.starter_pct == null ? "" : "%"}
-                  {selectedVehicle.starter_pct != null && (
-                    <PercentDot pct={selectedVehicle.starter_pct} />
-                  )}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-zinc-600">
-                  Auxiliary Battery (24V)
-                </span>
-                <span className="flex items-center gap-1.5 font-extrabold text-zinc-800">
-                  {selectedVehicle.aux_v ?? "-"}{selectedVehicle.aux_v == null ? "" : "V"} &nbsp;·&nbsp;{" "}
-                  {selectedVehicle.aux_pct ?? "-"}{selectedVehicle.aux_pct == null ? "" : "%"}
-                  {selectedVehicle.aux_pct != null && (
-                    <PercentDot pct={selectedVehicle.aux_pct} />
-                  )}
-                </span>
-              </div>
-            </div>
-
-            {/* Fuel gauge */}
-            <div className="border border-zinc-200 rounded-xl p-4 space-y-2">
-              <div className="flex justify-between items-center text-xs text-zinc-500">
-                <span className="font-bold">Fuel Level</span>
-                <span className="font-semibold">
-                  {selectedVehicle.fuel_l != null
-                    ? `${selectedVehicle.fuel_l}L`
-                    : "-"}{" "}
-                  remaining
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div
-                  className={cn(
-                    "text-2xl font-black shrink-0",
-                    (selectedVehicle.fuel_pct ?? 0) > 50
-                      ? "text-emerald-600"
-                      : (selectedVehicle.fuel_pct ?? 0) > 20
-                        ? "text-amber-500"
-                        : "text-red-600",
-                  )}
-                >
-                  {selectedVehicle.fuel_pct ?? "-"}{selectedVehicle.fuel_pct == null ? "" : "%"}
-                </div>
-                <div className="flex-1">
-                  <div className="h-2 bg-zinc-100 border border-zinc-200 rounded-full overflow-hidden">
-                    <div
-                      className={cn(
-                        "h-full rounded-full transition-all duration-300",
-                        (selectedVehicle.fuel_pct ?? 0) > 50
-                          ? "bg-emerald-500"
-                          : (selectedVehicle.fuel_pct ?? 0) > 20
-                            ? "bg-amber-500"
-                            : "bg-red-500",
-                      )}
-                      style={{ width: `${selectedVehicle.fuel_pct ?? 0}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Fire Extinguisher Card */}
-            {(() => {
-              const fs = getFireExtStatus(selectedVehicle.fire_ext_expiry);
-              return (
-                <div
-                  className={cn(
-                    "border rounded-xl p-4 flex items-center gap-4 shadow-2xs",
-                    fs.bg,
-                  )}
-                >
-                  <div className="text-3xl select-none leading-none shrink-0">
-                    🧯
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider mb-1">
-                      Fire Extinguisher
-                    </p>
-                    <p className="font-bold text-sm text-zinc-800">
-                      Expiry:{" "}
-                      {selectedVehicle.fire_ext_expiry
-                        ? format(
-                            new Date(
-                              selectedVehicle.fire_ext_expiry + "T00:00:00",
-                            ),
-                            "dd MMM yyyy",
-                          )
-                        : "-"}
-                    </p>
-                    <p className={cn("text-xs mt-1", fs.color)}>{fs.label}</p>
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Latest Turret ESC Section — temporarily disabled.
-                Change `isTurretEscEnabled` to true to
-                restore this section. */}
-            {isTurretEscEnabled && profile?.is_technician && (
-              <div className="space-y-2">
-                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                  Latest Turret ESC Checklist
-                </h3>
-                {latestEsc ? (
-                  <div className="border border-zinc-200 rounded-xl p-4 bg-zinc-50/25 space-y-3">
-                    <div className="text-[11px] text-zinc-500 font-medium">
-                      Submitted by{" "}
-                      <strong className="text-zinc-800">
-                        {latestEsc.user_name}
-                      </strong>{" "}
-                      &nbsp;·&nbsp; {formatLocalTime(latestEsc.created_at)}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
-                      {[
-                        ["ICS", latestEsc.ics],
-                        ["GSU", latestEsc.gsu],
-                        ["WIM", latestEsc.wim],
-                        ["Trav Actuator", latestEsc.trav_actuator],
-                        ["Elev Actuator", latestEsc.elev_actuator],
-                        ["GCU", latestEsc.gcu],
-                        ["MDCU", latestEsc.mdcu],
-                        ["PSU", latestEsc.psu],
-                        ["Gun Gyro", latestEsc.gun_gyro],
-                        ["Conv Ass", latestEsc.conv_ass],
-                        ["Boost Box Ass", latestEsc.boost_box_ass],
-                        ["Slip Ring", latestEsc.slip_ring],
-                        ["Turr E-stop", latestEsc.turr_estop],
-                        ["Upplink Echute", latestEsc.upplink_echute],
-                        ["Upplink Splate", latestEsc.upplink_splate],
-                        ["Lowlink Splate", latestEsc.lowlink_splate],
-                        ["Lowlink Echute", latestEsc.lowlink_echute],
-                        ["Uppflex Chute", latestEsc.uppflex_chute],
-                        ["Lowflex Chute", latestEsc.lowflex_chute],
-                        ["LWS Comp", latestEsc.lws_comp],
-                      ].map(([lbl, val]) => (
-                        <div
-                          key={lbl as string}
-                          className="flex justify-between items-center py-1 border-b border-zinc-100/50"
-                        >
-                          <span className="text-zinc-500 font-medium">
-                            {lbl}
-                          </span>
-                          {val === null || val === undefined ? (
-                            <span className="text-zinc-400">—</span>
-                          ) : val ? (
-                            <span className="text-emerald-600 font-extrabold">
-                              ✓
-                            </span>
-                          ) : (
-                            <span className="text-red-600 font-extrabold">
-                              ✗
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-
-                    {latestEsc.scu !== null && (
-                      <div className="text-xs font-semibold text-zinc-700 mt-2">
-                        SCU: {latestEsc.scu} &nbsp;·&nbsp; DCU: {latestEsc.dcu}
-                      </div>
-                    )}
-
-                    {latestEsc.fault_list && (
-                      <div className="text-xs font-bold text-red-700 bg-red-50 p-2.5 rounded-lg border border-red-100">
-                        Faults: {latestEsc.fault_list}
-                      </div>
-                    )}
-
-                    {latestEsc.notes && (
-                      <p className="text-xs italic text-zinc-500 border-t border-zinc-100 pt-2">
-                        {latestEsc.notes}
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-center py-6 text-sm font-semibold text-zinc-400 bg-zinc-50 border border-dashed border-zinc-200 rounded-lg">
-                    No checklists submitted yet for this vehicle.
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Description/Faults notes */}
-            {selectedVehicle.notes && (
-              <div className="space-y-2">
-                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                  Description / Faults
-                </h3>
-                <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 text-xs font-medium text-zinc-700 leading-relaxed whitespace-pre-wrap">
-                  {selectedVehicle.notes}
-                </div>
-              </div>
-            )}
-
-            {/* Action buttons */}
-            <div className="space-y-2 pt-4 border-t border-zinc-100">
-              <Button
-                onClick={() => guardVerifiedAction(handleOpenUpdate)}
-                className={cn(
-                  "w-full h-10 font-bold",
-                  isUnverified
-                    ? "bg-zinc-300 hover:bg-zinc-300 text-zinc-600 cursor-not-allowed"
-                    : "bg-red-600 hover:bg-red-700",
-                )}
-              >
-                <Edit2 className="size-4 mr-2" />
-                Update Vehicle Record
-              </Button>
-              {/* Edit Turret ESC button — temporarily disabled along with
-                  the rest of the Turret ESC feature. Change
-                  `isTurretEscEnabled` to true to restore. */}
-              {isTurretEscEnabled && profile?.is_technician && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleEditTurretEsc}
-                  className="w-full text-zinc-700 hover:bg-zinc-50 h-10 font-bold border-zinc-200"
-                >
-                  <Wrench className="size-4 mr-2" />
-                  Edit Turret ESC
-                </Button>
-              )}
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setActiveTab("history");
-                }}
-                className="w-full text-zinc-700 hover:bg-zinc-50 h-10 font-bold border-zinc-200"
-              >
-                <History className="size-4 mr-2" />
-                View History Logs
-              </Button>
-              <Button
-                onClick={() =>
-                  guardVerifiedAction(() => {
-                    if (!isOriginalVehicleDriver(selectedVehicle)) {
-                      triggerToast(
-                        "Only the driver who logged this vehicle in can drive it out.",
-                      );
-                      return;
-                    }
-                    setIsConfirmingDriveout(true);
-                  })
+          <ActiveVehicleDetail
+            canDriveOut={isOriginalVehicleDriver(selectedVehicle)}
+            isTurretEscEnabled={isTurretEscEnabled}
+            isTechnician={!!profile?.is_technician}
+            isUnverified={isUnverified}
+            latestEsc={latestEsc}
+            vehicle={selectedVehicle}
+            formatLocalTime={formatLocalTime}
+            getFireExtStatus={getFireExtStatus}
+            onBack={() => setActiveTab("search")}
+            onDriveOut={() =>
+              guardVerifiedAction(() => {
+                if (!isOriginalVehicleDriver(selectedVehicle)) {
+                  triggerToast(
+                    "Only the driver who logged this vehicle in can drive it out.",
+                  );
+                  return;
                 }
-                disabled={!isOriginalVehicleDriver(selectedVehicle)}
-                className={cn(
-                  "w-full h-10 font-bold",
-                  isUnverified || !isOriginalVehicleDriver(selectedVehicle)
-                    ? "bg-zinc-100 text-zinc-400 border border-zinc-200 cursor-not-allowed"
-                    : "bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800 border border-red-100",
-                )}
-              >
-                <LogOut className="size-4 mr-2" />
-                Drive Out / Move Off
-              </Button>
-            </div>
-          </div>
+                setIsConfirmingDriveout(true);
+              })
+            }
+            onEditTurretEsc={handleEditTurretEsc}
+            onOpenHistory={() => setActiveTab("history")}
+            onUpdateVehicle={() => guardVerifiedAction(handleOpenUpdate)}
+            vehicleUnitLabel={vehicleUnitLabel}
+          />
         )}
 
         {/* TAB 8: VEHICLE HISTORICAL LOGS */}
         {activeTab === "history" && selectedVehicle && (
-          <div className="bg-white rounded-xl border border-zinc-200 p-6 shadow-sm space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-zinc-100">
-              <Button
-                variant="ghost"
-                onClick={() => setActiveTab("detail")}
-                className="h-8 px-2 font-semibold text-xs"
-              >
-                <ArrowLeft className="size-4 mr-1" />
-                Back to detail
-              </Button>
-              <h3 className="text-sm font-black text-zinc-800">
-                {formatPlateDisplay(selectedVehicle.plate)} History Log
-              </h3>
-            </div>
-
-            <div className="space-y-4">
-              {historyRecords.length > 0 ? (
-                historyRecords.map((r, i) => (
-                  <div
-                    key={r.id || i}
-                    className="border border-zinc-200 rounded-xl p-4 space-y-3 bg-zinc-50/25"
-                  >
-                    <div className="flex items-center justify-between text-xs font-semibold border-b border-zinc-100 pb-2">
-                      <span className="text-zinc-800">
-                        {r.created_at ? formatLocalTime(r.created_at) : "—"}
-                      </span>
-                      <span className="text-zinc-500">
-                        Updated by: {r.driver || "—"}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
-                      <div>
-                        Odometer:{" "}
-                        {r.odometer != null
-                          ? `${Number(r.odometer).toLocaleString()} km`
-                          : "-"}
-                      </div>
-                      <div>Engine Hours: {r.engine_hours ?? "-"} hrs</div>
-                      <div>
-                        Starter Battery: {r.starter_v ?? "-"}{r.starter_v == null ? "" : "V"} ·{" "}
-                        {r.starter_pct ?? "-"}{r.starter_pct == null ? "" : "%"}
-                      </div>
-                      <div>
-                        Aux Battery: {r.aux_v ?? "-"}{r.aux_v == null ? "" : "V"} · {r.aux_pct ?? "-"}{r.aux_pct == null ? "" : "%"}
-                      </div>
-                      <div>
-                        Fuel Level: {r.fuel_pct ?? "-"}{r.fuel_pct == null ? "" : "%"} · {r.fuel_l ?? "-"}{r.fuel_l == null ? "" : "L"}
-                      </div>
-                      {r.fire_ext_expiry && (
-                        <div className="col-span-2 text-zinc-500 font-semibold mt-1">
-                          🧯 Ext. Expiry:{" "}
-                          {format(
-                            new Date(r.fire_ext_expiry + "T00:00:00"),
-                            "dd MMM yyyy",
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {r.notes && (
-                      <p className="text-xs italic text-zinc-500 border-t border-zinc-100 pt-2 mt-2">
-                        {r.notes}
-                      </p>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <p className="text-zinc-500 text-sm py-8 text-center font-medium">
-                  No historical records found for this platform.
-                </p>
-              )}
-            </div>
-          </div>
+          <VehicleHistoryTab
+            historyRecords={historyRecords}
+            vehicle={selectedVehicle}
+            formatLocalTime={formatLocalTime}
+            onBack={() => setActiveTab("detail")}
+          />
         )}
 
         {/* TAB 9: CHECKED OUT VEHICLE DETAIL VIEW */}
         {activeTab === "driveout-detail" && selectedDriveout && (
-          <div className="bg-white rounded-xl border border-zinc-200 p-6 shadow-sm space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-zinc-100">
-              <Button
-                variant="ghost"
-                onClick={() => setActiveTab("driveout-history")}
-                className="h-8 px-2 font-semibold text-xs"
-              >
-                <ArrowLeft className="size-4 mr-1" />
-                Back to list
-              </Button>
-              <span className="inline-block bg-red-100 border border-red-200 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase">
-                Checked Out
-              </span>
-            </div>
-
-            <div>
-              <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900">
-                {formatPlateDisplay(selectedDriveout.plate)}
-              </h2>
-              <p className="text-sm text-zinc-500 font-semibold mt-1">
-                {selectedDriveout.variant}
-              </p>
-            </div>
-
-            {/* Timing Box */}
-            <div className="border border-zinc-200 rounded-xl p-4 bg-zinc-50/25 space-y-3">
-              <div className="grid grid-cols-2 gap-4 text-xs font-semibold">
-                <div>
-                  <span className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">
-                    Checked In
-                  </span>
-                  {selectedDriveout.check_in
-                    ? formatLocalTime(selectedDriveout.check_in)
-                    : "—"}
-                </div>
-                <div>
-                  <span className="text-[10px] text-red-500 uppercase tracking-wider block mb-1">
-                    Checked Out
-                  </span>
-                  {selectedDriveout.check_out
-                    ? formatLocalTime(selectedDriveout.check_out)
-                    : "—"}
-                </div>
-              </div>
-              {selectedDriveout.check_in && selectedDriveout.check_out && (
-                <div className="border-t border-zinc-100 pt-3 text-xs text-zinc-500 font-medium">
-                  Duration:{" "}
-                  <strong className="text-zinc-800">
-                    {getDuration(
-                      selectedDriveout.check_in,
-                      selectedDriveout.check_out,
-                    )}
-                  </strong>
-                  &nbsp;·&nbsp; Parked at{" "}
-                  <strong className="text-zinc-800">
-                    {selectedDriveout.level} – Lot {selectedDriveout.lot}
-                  </strong>
-                </div>
-              )}
-            </div>
-
-            {/* Driver Card */}
-            <div className="space-y-2">
-              <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                Checked Out By
-              </h3>
-              <div className="border border-zinc-200 rounded-xl p-4 flex items-center gap-4 bg-zinc-50/25">
-                <div className="flex size-11 items-center justify-center rounded-full bg-zinc-100 font-bold text-zinc-700 text-sm">
-                  {(selectedDriveout.driver || "UN")
-                    .split(" ")
-                    .map((n: string) => n[0])
-                    .join("")
-                    .slice(0, 2)
-                    .toUpperCase()}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-bold text-sm text-zinc-900">
-                    {selectedDriveout.driver}
-                  </p>
-                  <p className="text-xs text-zinc-500 font-semibold">
-                    {selectedDriveout.driver_unit ||
-                      selectedDriveout.driver_depot}
-                  </p>
-                  {selectedDriveout.driver_phone && (
-                    <a
-                      target="_blank"
-                      href={`https://wa.me/+65${selectedDriveout.driver_phone}`}
-                      className="text-xs text-red-600 font-bold mt-1 inline-block hover:underline"
-                    >
-                      {selectedDriveout.driver_phone}
-                    </a>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Stats */}
-            <div className="space-y-2">
-              <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                Readings at Check-Out
-              </h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-zinc-50/50 border border-zinc-200/50 rounded-xl p-4 text-center">
-                  <div className="text-xs text-zinc-400 font-bold uppercase">
-                    Odometer
-                  </div>
-                  <div className="text-xl font-extrabold text-zinc-800 mt-1">
-                    {selectedDriveout.odometer != null
-                      ? Number(selectedDriveout.odometer).toLocaleString()
-                      : "-"}{" "}
-                    <span className="text-xs font-normal text-zinc-500">
-                      km
-                    </span>
-                  </div>
-                </div>
-                <div className="bg-zinc-50/50 border border-zinc-200/50 rounded-xl p-4 text-center">
-                  <div className="text-xs text-zinc-400 font-bold uppercase">
-                    Engine Hours
-                  </div>
-                  <div className="text-xl font-extrabold text-zinc-800 mt-1">
-                    {selectedDriveout.engine_hours ?? "-"}{" "}
-                    <span className="text-xs font-normal text-zinc-500">
-                      hrs
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Battery Readings */}
-            <div className="border border-zinc-200 rounded-xl p-4 space-y-3 bg-zinc-50/25 text-xs">
-              <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
-                <span className="font-bold text-zinc-600">Starter Battery</span>
-                <span className="flex items-center gap-1.5 font-extrabold text-zinc-800">
-                  {selectedDriveout.starter_v ?? "-"}{selectedDriveout.starter_v == null ? "" : "V"} &nbsp;·&nbsp;{" "}
-                  {selectedDriveout.starter_pct ?? "-"}{selectedDriveout.starter_pct == null ? "" : "%"}
-                  {selectedDriveout.starter_pct != null && (
-                    <PercentDot pct={selectedDriveout.starter_pct} />
-                  )}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-zinc-600">Aux Battery</span>
-                <span className="flex items-center gap-1.5 font-extrabold text-zinc-800">
-                  {selectedDriveout.aux_v ?? "-"}{selectedDriveout.aux_v == null ? "" : "V"} &nbsp;·&nbsp;{" "}
-                  {selectedDriveout.aux_pct ?? "-"}{selectedDriveout.aux_pct == null ? "" : "%"}
-                  {selectedDriveout.aux_pct != null && (
-                    <PercentDot pct={selectedDriveout.aux_pct} />
-                  )}
-                </span>
-              </div>
-            </div>
-
-            {/* Fuel gauge */}
-            <div className="border border-zinc-200 rounded-xl p-4 space-y-2">
-              <div className="flex justify-between items-center text-xs text-zinc-500">
-                <span className="font-bold">Fuel Level</span>
-                <span className="font-semibold">
-                  {selectedDriveout.fuel_l != null
-                    ? `${selectedDriveout.fuel_l}L`
-                    : "-"}
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div
-                  className={cn(
-                    "text-2xl font-black shrink-0",
-                    (selectedDriveout.fuel_pct ?? 0) > 50
-                      ? "text-emerald-600"
-                      : (selectedDriveout.fuel_pct ?? 0) > 20
-                        ? "text-amber-500"
-                        : "text-red-600",
-                  )}
-                >
-                  {selectedDriveout.fuel_pct ?? "-"}{selectedDriveout.fuel_pct == null ? "" : "%"}
-                </div>
-                <div className="flex-1">
-                  <div className="h-2 bg-zinc-100 border border-zinc-200 rounded-full overflow-hidden">
-                    <div
-                      className={cn(
-                        "h-full rounded-full",
-                        (selectedDriveout.fuel_pct ?? 0) > 50
-                          ? "bg-emerald-500"
-                          : (selectedDriveout.fuel_pct ?? 0) > 20
-                            ? "bg-amber-500"
-                            : "bg-red-500",
-                      )}
-                      style={{ width: `${selectedDriveout.fuel_pct ?? 0}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Notes */}
-            {selectedDriveout.notes && (
-              <div className="space-y-2">
-                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                  Notes at Check-Out
-                </h3>
-                <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 text-xs font-medium text-zinc-700 leading-relaxed whitespace-pre-wrap">
-                  {selectedDriveout.notes}
-                </div>
-              </div>
-            )}
-          </div>
+          <CheckedOutVehicleDetail
+            record={selectedDriveout}
+            formatLocalTime={formatLocalTime}
+            getDuration={getDuration}
+            onBack={() => setActiveTab("driveout-history")}
+          />
         )}
       </main>
 
