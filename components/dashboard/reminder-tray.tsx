@@ -52,11 +52,13 @@ export function ReminderTray({
   if (alertCount === 0) return null;
 
   return (
-    <div className="fixed right-3 top-20 z-40 sm:right-5">
+    <div className="relative z-40">
       <div
         className={cn(
-          "ml-auto overflow-hidden rounded-xl border bg-white shadow-lg ring-1 ring-black/5 transition-all",
-          isOpen ? "w-[calc(100vw-1.5rem)] max-w-sm" : "w-auto",
+          "overflow-hidden rounded-xl border bg-white shadow-lg ring-1 ring-black/5 transition-all",
+          isOpen
+            ? "absolute right-0 top-11 w-[calc(100vw-1.5rem)] max-w-sm"
+            : "w-10 sm:w-auto",
           hasUrgentReminder ? "border-red-200" : "border-amber-200",
         )}
       >
@@ -65,7 +67,7 @@ export function ReminderTray({
           onClick={() => setIsOpen((open) => !open)}
           aria-expanded={isOpen}
           className={cn(
-            "flex w-full items-center justify-between gap-3 px-3 py-2 text-left transition hover:bg-zinc-50",
+            "flex h-10 w-full items-center justify-between gap-3 px-2 text-left transition hover:bg-zinc-50 sm:px-3",
             isOpen ? "border-b border-zinc-100" : "",
           )}
         >
@@ -80,7 +82,9 @@ export function ReminderTray({
             >
               <Bell className="size-4" />
             </span>
-            <span className="min-w-0">
+            <span
+              className={cn("min-w-0", isOpen ? "block" : "hidden sm:block")}
+            >
               <span className="block text-xs font-black uppercase tracking-wider text-zinc-800">
                 Reminders
               </span>
@@ -103,7 +107,7 @@ export function ReminderTray({
             {isOpen ? (
               <ChevronUp className="size-4 text-zinc-400" />
             ) : (
-              <ChevronDown className="size-4 text-zinc-400" />
+              <ChevronDown className="hidden size-4 text-zinc-400 sm:block" />
             )}
           </span>
         </button>

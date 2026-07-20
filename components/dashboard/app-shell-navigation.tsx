@@ -13,6 +13,7 @@ import {
   Wrench,
 } from "lucide-react";
 import Image from "next/image";
+import type { ReactNode } from "react";
 
 import { UnverifiedDot } from "@/components/dashboard/status-indicators";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ type AppShellNavigationProps = {
   activeFacilityName: string;
   activeTab: string;
   facilities: FacilityOption[];
+  headerAccessory?: ReactNode;
   isSidebarOpen: boolean;
   profile: ShellProfile;
   goTab: (tab: string) => void;
@@ -118,6 +120,7 @@ export function AppShellNavigation({
   activeFacilityName,
   activeTab,
   facilities,
+  headerAccessory,
   isSidebarOpen,
   profile,
   goTab,
@@ -198,6 +201,7 @@ export function AppShellNavigation({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {headerAccessory}
           <Button
             type="button"
             variant="ghost"

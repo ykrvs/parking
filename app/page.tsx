@@ -7,6 +7,7 @@ import {
   Check,
   ChevronDown,
   Clock,
+  Download,
   Edit2,
   FileText,
   IdCard,
@@ -64,8 +65,14 @@ import {
   RANK_CATEGORIES,
   RANK_OPTIONS,
   SAFETY_MESSAGES,
+  exportAdminActionsCSV,
+  exportAdminActionsPDF,
+  exportBosReadingsCSV,
+  exportBosReadingsPDF,
   exportDriveoutHistoryCSV,
   exportDriveoutHistoryPDF,
+  exportParkingLayoutCSV,
+  exportParkingLayoutPDF,
   formatPlateDisplay,
   getLevelLots,
   localInputToUtcIso,
@@ -673,6 +680,15 @@ if (isVerificationPending) {
         <p className="mt-3 text-sm leading-6 text-zinc-600">
           Your profile has been submitted successfully. An admin needs to verify
           your account before you can view parking and vehicle data.
+        </p>
+
+        <p className="mt-4 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+          For verification matters, please contact your Depot's Assigned Trackr
+          Admin. Else, contact Yu Ke at{" "}
+          <a href="tel:+6583999122" className="font-bold underline">
+            +65-8399 9122
+          </a>
+          .
         </p>
 
         <Button
@@ -1646,6 +1662,18 @@ if (isVerificationPending) {
         activeFacilityName={activeFacilityName}
         activeTab={activeTab}
         facilities={facilities}
+        headerAccessory={
+          <ReminderTray
+            fireExtAlerts={fireExtAlerts}
+            myOrdReminder={myOrdReminder}
+            ordAlerts={visibleOrdAlerts}
+            ordWarningDays={ORD_WARNING_DAYS}
+            profileName={profile.name}
+            profileUnit={profileUnit}
+            onOpenVehicle={handleOpenVehicle}
+            vehicleUnitLabel={vehicleUnitLabel}
+          />
+        }
         isSidebarOpen={isSidebarOpen}
         profile={profile}
         goTab={goTab}
@@ -1653,17 +1681,6 @@ if (isVerificationPending) {
         setActiveFacility={setActiveFacility}
         setActiveTab={setActiveTab}
         setIsSidebarOpen={setIsSidebarOpen}
-      />
-
-      <ReminderTray
-        fireExtAlerts={fireExtAlerts}
-        myOrdReminder={myOrdReminder}
-        ordAlerts={visibleOrdAlerts}
-        ordWarningDays={ORD_WARNING_DAYS}
-        profileName={profile.name}
-        profileUnit={profileUnit}
-        onOpenVehicle={handleOpenVehicle}
-        vehicleUnitLabel={vehicleUnitLabel}
       />
 
       {/* Main Tab Contents */}
@@ -1713,6 +1730,8 @@ if (isVerificationPending) {
             vehicles={vehicles}
             getFireExtStatus={getFireExtStatus}
             onLogVehicleIn={() => guardVerifiedAction(openCheckinModal)}
+            onExportCsv={exportBosReadingsCSV}
+            onExportPdf={exportBosReadingsPDF}
             onOpenVehicle={handleOpenVehicle}
             onUpdateVehicle={(vehicle) =>
               guardVerifiedAction(() => handleOpenUpdate(vehicle))
@@ -1732,6 +1751,8 @@ if (isVerificationPending) {
             selectedLot={selectedLot}
             selectedLotVehicle={selectedLotVehicle}
             occupiedLotsMap={occupiedLotsMap}
+            onExportCsv={() => exportParkingLayoutCSV(parkingLevels, vehicles)}
+            onExportPdf={() => exportParkingLayoutPDF(parkingLevels, vehicles)}
             onLotClick={handleLotClick}
             onOpenParkingLevel={openParkingLevel}
             onOpenVehicle={handleOpenVehicle}
@@ -2514,10 +2535,34 @@ if (isVerificationPending) {
 
               {adminActiveTab === "activity" && (
                 <div className="space-y-2 border-t border-zinc-100 pt-4">
-                  <p className="text-xs text-zinc-500 font-medium">
-                    Recent admin actions — verifying users, granting or
-                    revoking admin access, and managing safety messages.
-                  </p>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs text-zinc-500 font-medium">
+                      Recent admin actions - verifying users, granting or
+                      revoking admin access, and managing safety messages.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={!auditLogEntries.length}
+                        onClick={() => exportAdminActionsCSV(auditLogEntries)}
+                        className="h-8 text-xs font-bold"
+                      >
+                        <Download className="size-3.5 mr-1.5" />
+                        CSV
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={!auditLogEntries.length}
+                        onClick={() => exportAdminActionsPDF(auditLogEntries)}
+                        className="h-8 text-xs font-bold"
+                      >
+                        <FileText className="size-3.5 mr-1.5" />
+                        PDF
+                      </Button>
+                    </div>
+                  </div>
                   <div className="overflow-hidden rounded-lg border border-zinc-200">
                     {auditLogEntries.map((entry) => (
                       <div
