@@ -3,35 +3,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getRequestSession } from "@/lib/api-auth";
 import { rateLimited } from "@/lib/rate-limit";
 import { getVehicles, checkinVehicle, requireVerified, resolveFacilityCode } from "@/lib/supabase/server";
-
-function parseNonNegativeNumber(value: unknown, label: string) {
-  if (value === null || value === undefined || value === "") return null;
-
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    throw new Error(`${label} must be a non-negative number`);
-  }
-
-  return parsed;
-}
-
-function isValidationError(error: unknown) {
-  return (
-    error instanceof Error &&
-    (error.message.includes("must be") ||
-      error.message.includes("is required") ||
-      error.message.includes("Vehicle plate"))
-  );
-}
-
-function parsePercentage(value: unknown, label: string) {
-  const parsed = parseNonNegativeNumber(value, label);
-  if (parsed !== null && parsed > 100) {
-    throw new Error(`${label} must be 100 or below`);
-  }
-
-  return parsed === null ? null : Math.trunc(parsed);
-}
+import {
+  buildVehicleCheckInPayload,
+  isVehicleValidationError,
+} from "@/lib/vehicles/rules";
 
 export async function GET(request: NextRequest) {
   const session = await getRequestSession(request);
@@ -125,32 +100,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const data = await checkinVehicle({
-      id: plate,
-      facility_code: facilityCode,
-      vehicle_unit: body.vehicle_unit?.trim() || null,
-      variant: body.variant?.trim() || "—",
-      driver_id: session.openid,
-      driver: body.driver?.trim() || "—",
-      driver_phone: body.driver_phone?.trim() || "—",
-      driver_unit: body.driver_unit?.trim() || "—",
-      level: body.level,
-      lot: body.lot.toUpperCase().trim(),
-      odometer: parseNonNegativeNumber(body.odometer, "Odometer"),
-      engine_hours: parseNonNegativeNumber(body.engine_hours, "Engine hours"),
-      starter_v: parseNonNegativeNumber(body.starter_v, "Starter voltage"),
-      starter_pct: parsePercentage(body.starter_pct, "Starter percentage"),
-      aux_v: parseNonNegativeNumber(body.aux_v, "Auxiliary voltage"),
-      aux_pct: parsePercentage(body.aux_pct, "Auxiliary percentage"),
-      fuel_l: parseNonNegativeNumber(body.fuel_l, "Fuel litres"),
-      fuel_pct: parsePercentage(body.fuel_pct, "Fuel percentage"),
-      fire_ext_expiry: body.fire_ext_expiry || null,
-      is_vor: body.is_vor === true,
-      next_servicing: body.next_servicing || null,
-      last_serviced: body.last_serviced || null,
-      notes: body.notes || null,
-      check_in: new Date().toISOString(),
-    });
+    const data = await checkinVehicle(
+      buildVehicleCheckInPayload({
+        id: plate,
+        facilityCode,
+        actorId: session.openid,
+        body,
+        checkIn: new Date().toISOString(),
+      }),
+    );
 
     return NextResponse.json({ success: true, vehicle: data });
   } catch (err) {
@@ -158,7 +116,7 @@ export async function POST(request: NextRequest) {
     const message = err instanceof Error ? err.message : "Check-in failed";
     const status = message.includes("hasn't been verified")
       ? 403
-      : isValidationError(err)
+      : isVehicleValidationError(err)
         ? 400
         : 500;
     return NextResponse.json({ error: message }, { status });

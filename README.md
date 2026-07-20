@@ -1,36 +1,105 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Trackr
 
-## Getting Started
+Trackr is a Next.js vehicle parking and readiness dashboard for depot operations. It supports vehicle check-in, drive-out, parking layout views, BOS readings, reminders, admin verification, safety messages, audit history, and CSV/PDF exports.
 
-First, run the development server:
+## Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Next.js 16 App Router
+- React 19
+- Supabase Postgres via the service-role key on server routes
+- sgID authentication
+- Tailwind CSS and shadcn/Radix UI components
+
+## Environment Variables
+
+Copy `.env.example` to `.env.local` and fill these values:
+
+```env
+SGID_CLIENT_ID=""
+SGID_CLIENT_SECRET=""
+SGID_PRIVATE_KEY=""
+AUTH_SESSION_SECRET=""
+
+NEXT_PUBLIC_SUPABASE_URL=""
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=""
+
+SUPABASE_URL=""
+SUPABASE_SERVICE_ROLE_KEY=""
+SUPABASE_USERS_TABLE="users"
+
+API_SECRET=""
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Notes:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `SUPABASE_SERVICE_ROLE_KEY` must be a secret/service-role key. Never expose it with a `NEXT_PUBLIC_` prefix.
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` is safe for browser-side Supabase client usage.
+- `SUPABASE_USERS_TABLE` defaults to `users`.
+- `AUTH_SESSION_SECRET` should be a long random string.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Supabase Setup
 
-## Learn More
+Run the SQL files in the Supabase SQL editor for the target project.
 
-To learn more about Next.js, take a look at the following resources:
+Recommended order:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. `supabase/parking_schema.sql`
+2. `supabase/users.sql`, only if your environment needs the standalone user-table migration
+3. `supabase/vehicle_optional_readings.sql`, if not already applied
+4. `supabase/vehicle_vor_servicing.sql`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The VOR and servicing migration adds:
 
-## Deploy on Vercel
+- `vehicles.is_vor`
+- `vehicles.next_servicing`
+- `vehicles.last_serviced`
+- matching history columns
+- an index for facility-scoped servicing reminders
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+For new public tables, confirm Supabase Data API exposure, grants, and RLS policies. Existing tables that only receive new columns usually do not need extra Data API exposure steps, but RLS and grants should still match the access model.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Local Development
+
+Install dependencies:
+
+```powershell
+npm install
+```
+
+Run locally:
+
+```powershell
+npm run dev
+```
+
+Open `http://localhost:3000`.
+
+Useful checks:
+
+```powershell
+npm run lint
+npm run test
+npx tsc --noEmit
+```
+
+`npm run build` should also be run before deployment. In restricted environments it may fail if Next.js cannot fetch hosted fonts during build.
+
+## Deployment
+
+The app is suitable for Vercel deployment.
+
+Set the same environment variables in Vercel project settings, then deploy from the GitHub branch or pull request. After SQL changes, apply the Supabase scripts before testing production flows that depend on new columns.
+
+## Feature Notes
+
+- Vehicle check-in records plate, vehicle unit, variant, parking level/lot, optional readiness readings, fire extinguisher expiry, VOR status, and servicing dates.
+- Drive-out is restricted to the original driver who logged the vehicle in. Admin/facility checks still apply server-side.
+- Odometer, engine hours, battery readings, fuel readings, fire extinguisher expiry, and next servicing are optional. Missing card values render as `-`.
+- Vehicle units are loaded from the `vehicle_units` Supabase table per facility and are searchable/filterable in the UI.
+- BOS and parking data can be exported as CSV or PDF.
+- Fire extinguisher, ORD, and servicing reminders are shown in a compact reminder tray.
+- Admin pages support user verification, admin role updates, safety messages, audit log viewing, and exports.
+
+## Turret ESC Dormant Flag
+
+Turret ESC remains intentionally dormant. Keep the feature code and related SQL in place, but leave the user-facing entry points commented out until the feature is ready to be enabled. This prevents dormant Turret ESC code from interfering with current vehicle, parking, BOS, and reminder workflows.

@@ -1236,6 +1236,67 @@ if (isVerificationPending) {
     }
   };
 
+  const handleServicingDoneConfirm = async () => {
+    if (!servicingPromptVehicle) return;
+
+    const vehicle = servicingPromptVehicle;
+    const servicedDate = format(new Date(), "yyyy-MM-dd");
+
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        next_servicing: null,
+        last_serviced: servicedDate,
+        historyRow: {
+          vehicle_id: vehicle.id,
+          variant: vehicle.variant,
+          is_vor: vehicle.is_vor === true,
+          vehicle_unit: vehicle.vehicle_unit || null,
+          driver_id: vehicle.driver_id || null,
+          driver: vehicle.driver,
+          driver_phone: vehicle.driver_phone,
+          driver_unit: vehicle.driver_unit || vehicle.driver_depot,
+          lot: vehicle.lot,
+          level: vehicle.level,
+          odometer: vehicle.odometer,
+          engine_hours: vehicle.engine_hours,
+          starter_v: vehicle.starter_v,
+          starter_pct: vehicle.starter_pct,
+          aux_v: vehicle.aux_v,
+          aux_pct: vehicle.aux_pct,
+          fuel_l: vehicle.fuel_l,
+          fuel_pct: vehicle.fuel_pct,
+          fire_ext_expiry: vehicle.fire_ext_expiry,
+          next_servicing: null,
+          last_serviced: servicedDate,
+          notes: vehicle.notes,
+        },
+      };
+
+      const res = await fetch(`/api/vehicles/${vehicle.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Servicing update failed");
+
+      const updatedVehicle = { ...vehicle, ...d.vehicle };
+      setServicingPromptVehicle(null);
+      setIsServicingFollowUpOpen(false);
+      setSelectedVehicle((current) =>
+        current?.id === vehicle.id ? { ...current, ...updatedVehicle } : current,
+      );
+      triggerToast("Servicing record updated");
+      fetchDashboardData();
+    } catch (err: unknown) {
+      triggerToast(`Servicing update failed: ${getErrorMessage(err)}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // Drive out checkout handler
   const handleDriveoutConfirm = async () => {
     if (!selectedVehicle) return;
@@ -3147,10 +3208,8 @@ if (isVerificationPending) {
                   <div className="flex gap-2 pt-2">
                     <Button
                       type="button"
-                      onClick={() => {
-                        setServicingPromptVehicle(null);
-                        setIsServicingFollowUpOpen(false);
-                      }}
+                      onClick={handleServicingDoneConfirm}
+                      disabled={isSubmitting}
                       className="flex-1 bg-red-600 hover:bg-red-700"
                     >
                       Yes
