@@ -905,14 +905,6 @@ if (isVerificationPending) {
   const getErrorMessage = (error: unknown) =>
     error instanceof Error ? error.message : "Unknown error";
 
-  const isOriginalVehicleDriver = (vehicle: DashboardVehicle) => {
-    if (!profile || !vehicle) return false;
-    if (vehicle.driver_id) return vehicle.driver_id === profile.id;
-    return (
-      String(vehicle.driver || "").trim().toLowerCase() ===
-      String(profile.name || "").trim().toLowerCase()
-    );
-  };
   const currentYear = new Date().getFullYear();
   const profileOrdDate = parseDateInput(peOrdDate);
   const profileOrdYear = profileOrdDate?.getFullYear() ?? currentYear;
@@ -2732,7 +2724,7 @@ if (isVerificationPending) {
         {/* TAB 7: ACTIVE VEHICLE DETAILS VIEW */}
         {activeTab === "detail" && selectedVehicle && (
           <ActiveVehicleDetail
-            canDriveOut={isOriginalVehicleDriver(selectedVehicle)}
+            canDriveOut={!isUnverified}
             isTurretEscEnabled={isTurretEscEnabled}
             isTechnician={!!profile?.is_technician}
             isUnverified={isUnverified}
@@ -2743,12 +2735,6 @@ if (isVerificationPending) {
             onBack={() => setActiveTab("search")}
             onDriveOut={() =>
               guardVerifiedAction(() => {
-                if (!isOriginalVehicleDriver(selectedVehicle)) {
-                  triggerToast(
-                    "Only the driver who logged this vehicle in can drive it out.",
-                  );
-                  return;
-                }
                 setIsConfirmingDriveout(true);
               })
             }
@@ -3268,7 +3254,7 @@ if (isVerificationPending) {
             <CardHeader>
               <CardTitle className="text-lg text-red-600 font-bold flex items-center gap-2">
                 <Trash2 className="size-5" />
-                Confirm Drive-Out
+                Confirm Move Out
               </CardTitle>
               <CardDescription>
                 Frees the parking lot code and marks the checkout record.
@@ -3276,9 +3262,13 @@ if (isVerificationPending) {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm font-medium text-zinc-700">
-                Are you sure you want to log checkout for{" "}
+                Do you want to move{" "}
                 <span className="font-extrabold text-zinc-950">
                   {formatPlateDisplay(selectedVehicle.plate)}
+                </span>
+                ,{" "}
+                <span className="font-extrabold text-zinc-950">
+                  {selectedVehicle.variant || "-"}
                 </span>
                 ?
               </p>
@@ -3295,7 +3285,7 @@ if (isVerificationPending) {
                   disabled={isSubmitting}
                   className="flex-1 bg-red-600 hover:bg-red-700 font-bold"
                 >
-                  {isSubmitting ? "Processing..." : "Yes, Drive Out"}
+                  {isSubmitting ? "Processing..." : "Yes"}
                 </Button>
               </div>
             </CardContent>

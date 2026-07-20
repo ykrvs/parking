@@ -93,7 +93,7 @@ Set the same environment variables in Vercel project settings, then deploy from 
 ## Feature Notes
 
 - Vehicle check-in records plate, vehicle unit, variant, parking level/lot, optional readiness readings, fire extinguisher expiry, VOR status, and servicing dates.
-- Drive-out is restricted to the original driver who logged the vehicle in. Admin/facility checks still apply server-side.
+- Drive-out is available to verified users in the same depot as the vehicle. Admin/facility checks still apply server-side.
 - Odometer, engine hours, battery readings, fuel readings, fire extinguisher expiry, and next servicing are optional. Missing card values render as `-`.
 - Vehicle units are loaded from the `vehicle_units` Supabase table per facility and are searchable/filterable in the UI.
 - BOS and parking data can be exported as CSV or PDF.

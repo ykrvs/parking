@@ -1,10 +1,5 @@
 export type VehicleRequestBody = Record<string, unknown>;
 
-export type VehicleOwnerRecord = {
-  driver_id?: string | null;
-  driver?: string | null;
-};
-
 export type VehicleAccessProfile = {
   id: string;
   name?: string | null;
@@ -173,24 +168,6 @@ export function buildVehicleCheckInPayload({
     notes: body.notes || null,
     check_in: checkIn,
   };
-}
-
-export function assertOriginalDriverCanDriveOut(
-  actor: { id: string; name?: string | null },
-  vehicle: VehicleOwnerRecord,
-) {
-  if (vehicle.driver_id) {
-    if (vehicle.driver_id !== actor.id) {
-      throw new Error("Only the driver who logged this vehicle in can drive it out.");
-    }
-    return;
-  }
-
-  const storedDriver = (vehicle.driver || "").trim().toLowerCase();
-  const actorName = (actor.name || "").trim().toLowerCase();
-  if (!storedDriver || storedDriver !== actorName) {
-    throw new Error("Only the driver who logged this vehicle in can drive it out.");
-  }
 }
 
 export function resolveRequestedFacilityForProfile(

@@ -8,7 +8,6 @@ import {
   insertHistory,
   requireVerified,
   assertVehicleFacilityAccess,
-  assertVehicleDriveOutOwner,
   resolveVehicleFacilityCode,
 } from "@/lib/supabase/server";
 import {
@@ -83,7 +82,6 @@ export async function DELETE(
   try {
     await requireVerified(session.openid);
     await assertVehicleFacilityAccess(session.openid, id);
-    await assertVehicleDriveOutOwner(session.openid, id);
 
     const body = await request.json();
     const { historyRow } = body;
@@ -106,9 +104,7 @@ export async function DELETE(
       ? 403
       : message.includes("different depot")
         ? 403
-        : message.includes("driver who logged this vehicle in")
-          ? 403
-          : 500;
+        : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }

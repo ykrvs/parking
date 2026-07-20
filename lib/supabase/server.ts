@@ -2,7 +2,6 @@ import "server-only";
 
 import { createClient } from "@supabase/supabase-js";
 import {
-  assertOriginalDriverCanDriveOut,
   assertVehicleFacilityAllowed,
   resolveRequestedFacilityForProfile,
 } from "@/lib/vehicles/rules";
@@ -552,29 +551,6 @@ export async function assertVehicleFacilityAccess(actorId: string, vehicleId: st
   }
   const vehicleFacility = await resolveVehicleFacilityCode(vehicleId);
   assertVehicleFacilityAllowed(profile, vehicleFacility);
-}
-
-export async function assertVehicleDriveOutOwner(actorId: string, vehicleId: string) {
-  const profile = await getUserProfile(actorId);
-  if (!profile) {
-    throw new Error("User not found.");
-  }
-
-  const supabase = getSupabaseAdmin();
-  if (!supabase) return;
-
-  const { data, error } = await supabase
-    .from("vehicles")
-    .select("driver_id, driver")
-    .eq("id", vehicleId)
-    .maybeSingle<{ driver_id: string | null; driver: string | null }>();
-
-  if (error) throw error;
-  if (!data) {
-    throw new Error("Vehicle not found.");
-  }
-
-  assertOriginalDriverCanDriveOut(profile, data);
 }
 
 export async function requireAdmin(actorId: string) {
