@@ -192,6 +192,7 @@ export type VehicleUnitOption = {
 };
 
 type DashboardRecord = Record<string, unknown>;
+type ExportVehicle = DashboardVehicle;
 
 export const DEFAULT_PARKING_LEVELS =
   defaultParkingConfig.levels as ParkingLevelConfig[];
@@ -403,6 +404,32 @@ const HISTORY_EXPORT_COLUMNS = [
   { key: "notes", label: "Notes" },
 ] as const;
 
+const BOS_EXPORT_COLUMNS = [
+  { key: "plate", label: "Vehicle Plate" },
+  { key: "vehicle_unit", label: "Vehicle Unit" },
+  { key: "variant", label: "Variant" },
+  { key: "level", label: "Level" },
+  { key: "lot", label: "Lot" },
+  { key: "odometer", label: "Odometer" },
+  { key: "engine_hours", label: "Engine Hours" },
+  { key: "starter_v", label: "Starter V" },
+  { key: "starter_pct", label: "Starter %" },
+  { key: "aux_v", label: "Aux V" },
+  { key: "aux_pct", label: "Aux %" },
+  { key: "fuel_l", label: "Fuel L" },
+  { key: "fuel_pct", label: "Fuel %" },
+  { key: "fire_ext_expiry", label: "Fire Ext Expiry" },
+  { key: "notes", label: "Notes" },
+] as const;
+
+const ADMIN_ACTION_EXPORT_COLUMNS = [
+  { key: "created_at", label: "Date" },
+  { key: "actor_name", label: "Admin" },
+  { key: "action", label: "Action" },
+  { key: "target_label", label: "Target" },
+  { key: "details", label: "Details" },
+] as const;
+
 function historyExportRow(record: DashboardRecord): string[] {
   return HISTORY_EXPORT_COLUMNS.map(({ key }) => {
     const value = record[key];
@@ -412,6 +439,34 @@ function historyExportRow(record: DashboardRecord): string[] {
       return format(new Date(String(value)), "dd MMM yyyy HH:mm");
     }
     return String(value);
+  });
+}
+
+function bosExportRow(record: DashboardRecord): string[] {
+  return BOS_EXPORT_COLUMNS.map(({ key }) => {
+    const value = record[key];
+    if (value === null || value === undefined || value === "") return "-";
+    if (key === "plate") return formatPlateDisplay(String(value));
+    if (key === "fire_ext_expiry") {
+      return format(new Date(String(value) + "T00:00:00"), "dd MMM yyyy");
+    }
+    return String(value);
+  });
+}
+
+function adminActionExportRow(entry: AuditLogEntry): string[] {
+  return ADMIN_ACTION_EXPORT_COLUMNS.map(({ key }) => {
+    const value = entry[key];
+    if (key === "created_at") {
+      return format(new Date(entry.created_at), "dd MMM yyyy HH:mm");
+    }
+    if (key === "action") {
+      return AUDIT_ACTION_LABELS[entry.action] || entry.action;
+    }
+    if (key === "details") {
+      return value ? JSON.stringify(value) : "";
+    }
+    return value === null || value === undefined ? "" : String(value);
   });
 }
 
@@ -433,14 +488,49 @@ function csvEscape(value: string): string {
   return value;
 }
 
+function downloadCSV(filename: string, rows: string[][]) {
+  const csv = rows.map((row) => row.map(csvEscape).join(",")).join("\n");
+  downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8;" }), filename);
+}
+
+function exportTablePDF({
+  filename,
+  title,
+  head,
+  body,
+  orientation = "landscape",
+}: {
+  filename: string;
+  title: string;
+  head: string[];
+  body: string[][];
+  orientation?: "portrait" | "landscape";
+}) {
+  const doc = new jsPDF({ orientation });
+  doc.setFontSize(14);
+  doc.text(title, 14, 14);
+  doc.setFontSize(9);
+  doc.text(`Generated ${format(new Date(), "dd MMM yyyy HH:mm")}`, 14, 20);
+
+  autoTable(doc, {
+    startY: 26,
+    head: [head],
+    body,
+    styles: { fontSize: 7, cellPadding: 2 },
+    headStyles: { fillColor: [220, 38, 38] },
+    margin: { left: 10, right: 10 },
+  });
+
+  doc.save(filename);
+}
+
 export function exportDriveoutHistoryCSV(records: DashboardRecord[]) {
   const header = HISTORY_EXPORT_COLUMNS.map((c) => c.label);
   const rows = records.map(historyExportRow);
-  const csv = [header, ...rows]
-    .map((row) => row.map(csvEscape).join(","))
-    .join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  downloadBlob(blob, `trackr-drive-out-history-${format(new Date(), "yyyy-MM-dd")}.csv`);
+  downloadCSV(`trackr-drive-out-history-${format(new Date(), "yyyy-MM-dd")}.csv`, [
+    header,
+    ...rows,
+  ]);
 }
 
 export function exportDriveoutHistoryPDF(records: DashboardRecord[]) {
@@ -460,4 +550,162 @@ export function exportDriveoutHistoryPDF(records: DashboardRecord[]) {
   });
 
   doc.save(`trackr-drive-out-history-${format(new Date(), "yyyy-MM-dd")}.pdf`);
+}
+
+export function exportBosReadingsCSV(records: DashboardRecord[]) {
+  downloadCSV(`trackr-bos-readings-${format(new Date(), "yyyy-MM-dd")}.csv`, [
+    BOS_EXPORT_COLUMNS.map((column) => column.label),
+    ...records.map(bosExportRow),
+  ]);
+}
+
+export function exportBosReadingsPDF(records: DashboardRecord[]) {
+  exportTablePDF({
+    filename: `trackr-bos-readings-${format(new Date(), "yyyy-MM-dd")}.pdf`,
+    title: "Trackr - BOS Readings",
+    head: BOS_EXPORT_COLUMNS.map((column) => column.label),
+    body: records.map(bosExportRow),
+  });
+}
+
+export function exportAdminActionsCSV(records: AuditLogEntry[]) {
+  downloadCSV(`trackr-admin-actions-${format(new Date(), "yyyy-MM-dd")}.csv`, [
+    ADMIN_ACTION_EXPORT_COLUMNS.map((column) => column.label),
+    ...records.map(adminActionExportRow),
+  ]);
+}
+
+export function exportAdminActionsPDF(records: AuditLogEntry[]) {
+  exportTablePDF({
+    filename: `trackr-admin-actions-${format(new Date(), "yyyy-MM-dd")}.pdf`,
+    title: "Trackr - Admin Actions",
+    head: ADMIN_ACTION_EXPORT_COLUMNS.map((column) => column.label),
+    body: records.map(adminActionExportRow),
+  });
+}
+
+function parkingCellLabel(
+  lot: string,
+  vehicle: ExportVehicle | undefined,
+  includeVehicleDetails = true,
+) {
+  if (!vehicle) return `${lot}\nEmpty`;
+
+  const parts = [lot, formatPlateDisplay(vehicle.plate)];
+  if (includeVehicleDetails) {
+    if (vehicle.vehicle_unit) parts.push(vehicle.vehicle_unit);
+    if (vehicle.variant) parts.push(vehicle.variant);
+  }
+
+  return parts.join("\n");
+}
+
+function buildParkingLevelRows(
+  level: ParkingLevelConfig,
+  vehicles: ExportVehicle[],
+) {
+  const occupiedLots = vehicles
+    .filter((vehicle) => vehicleMatchesLevel(vehicle, level))
+    .reduce<Record<string, ExportVehicle | undefined>>((map, vehicle) => {
+      map[normalizeParkingValue(vehicle.lot)] = vehicle;
+      return map;
+    }, {});
+  const columns = level.layout?.columns?.length
+    ? level.layout.columns
+    : [{ type: "lots" as const, id: "default", lots: getLevelLots(level) }];
+  const columnRows = columns.map((column) => {
+    if (column.type === "driveway") return [column.label || "DRIVEWAY"];
+    if (column.type === "spacer") return [""];
+
+    const cells =
+      column.type === "mixed"
+        ? column.cells
+        : column.lots.map((lot) => ({ type: "lot" as const, id: lot }));
+
+    return cells.map((cell) => {
+      if (cell.type === "area") return cell.label.replace(/\n/g, " ");
+      return parkingCellLabel(cell.id, occupiedLots[normalizeParkingValue(cell.id)]);
+    });
+  });
+  const maxRows = Math.max(1, ...columnRows.map((rows) => rows.length));
+
+  return Array.from({ length: maxRows }, (_, rowIndex) =>
+    columnRows.map((rows) => rows[rowIndex] ?? ""),
+  );
+}
+
+function buildParkingExportSections(
+  levels: ParkingLevelConfig[],
+  vehicles: ExportVehicle[],
+) {
+  return levels.map((level) => ({
+    level,
+    rows: buildParkingLevelRows(level, vehicles),
+  }));
+}
+
+export function exportParkingLayoutCSV(
+  levels: ParkingLevelConfig[],
+  vehicles: ExportVehicle[],
+) {
+  const rows: string[][] = [];
+  buildParkingExportSections(levels, vehicles).forEach(({ level, rows: levelRows }) => {
+    if (rows.length) rows.push([]);
+    rows.push([level.label]);
+    rows.push(...levelRows);
+  });
+
+  downloadCSV(`trackr-parking-layout-${format(new Date(), "yyyy-MM-dd")}.csv`, rows);
+}
+
+export function exportParkingLayoutPDF(
+  levels: ParkingLevelConfig[],
+  vehicles: ExportVehicle[],
+) {
+  const doc = new jsPDF({ orientation: "landscape" });
+  doc.setFontSize(14);
+  doc.text("Trackr - Parking Layout", 14, 14);
+  doc.setFontSize(9);
+  doc.text(`Generated ${format(new Date(), "dd MMM yyyy HH:mm")}`, 14, 20);
+
+  let startY = 28;
+  buildParkingExportSections(levels, vehicles).forEach(({ level, rows }) => {
+    doc.setFontSize(11);
+    doc.text(level.label, 14, startY);
+    autoTable(doc, {
+      startY: startY + 3,
+      body: rows,
+      theme: "grid",
+      styles: {
+        fontSize: 7,
+        cellPadding: 2,
+        halign: "center",
+        valign: "middle",
+        minCellHeight: 12,
+      },
+      margin: { left: 14, right: 14 },
+      didParseCell: (data) => {
+        const text = Array.isArray(data.cell.raw)
+          ? data.cell.raw.join(" ")
+          : String(data.cell.raw ?? "");
+        if (text.includes("\nEmpty")) {
+          data.cell.styles.textColor = [113, 113, 122];
+        } else if (text && text !== "DRIVEWAY") {
+          data.cell.styles.fillColor = [220, 252, 231];
+          data.cell.styles.textColor = [20, 83, 45];
+        }
+      },
+    });
+    startY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable
+      ? (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable!
+          .finalY + 10
+      : startY + 40;
+
+    if (startY > 180) {
+      doc.addPage();
+      startY = 18;
+    }
+  });
+
+  doc.save(`trackr-parking-layout-${format(new Date(), "yyyy-MM-dd")}.pdf`);
 }

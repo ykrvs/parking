@@ -1,7 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import { CarFront, Edit2, Plus, Search } from "lucide-react";
+import { CarFront, Download, Edit2, FileText, Plus, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { PercentDot, Skeleton } from "@/components/dashboard/status-indicators";
@@ -40,6 +40,8 @@ type BosReadingsTabProps = {
   vehicles: BosVehicle[];
   getFireExtStatus: (date: string | null) => FireExtStatus;
   onLogVehicleIn: () => void;
+  onExportCsv: (vehicles: BosVehicle[]) => void;
+  onExportPdf: (vehicles: BosVehicle[]) => void;
   onOpenVehicle: (vehicle: BosVehicle) => void;
   onUpdateVehicle: (vehicle: BosVehicle) => void;
 };
@@ -55,6 +57,8 @@ export function BosReadingsTab({
   vehicles,
   getFireExtStatus,
   onLogVehicleIn,
+  onExportCsv,
+  onExportPdf,
   onOpenVehicle,
   onUpdateVehicle,
 }: BosReadingsTabProps) {
@@ -89,19 +93,41 @@ export function BosReadingsTab({
             Active vehicles in {activeFacilityName}
           </p>
         </div>
-        <Button
-          type="button"
-          onClick={onLogVehicleIn}
-          className={cn(
-            "h-9 text-sm",
-            isUnverified
-              ? "bg-zinc-300 hover:bg-zinc-300 text-zinc-600 cursor-not-allowed"
-              : "bg-red-600 hover:bg-red-700",
-          )}
-        >
-          <Plus className="size-4 mr-1.5" />
-          Log Vehicle In
-        </Button>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!filteredVehicles.length}
+            onClick={() => onExportCsv(filteredVehicles)}
+            className="h-9 text-xs font-bold"
+          >
+            <Download className="size-3.5 mr-1.5" />
+            CSV
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!filteredVehicles.length}
+            onClick={() => onExportPdf(filteredVehicles)}
+            className="h-9 text-xs font-bold"
+          >
+            <FileText className="size-3.5 mr-1.5" />
+            PDF
+          </Button>
+          <Button
+            type="button"
+            onClick={onLogVehicleIn}
+            className={cn(
+              "h-9 text-sm",
+              isUnverified
+                ? "bg-zinc-300 hover:bg-zinc-300 text-zinc-600 cursor-not-allowed"
+                : "bg-red-600 hover:bg-red-700",
+            )}
+          >
+            <Plus className="size-4 mr-1.5" />
+            Log Vehicle In
+          </Button>
+        </div>
       </div>
 
       <div className="relative">

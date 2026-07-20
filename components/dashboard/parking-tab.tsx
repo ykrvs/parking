@@ -1,5 +1,7 @@
 "use client";
 
+import { Download, FileText } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import {
   formatPlateDisplay,
@@ -30,6 +32,8 @@ type ParkingTabProps = {
   selectedLot: string | null;
   selectedLotVehicle: ParkingVehicle | null;
   occupiedLotsMap: (level: string) => Record<string, ParkingVehicle | undefined>;
+  onExportCsv: () => void;
+  onExportPdf: () => void;
   onLotClick: (lotId: string, vehicle?: ParkingVehicle | null) => void;
   onOpenParkingLevel: (level: string) => void;
   onOpenVehicle: (vehicle: ParkingVehicle) => void;
@@ -46,6 +50,8 @@ export function ParkingTab({
   selectedLot,
   selectedLotVehicle,
   occupiedLotsMap,
+  onExportCsv,
+  onExportPdf,
   onLotClick,
   onOpenParkingLevel,
   onOpenVehicle,
@@ -53,43 +59,68 @@ export function ParkingTab({
 }: ParkingTabProps) {
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 sm:flex sm:items-center gap-3">
-        {parkingLevels.map((level) => {
-          const occ = counts[level.id] || 0;
-          const levelTotal = level.totalLots ?? getLevelLots(level).length;
-          const occupancyClasses = getLotOccupancyClasses(occ, levelTotal);
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="grid grid-cols-2 gap-3 sm:flex sm:items-center">
+          {parkingLevels.map((level) => {
+            const occ = counts[level.id] || 0;
+            const levelTotal = level.totalLots ?? getLevelLots(level).length;
+            const occupancyClasses = getLotOccupancyClasses(occ, levelTotal);
 
-          return (
-            <button
-              key={level.id}
-              type="button"
-              onClick={() => onOpenParkingLevel(level.id)}
-              className={cn(
-                "cursor-pointer border p-3 w-full sm:w-36 rounded-xl flex items-center gap-3 shadow-xs transition-all text-left",
-                occupancyClasses.box ||
-                  "bg-white border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50/50",
-                selectedLevel === level.id && "ring-2 ring-red-600/40",
-              )}
-            >
-              <div className="size-9 bg-zinc-100 rounded-lg flex items-center justify-center text-sm font-semibold select-none">
-                {level.icon || level.id}
-              </div>
-              <div className="min-w-0">
-                <div className="font-bold text-xs tracking-tight text-zinc-800 leading-tight">
-                  {level.label}
+            return (
+              <button
+                key={level.id}
+                type="button"
+                onClick={() => onOpenParkingLevel(level.id)}
+                className={cn(
+                  "cursor-pointer border p-3 w-full sm:w-36 rounded-xl flex items-center gap-3 shadow-xs transition-all text-left",
+                  occupancyClasses.box ||
+                    "bg-white border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50/50",
+                  selectedLevel === level.id && "ring-2 ring-red-600/40",
+                )}
+              >
+                <div className="size-9 bg-zinc-100 rounded-lg flex items-center justify-center text-sm font-semibold select-none">
+                  {level.icon || level.id}
                 </div>
-                <p
-                  className={cn(
-                    "text-[10px] font-medium mt-0.5",
-                    occupancyClasses.text || "text-zinc-500",
-                  )}
-                >
-                  {occ}/{levelTotal} lots
-                </p>
-              </div>
-            </button>
-          );
-        })}
+                <div className="min-w-0">
+                  <div className="font-bold text-xs tracking-tight text-zinc-800 leading-tight">
+                    {level.label}
+                  </div>
+                  <p
+                    className={cn(
+                      "text-[10px] font-medium mt-0.5",
+                      occupancyClasses.text || "text-zinc-500",
+                    )}
+                  >
+                    {occ}/{levelTotal} lots
+                  </p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!parkingLevels.length}
+            onClick={onExportCsv}
+            className="h-9 text-xs font-bold"
+          >
+            <Download className="size-3.5 mr-1.5" />
+            CSV
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!parkingLevels.length}
+            onClick={onExportPdf}
+            className="h-9 text-xs font-bold"
+          >
+            <FileText className="size-3.5 mr-1.5" />
+            PDF
+          </Button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-zinc-200 p-4 sm:p-6 shadow-sm space-y-4">
