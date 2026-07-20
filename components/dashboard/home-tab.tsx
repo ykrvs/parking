@@ -1,6 +1,13 @@
 "use client";
 
-import { CarFront, Plus, ShieldCheck, User } from "lucide-react";
+import {
+  CarFront,
+  CheckCircle2,
+  Plus,
+  ShieldCheck,
+  User,
+  XCircle,
+} from "lucide-react";
 
 import { Skeleton } from "@/components/dashboard/status-indicators";
 import { Button } from "@/components/ui/button";
@@ -24,6 +31,7 @@ type HomeTabProps = {
   safetyMessage: string;
   vehicleCount: number;
   formatTimeAgo: (iso?: string | null) => string;
+  isServicingDue: (vehicle: DashboardVehicle) => boolean;
   onLogVehicleIn: () => void;
   onOpenParkingLevel: (levelId: string) => void;
   onOpenVehicle: (vehicle: DashboardVehicle) => void;
@@ -41,6 +49,7 @@ export function HomeTab({
   safetyMessage,
   vehicleCount,
   formatTimeAgo,
+  isServicingDue,
   onLogVehicleIn,
   onOpenParkingLevel,
   onOpenVehicle,
@@ -170,12 +179,20 @@ export function HomeTab({
               </div>
             ))
           ) : recentVehicles.length > 0 ? (
-            recentVehicles.map((vehicle) => (
+            recentVehicles.map((vehicle) => {
+              const serviceDue = isServicingDue(vehicle);
+
+              return (
               <button
                 key={vehicle.id}
                 type="button"
                 onClick={() => onOpenVehicle(vehicle)}
-                className="cursor-pointer bg-white border border-zinc-200 hover:border-zinc-300 hover:shadow-xs p-4 rounded-xl flex items-center justify-between gap-4 transition-all text-left"
+                className={cn(
+                  "cursor-pointer border p-4 rounded-xl flex items-center justify-between gap-4 transition-all text-left",
+                  serviceDue
+                    ? "border-amber-300 bg-amber-50/70 shadow-sm shadow-amber-100 hover:border-amber-400"
+                    : "bg-white border-zinc-200 hover:border-zinc-300 hover:shadow-xs",
+                )}
               >
                 <div className="flex items-center gap-3">
                   <div className="size-10 bg-zinc-100 text-zinc-600 rounded-lg flex items-center justify-center">
@@ -193,16 +210,24 @@ export function HomeTab({
                     </p>
                   </div>
                 </div>
-                <div className="text-right shrink-0">
-                  <p className="text-xs text-red-600 font-semibold">
-                    {formatTimeAgo(vehicle.check_in)}
-                  </p>
-                  <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider mt-1">
-                    {vehicle.driver || "-"}
-                  </p>
+                <div className="flex shrink-0 items-start gap-2">
+                  {vehicle.is_vor ? (
+                    <XCircle className="mt-0.5 size-4 text-red-600" />
+                  ) : (
+                    <CheckCircle2 className="mt-0.5 size-4 text-emerald-600" />
+                  )}
+                  <div className="text-right">
+                    <p className="text-xs text-red-600 font-semibold">
+                      {formatTimeAgo(vehicle.check_in)}
+                    </p>
+                    <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider mt-1">
+                      {vehicle.driver || "-"}
+                    </p>
+                  </div>
                 </div>
               </button>
-            ))
+              );
+            })
           ) : (
             <p className="text-zinc-500 text-sm py-4 text-center col-span-full font-medium">
               No active vehicles checked in yet.

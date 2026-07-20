@@ -1,7 +1,16 @@
 "use client";
 
 import { format } from "date-fns";
-import { CarFront, Download, Edit2, FileText, Plus, Search } from "lucide-react";
+import {
+  CarFront,
+  CheckCircle2,
+  Download,
+  Edit2,
+  FileText,
+  Plus,
+  Search,
+  XCircle,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { PercentDot, Skeleton } from "@/components/dashboard/status-indicators";
@@ -25,6 +34,8 @@ type BosVehicle = {
   fuel_l?: number | string | null;
   fuel_pct?: number | null;
   fire_ext_expiry?: string | null;
+  is_vor?: boolean | null;
+  next_servicing?: string | null;
 };
 
 type FireExtStatus = {
@@ -39,6 +50,7 @@ type BosReadingsTabProps = {
   isUnverified: boolean;
   vehicles: BosVehicle[];
   getFireExtStatus: (date: string | null) => FireExtStatus;
+  isServicingDue: (vehicle: BosVehicle) => boolean;
   onLogVehicleIn: () => void;
   onExportCsv: (vehicles: BosVehicle[]) => void;
   onExportPdf: (vehicles: BosVehicle[]) => void;
@@ -56,6 +68,7 @@ export function BosReadingsTab({
   isUnverified,
   vehicles,
   getFireExtStatus,
+  isServicingDue,
   onLogVehicleIn,
   onExportCsv,
   onExportPdf,
@@ -157,12 +170,18 @@ export function BosReadingsTab({
             const fireStatus = getFireExtStatus(
               vehicle.fire_ext_expiry ?? null,
             );
+            const serviceDue = isServicingDue(vehicle);
 
             return (
               <div
                 key={vehicle.id}
                 onClick={() => onOpenVehicle(vehicle)}
-                className="cursor-pointer rounded-xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:border-zinc-300 hover:shadow-md"
+                className={cn(
+                  "cursor-pointer rounded-xl border p-4 shadow-sm transition hover:shadow-md",
+                  serviceDue
+                    ? "border-amber-300 bg-amber-50/70 shadow-amber-100 hover:border-amber-400"
+                    : "border-zinc-200 bg-white hover:border-zinc-300",
+                )}
               >
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex min-w-0 items-center gap-3 lg:w-52">
@@ -170,9 +189,16 @@ export function BosReadingsTab({
                       <CarFront className="size-5" />
                     </div>
                     <div className="min-w-0">
-                      <p className="truncate text-base font-extrabold text-zinc-900">
-                        {formatPlateDisplay(vehicle.plate)}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-base font-extrabold text-zinc-900">
+                          {formatPlateDisplay(vehicle.plate)}
+                        </p>
+                        {vehicle.is_vor ? (
+                          <XCircle className="size-4 shrink-0 text-red-600" />
+                        ) : (
+                          <CheckCircle2 className="size-4 shrink-0 text-emerald-600" />
+                        )}
+                      </div>
                       <p className="truncate text-[11px] font-semibold text-zinc-400">
                         {vehicleUnitLabel(vehicle)}
                       </p>

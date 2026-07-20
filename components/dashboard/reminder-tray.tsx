@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, ChevronDown, ChevronUp, Flame, User } from "lucide-react";
+import { Bell, ChevronDown, ChevronUp, Flame, User, Wrench } from "lucide-react";
 import { useState } from "react";
 
 import {
@@ -11,6 +11,11 @@ import {
 import { cn } from "@/lib/utils";
 
 type FireExtAlert = {
+  vehicle: DashboardVehicle;
+  daysLeft: number | null;
+};
+
+type ServicingAlert = {
   vehicle: DashboardVehicle;
   daysLeft: number | null;
 };
@@ -27,6 +32,7 @@ type ReminderTrayProps = {
   ordWarningDays: number;
   profileName: string;
   profileUnit: string;
+  servicingAlerts: ServicingAlert[];
   onOpenVehicle: (vehicle: DashboardVehicle) => void;
   vehicleUnitLabel: (vehicle: { vehicle_unit?: string | null }) => string;
 };
@@ -38,14 +44,19 @@ export function ReminderTray({
   ordWarningDays,
   profileName,
   profileUnit,
+  servicingAlerts,
   onOpenVehicle,
   vehicleUnitLabel,
 }: ReminderTrayProps) {
   const [isOpen, setIsOpen] = useState(false);
   const alertCount =
-    fireExtAlerts.length + ordAlerts.length + (myOrdReminder !== null ? 1 : 0);
+    fireExtAlerts.length +
+    servicingAlerts.length +
+    ordAlerts.length +
+    (myOrdReminder !== null ? 1 : 0);
   const hasUrgentReminder =
     fireExtAlerts.some((entry) => (entry.daysLeft ?? 0) <= 0) ||
+    servicingAlerts.some((entry) => (entry.daysLeft ?? 0) <= 0) ||
     ordAlerts.some((entry) => entry.daysLeft === 0) ||
     myOrdReminder === 0;
 
@@ -55,10 +66,10 @@ export function ReminderTray({
     <div className="relative z-40">
       <div
         className={cn(
-          "overflow-hidden rounded-xl border bg-white shadow-lg ring-1 ring-black/5 transition-all",
+          "overflow-hidden rounded-lg border bg-white shadow-lg ring-1 ring-black/5 transition-all",
           isOpen
-            ? "absolute right-0 top-11 w-[calc(100vw-1.5rem)] max-w-sm"
-            : "w-10 sm:w-auto",
+            ? "fixed left-1/2 top-20 w-[calc(100vw-2rem)] max-w-sm -translate-x-1/2"
+            : "w-8 sm:w-auto",
           hasUrgentReminder ? "border-red-200" : "border-amber-200",
         )}
       >
@@ -67,20 +78,20 @@ export function ReminderTray({
           onClick={() => setIsOpen((open) => !open)}
           aria-expanded={isOpen}
           className={cn(
-            "flex h-10 w-full items-center justify-between gap-3 px-2 text-left transition hover:bg-zinc-50 sm:px-3",
+            "relative flex h-8 w-full items-center justify-between gap-3 px-1.5 text-left transition hover:bg-zinc-50 sm:h-10 sm:px-3",
             isOpen ? "border-b border-zinc-100" : "",
           )}
         >
           <span className="flex min-w-0 items-center gap-2">
             <span
               className={cn(
-                "flex size-8 shrink-0 items-center justify-center rounded-lg",
+                "flex size-6 shrink-0 items-center justify-center rounded-md sm:size-8 sm:rounded-lg",
                 hasUrgentReminder
                   ? "bg-red-100 text-red-700"
                   : "bg-amber-100 text-amber-700",
               )}
             >
-              <Bell className="size-4" />
+              <Bell className="size-3.5 sm:size-4" />
             </span>
             <span
               className={cn("min-w-0", isOpen ? "block" : "hidden sm:block")}
@@ -96,7 +107,7 @@ export function ReminderTray({
           <span className="flex items-center gap-2">
             <span
               className={cn(
-                "rounded-full px-2 py-0.5 text-xs font-black",
+                "absolute -right-1 -top-1 rounded-full px-1.5 py-0.5 text-[9px] font-black leading-none sm:static sm:px-2 sm:text-xs",
                 hasUrgentReminder
                   ? "bg-red-100 text-red-700"
                   : "bg-amber-100 text-amber-700",
@@ -148,6 +159,49 @@ export function ReminderTray({
                         {(daysLeft ?? 0) < 0
                           ? `Expired ${Math.abs(daysLeft ?? 0)}d ago`
                           : `Expires in ${daysLeft}d`}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {servicingAlerts.length > 0 && (
+              <section className="space-y-2">
+                <div className="flex items-center gap-2 text-amber-800 font-bold text-xs uppercase tracking-wider">
+                  <Wrench className="size-4" />
+                  Servicing
+                </div>
+                <div className="space-y-1.5">
+                  {servicingAlerts.map(({ vehicle, daysLeft }) => (
+                    <button
+                      type="button"
+                      key={vehicle.id}
+                      onClick={() => onOpenVehicle(vehicle)}
+                      className="flex w-full items-center justify-between gap-2 rounded-lg border border-amber-100 bg-amber-50/70 px-3 py-2 text-left transition hover:bg-amber-50"
+                    >
+                      <span className="min-w-0 text-sm font-bold text-zinc-800">
+                        {formatPlateDisplay(vehicle.plate)}
+                        <span className="ml-2 text-xs font-semibold text-zinc-400">
+                          {vehicleUnitLabel(vehicle)}
+                        </span>
+                        <span className="ml-2 font-medium text-zinc-500">
+                          ({vehicle.variant})
+                        </span>
+                      </span>
+                      <span
+                        className={cn(
+                          "shrink-0 text-xs font-bold",
+                          (daysLeft ?? 0) <= 0
+                            ? "text-red-700"
+                            : "text-amber-700",
+                        )}
+                      >
+                        {(daysLeft ?? 0) < 0
+                          ? `Overdue ${Math.abs(daysLeft ?? 0)}d`
+                          : daysLeft === 0
+                            ? "Due today"
+                            : `Due in ${daysLeft}d`}
                       </span>
                     </button>
                   ))}

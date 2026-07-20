@@ -1,6 +1,6 @@
 "use client";
 
-import { CarFront, Search } from "lucide-react";
+import { CarFront, CheckCircle2, Search, XCircle } from "lucide-react";
 
 import { Skeleton } from "@/components/dashboard/status-indicators";
 import {
@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatPlateDisplay } from "@/lib/dashboard/dashboard-data";
+import { cn } from "@/lib/utils";
 
 type SearchVehicle = {
   id: string;
@@ -21,6 +22,8 @@ type SearchVehicle = {
   lot?: string | null;
   check_in?: string | null;
   driver?: string | null;
+  is_vor?: boolean | null;
+  next_servicing?: string | null;
 };
 
 type VehicleUnitOption = {
@@ -35,6 +38,7 @@ type SearchVehiclesTabProps = {
   searchVehicleUnit: string;
   vehicleUnits: VehicleUnitOption[];
   formatTimeAgo: (iso: string) => string;
+  isServicingDue: (vehicle: SearchVehicle) => boolean;
   onOpenVehicle: (vehicle: SearchVehicle) => void;
   onSearchQueryChange: (value: string) => void;
   onSearchVehicleUnitChange: (value: string) => void;
@@ -48,6 +52,7 @@ export function SearchVehiclesTab({
   searchVehicleUnit,
   vehicleUnits,
   formatTimeAgo,
+  isServicingDue,
   onOpenVehicle,
   onSearchQueryChange,
   onSearchVehicleUnitChange,
@@ -105,12 +110,20 @@ export function SearchVehiclesTab({
             </div>
           ))
         ) : filteredVehicles.length > 0 ? (
-          filteredVehicles.map((vehicle) => (
+          filteredVehicles.map((vehicle) => {
+            const serviceDue = isServicingDue(vehicle);
+
+            return (
             <button
               key={vehicle.id}
               type="button"
               onClick={() => onOpenVehicle(vehicle)}
-              className="cursor-pointer bg-white border border-zinc-200 hover:border-zinc-300 hover:shadow-xs p-4 rounded-xl flex items-center justify-between gap-4 transition-all text-left"
+              className={cn(
+                "cursor-pointer border p-4 rounded-xl flex items-center justify-between gap-4 transition-all text-left",
+                serviceDue
+                  ? "border-amber-300 bg-amber-50/70 shadow-sm shadow-amber-100 hover:border-amber-400"
+                  : "bg-white border-zinc-200 hover:border-zinc-300 hover:shadow-xs",
+              )}
             >
               <div className="flex items-center gap-3">
                 <div className="size-10 bg-zinc-100 text-zinc-600 rounded-lg flex items-center justify-center">
@@ -129,16 +142,24 @@ export function SearchVehiclesTab({
                   </p>
                 </div>
               </div>
-              <div className="text-right shrink-0">
-                <p className="text-xs text-red-600 font-semibold">
-                  {formatTimeAgo(vehicle.check_in || "")}
-                </p>
-                <p className="text-[10px] text-zinc-400 font-bold uppercase mt-1">
-                  {vehicle.driver || "-"}
-                </p>
+              <div className="flex shrink-0 items-start gap-2">
+                {vehicle.is_vor ? (
+                  <XCircle className="mt-0.5 size-4 text-red-600" />
+                ) : (
+                  <CheckCircle2 className="mt-0.5 size-4 text-emerald-600" />
+                )}
+                <div className="text-right">
+                  <p className="text-xs text-red-600 font-semibold">
+                    {formatTimeAgo(vehicle.check_in || "")}
+                  </p>
+                  <p className="text-[10px] text-zinc-400 font-bold uppercase mt-1">
+                    {vehicle.driver || "-"}
+                  </p>
+                </div>
               </div>
             </button>
-          ))
+            );
+          })
         ) : (
           <p className="text-zinc-500 text-sm py-8 text-center col-span-full font-medium">
             No active vehicles found matching search.
