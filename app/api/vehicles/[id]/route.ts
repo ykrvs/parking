@@ -42,6 +42,9 @@ const VEHICLE_UPDATE_FIELDS = [
   "fuel_l",
   "fuel_pct",
   "fire_ext_expiry",
+  "is_vor",
+  "next_servicing",
+  "last_serviced",
   "notes",
 ] as const;
 

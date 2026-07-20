@@ -40,6 +40,7 @@ type AppShellNavigationProps = {
   isSidebarOpen: boolean;
   profile: ShellProfile;
   goTab: (tab: string) => void;
+  onLogoClick?: () => void;
   logout: () => void;
   setActiveFacility: (facility: string) => void;
   setActiveTab: (tab: string) => void;
@@ -124,6 +125,7 @@ export function AppShellNavigation({
   isSidebarOpen,
   profile,
   goTab,
+  onLogoClick,
   logout,
   setActiveFacility,
   setActiveTab,
@@ -160,9 +162,9 @@ export function AppShellNavigation({
         <div className="flex items-center gap-3 rounded-lg">
           <button
             type="button"
-            onClick={() => goTab("home")}
+            onClick={onLogoClick ?? (() => goTab("home"))}
             className="rounded-lg transition hover:opacity-80 focus:outline-none focus:ring-3 focus:ring-red-600/15"
-            aria-label="Go to home page"
+            aria-label="Refresh and go home"
           >
             <Image
               src="/icon.png"

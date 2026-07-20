@@ -165,6 +165,10 @@ export default function Home() {
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [isConfirmingDriveout, setIsConfirmingDriveout] =
     useState<boolean>(false);
+  const [servicingPromptVehicle, setServicingPromptVehicle] =
+    useState<DashboardVehicle | null>(null);
+  const [isServicingFollowUpOpen, setIsServicingFollowUpOpen] =
+    useState(false);
 
   // Profile edit states
   const [isEditingProfile, setIsEditingProfile] = useState<boolean>(false);
@@ -192,6 +196,7 @@ export default function Home() {
   // Check-in input states
   const [ciPlate, setCiPlate] = useState("");
   const [ciVariant, setCiVariant] = useState("");
+  const [ciIsVor, setCiIsVor] = useState(false);
   const [ciVehicleUnit, setCiVehicleUnit] = useState("");
   const [ciDriver, setCiDriver] = useState("");
   const [ciDriverPhone, setCiDriverPhone] = useState("");
@@ -207,10 +212,12 @@ export default function Home() {
   const [ciFuelL, setCiFuelL] = useState("");
   const [ciFuelPct, setCiFuelPct] = useState("");
   const [ciFireExpiry, setCiFireExpiry] = useState("");
+  const [ciNextServicing, setCiNextServicing] = useState("");
   const [ciNotes, setCiNotes] = useState("");
 
   // Update input states
   const [upVariant, setUpVariant] = useState("");
+  const [upIsVor, setUpIsVor] = useState(false);
   const [upVehicleUnit, setUpVehicleUnit] = useState("");
   const [upDriver, setUpDriver] = useState("");
   const [upDriverPhone, setUpDriverPhone] = useState("");
@@ -225,6 +232,8 @@ export default function Home() {
   const [upFuelL, setUpFuelL] = useState("");
   const [upFuelPct, setUpFuelPct] = useState("");
   const [upFireExpiry, setUpFireExpiry] = useState("");
+  const [upNextServicing, setUpNextServicing] = useState("");
+  const [upLastServiced, setUpLastServiced] = useState("");
   const [upNotes, setUpNotes] = useState("");
 
   // Turret ESC Checklist states
@@ -789,6 +798,20 @@ if (isVerificationPending) {
   const vehicleUnitLabel = (vehicle: { vehicle_unit?: string | null }) =>
     vehicle.vehicle_unit || "No vehicle unit";
 
+  const getDateDaysLeft = (dateStr?: string | null) => {
+    if (!dateStr) return null;
+    return Math.floor(
+      (new Date(dateStr + "T00:00:00").getTime() -
+        new Date().setHours(0, 0, 0, 0)) /
+        86400000,
+    );
+  };
+
+  const isServicingDue = (vehicle: { next_servicing?: string | null }) => {
+    const daysLeft = getDateDaysLeft(vehicle.next_servicing);
+    return daysLeft !== null && daysLeft <= 0;
+  };
+
   // Fire extinguishers expired, or expiring within the next 14 days, on
   // vehicles currently parked in the facility.
   const FIRE_EXT_WARNING_DAYS = 14;
@@ -797,6 +820,15 @@ if (isVerificationPending) {
     .filter(
       (entry) =>
         entry.daysLeft !== null && entry.daysLeft <= FIRE_EXT_WARNING_DAYS,
+    )
+    .sort((a, b) => (a.daysLeft ?? 0) - (b.daysLeft ?? 0));
+
+  const SERVICING_WARNING_DAYS = 14;
+  const servicingAlerts = vehicles
+    .map((v) => ({ vehicle: v, daysLeft: getDateDaysLeft(v.next_servicing) }))
+    .filter(
+      (entry) =>
+        entry.daysLeft !== null && entry.daysLeft <= SERVICING_WARNING_DAYS,
     )
     .sort((a, b) => (a.daysLeft ?? 0) - (b.daysLeft ?? 0));
 
@@ -929,6 +961,10 @@ if (isVerificationPending) {
     }
 
     setActiveTab("detail");
+    if (isServicingDue(vehicle)) {
+      setServicingPromptVehicle(vehicle);
+      setIsServicingFollowUpOpen(false);
+    }
   };
 
   // Open checked out vehicle details
@@ -1018,6 +1054,7 @@ if (isVerificationPending) {
     const payload = {
       plate: ciPlate,
       variant: ciVariant,
+      is_vor: ciIsVor,
       vehicle_unit: ciVehicleUnit || null,
       driver: profile.name,
       driver_phone: profile.phone,
@@ -1033,6 +1070,7 @@ if (isVerificationPending) {
       fuel_l: ciFuelL || null,
       fuel_pct: ciFuelPct || null,
       fire_ext_expiry: ciFireExpiry || null,
+      next_servicing: ciNextServicing || null,
       notes: ciNotes || null,
       facility: activeFacility,
     };
@@ -1053,6 +1091,7 @@ if (isVerificationPending) {
       // Clear inputs
       setCiPlate("");
       setCiVariant("");
+      setCiIsVor(false);
       setCiVehicleUnit("");
       setCiDriver("");
       setCiDriverPhone("");
@@ -1067,6 +1106,7 @@ if (isVerificationPending) {
       setCiFuelL("");
       setCiFuelPct("");
       setCiFireExpiry("");
+      setCiNextServicing("");
       setCiNotes("");
 
       fetchDashboardData();
@@ -1083,6 +1123,7 @@ if (isVerificationPending) {
     if (!v) return;
     setSelectedVehicle(v);
     setUpVariant(v.variant || "");
+    setUpIsVor(v.is_vor === true);
     setUpVehicleUnit(v.vehicle_unit || "");
     setUpDriver(v.driver || "");
     setUpDriverPhone(v.driver_phone || "");
@@ -1097,6 +1138,8 @@ if (isVerificationPending) {
     setUpFuelL(v.fuel_l?.toString() || "");
     setUpFuelPct(v.fuel_pct?.toString() || "");
     setUpFireExpiry(v.fire_ext_expiry || "");
+    setUpNextServicing(v.next_servicing || "");
+    setUpLastServiced(v.last_serviced || "");
     setUpNotes(v.notes || "");
     setIsUpdating(true);
   };
@@ -1110,6 +1153,7 @@ if (isVerificationPending) {
 
     const payload = {
       variant: upVariant || null,
+      is_vor: upIsVor,
       vehicle_unit: upVehicleUnit || null,
       driver: upDriver || null,
       driver_phone: upDriverPhone || null,
@@ -1124,10 +1168,13 @@ if (isVerificationPending) {
       fuel_l: upFuelL ? parseFloat(upFuelL) : null,
       fuel_pct: upFuelPct ? parseInt(upFuelPct, 10) : null,
       fire_ext_expiry: upFireExpiry || null,
+      next_servicing: upNextServicing || null,
+      last_serviced: upLastServiced || null,
       notes: upNotes || null,
       historyRow: {
         vehicle_id: selectedVehicle.id,
         variant: upVariant || selectedVehicle.variant,
+        is_vor: upIsVor,
         vehicle_unit: upVehicleUnit || selectedVehicle.vehicle_unit || null,
         driver_id: selectedVehicle.driver_id || null,
         driver: upDriver || selectedVehicle.driver,
@@ -1149,6 +1196,8 @@ if (isVerificationPending) {
         fuel_l: upFuelL ? parseFloat(upFuelL) : null,
         fuel_pct: upFuelPct ? parseInt(upFuelPct, 10) : null,
         fire_ext_expiry: upFireExpiry || null,
+        next_servicing: upNextServicing || null,
+        last_serviced: upLastServiced || null,
         notes: upNotes || selectedVehicle.notes,
       },
     };
@@ -1218,6 +1267,9 @@ if (isVerificationPending) {
           fuel_l: selectedVehicle.fuel_l,
           fuel_pct: selectedVehicle.fuel_pct,
           fire_ext_expiry: selectedVehicle.fire_ext_expiry,
+          is_vor: selectedVehicle.is_vor === true,
+          next_servicing: selectedVehicle.next_servicing || null,
+          last_serviced: selectedVehicle.last_serviced || null,
           notes: selectedVehicle.notes,
         },
       };
@@ -1670,6 +1722,7 @@ if (isVerificationPending) {
             ordWarningDays={ORD_WARNING_DAYS}
             profileName={profile.name}
             profileUnit={profileUnit}
+            servicingAlerts={servicingAlerts}
             onOpenVehicle={handleOpenVehicle}
             vehicleUnitLabel={vehicleUnitLabel}
           />
@@ -1677,6 +1730,15 @@ if (isVerificationPending) {
         isSidebarOpen={isSidebarOpen}
         profile={profile}
         goTab={goTab}
+        onLogoClick={() => {
+          goTab("home");
+          router.refresh();
+          if (activeFacility) {
+            fetchDashboardData();
+            fetchParkingConfig();
+            fetchSafetyMessages();
+          }
+        }}
         logout={auth.logout}
         setActiveFacility={setActiveFacility}
         setActiveTab={setActiveTab}
@@ -1698,6 +1760,7 @@ if (isVerificationPending) {
             safetyMessage={safetyMessage}
             vehicleCount={vehicles.length}
             formatTimeAgo={formatTimeAgo}
+            isServicingDue={isServicingDue}
             onLogVehicleIn={() => guardVerifiedAction(openCheckinModal)}
             onOpenParkingLevel={openParkingLevel}
             onOpenVehicle={handleOpenVehicle}
@@ -1714,6 +1777,7 @@ if (isVerificationPending) {
             searchVehicleUnit={searchVehicleUnit}
             vehicleUnits={vehicleUnits}
             formatTimeAgo={formatTimeAgo}
+            isServicingDue={isServicingDue}
             onOpenVehicle={handleOpenVehicle}
             onSearchQueryChange={setSearchQuery}
             onSearchVehicleUnitChange={setSearchVehicleUnit}
@@ -1729,6 +1793,7 @@ if (isVerificationPending) {
             isUnverified={isUnverified}
             vehicles={vehicles}
             getFireExtStatus={getFireExtStatus}
+            isServicingDue={isServicingDue}
             onLogVehicleIn={() => guardVerifiedAction(openCheckinModal)}
             onExportCsv={exportBosReadingsCSV}
             onExportPdf={exportBosReadingsPDF}
@@ -2668,9 +2733,11 @@ if (isVerificationPending) {
           ciFireExpiry={ciFireExpiry}
           ciFuelL={ciFuelL}
           ciFuelPct={ciFuelPct}
+          ciIsVor={ciIsVor}
           ciLevel={ciLevel}
           ciLevelLots={ciLevelLots}
           ciLot={ciLot}
+          ciNextServicing={ciNextServicing}
           ciNotes={ciNotes}
           ciOccupiedLots={ciOccupiedLots}
           ciOdometer={ciOdometer}
@@ -2691,8 +2758,10 @@ if (isVerificationPending) {
           setCiFireExpiry={setCiFireExpiry}
           setCiFuelL={setCiFuelL}
           setCiFuelPct={setCiFuelPct}
+          setCiIsVor={setCiIsVor}
           setCiLevel={setCiLevel}
           setCiLot={setCiLot}
+          setCiNextServicing={setCiNextServicing}
           setCiNotes={setCiNotes}
           setCiOdometer={setCiOdometer}
           setCiPlate={setCiPlate}
@@ -2753,6 +2822,16 @@ if (isVerificationPending) {
                     />
                   </div>
                 </div>
+
+                <label className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-semibold text-zinc-700">
+                  <input
+                    type="checkbox"
+                    checked={upIsVor}
+                    onChange={(e) => setUpIsVor(e.target.checked)}
+                    className="size-4 accent-red-700"
+                  />
+                  Vehicle is VOR
+                </label>
 
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-zinc-700">
@@ -2988,6 +3067,31 @@ if (isVerificationPending) {
                   />
                 </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-zinc-700">
+                      Next Servicing
+                    </label>
+                    <input
+                      type="date"
+                      value={upNextServicing}
+                      onChange={(e) => setUpNextServicing(e.target.value)}
+                      className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-zinc-700">
+                      Last Serviced
+                    </label>
+                    <input
+                      type="date"
+                      value={upLastServiced}
+                      onChange={(e) => setUpLastServiced(e.target.value)}
+                      className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-zinc-700">
                     Notes / Faults
@@ -3017,6 +3121,82 @@ if (isVerificationPending) {
                   </Button>
                 </div>
               </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {servicingPromptVehicle && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <Card className="w-full max-w-sm rounded-xl border-amber-200 shadow-xl animate-in zoom-in-95 duration-200">
+            <CardHeader>
+              <CardTitle className="text-lg text-amber-700 font-bold">
+                Servicing Reminder
+              </CardTitle>
+              <CardDescription>
+                {formatPlateDisplay(servicingPromptVehicle.plate)} is due for
+                servicing.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!isServicingFollowUpOpen ? (
+                <>
+                  <p className="text-sm font-medium text-zinc-700">
+                    Has servicing been done on this vehicle yet?
+                  </p>
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        setServicingPromptVehicle(null);
+                        setIsServicingFollowUpOpen(false);
+                      }}
+                      className="flex-1 bg-red-600 hover:bg-red-700"
+                    >
+                      Yes
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsServicingFollowUpOpen(true)}
+                      className="flex-1"
+                    >
+                      No
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-medium text-zinc-700">
+                    Not yet.
+                  </p>
+                  <div className="grid gap-2 pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setServicingPromptVehicle(null);
+                        setIsServicingFollowUpOpen(false);
+                      }}
+                      className="w-full"
+                    >
+                      Not yet
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        const vehicle = servicingPromptVehicle;
+                        setServicingPromptVehicle(null);
+                        setIsServicingFollowUpOpen(false);
+                        handleOpenUpdate(vehicle);
+                      }}
+                      className="w-full bg-red-600 hover:bg-red-700"
+                    >
+                      Choose another servicing date
+                    </Button>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>

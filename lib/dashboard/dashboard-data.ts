@@ -139,6 +139,9 @@ export type DashboardVehicle = {
   fuel_l?: number | string | null;
   fuel_pct?: number | null;
   fire_ext_expiry?: string | null;
+  is_vor?: boolean | null;
+  next_servicing?: string | null;
+  last_serviced?: string | null;
   notes?: string | null;
   check_in?: string | null;
   created_at?: string | null;
@@ -401,6 +404,9 @@ const HISTORY_EXPORT_COLUMNS = [
   { key: "fuel_l", label: "Fuel L" },
   { key: "fuel_pct", label: "Fuel %" },
   { key: "fire_ext_expiry", label: "Fire Ext Expiry" },
+  { key: "is_vor", label: "VOR Status" },
+  { key: "next_servicing", label: "Next Servicing" },
+  { key: "last_serviced", label: "Last Serviced" },
   { key: "notes", label: "Notes" },
 ] as const;
 
@@ -419,6 +425,9 @@ const BOS_EXPORT_COLUMNS = [
   { key: "fuel_l", label: "Fuel L" },
   { key: "fuel_pct", label: "Fuel %" },
   { key: "fire_ext_expiry", label: "Fire Ext Expiry" },
+  { key: "is_vor", label: "VOR Status" },
+  { key: "next_servicing", label: "Next Servicing" },
+  { key: "last_serviced", label: "Last Serviced" },
   { key: "notes", label: "Notes" },
 ] as const;
 
@@ -438,6 +447,10 @@ function historyExportRow(record: DashboardRecord): string[] {
     if (key === "check_in" || key === "check_out") {
       return format(new Date(String(value)), "dd MMM yyyy HH:mm");
     }
+    if (key === "is_vor") return value ? "VOR" : "Operational";
+    if (key === "next_servicing" || key === "last_serviced") {
+      return format(new Date(String(value) + "T00:00:00"), "dd MMM yyyy");
+    }
     return String(value);
   });
 }
@@ -447,7 +460,12 @@ function bosExportRow(record: DashboardRecord): string[] {
     const value = record[key];
     if (value === null || value === undefined || value === "") return "-";
     if (key === "plate") return formatPlateDisplay(String(value));
-    if (key === "fire_ext_expiry") {
+    if (key === "is_vor") return value ? "VOR" : "Operational";
+    if (
+      key === "fire_ext_expiry" ||
+      key === "next_servicing" ||
+      key === "last_serviced"
+    ) {
       return format(new Date(String(value) + "T00:00:00"), "dd MMM yyyy");
     }
     return String(value);
@@ -592,6 +610,7 @@ function parkingCellLabel(
   if (!vehicle) return `${lot}\nEmpty`;
 
   const parts = [lot, formatPlateDisplay(vehicle.plate)];
+  if (vehicle.is_vor) parts.push("VOR");
   if (includeVehicleDetails) {
     if (vehicle.vehicle_unit) parts.push(vehicle.vehicle_unit);
     if (vehicle.variant) parts.push(vehicle.variant);

@@ -38,9 +38,11 @@ type CheckInDialogProps = {
   ciFireExpiry: string;
   ciFuelL: string;
   ciFuelPct: string;
+  ciIsVor: boolean;
   ciLevel: string;
   ciLevelLots: string[];
   ciLot: string;
+  ciNextServicing: string;
   ciNotes: string;
   ciOccupiedLots: Record<string, unknown>;
   ciOdometer: string;
@@ -61,8 +63,10 @@ type CheckInDialogProps = {
   setCiFireExpiry: (value: string) => void;
   setCiFuelL: (value: string) => void;
   setCiFuelPct: (value: string) => void;
+  setCiIsVor: (value: boolean) => void;
   setCiLevel: (value: string) => void;
   setCiLot: (value: string) => void;
+  setCiNextServicing: (value: string) => void;
   setCiNotes: (value: string) => void;
   setCiOdometer: (value: string) => void;
   setCiPlate: (value: string) => void;
@@ -83,9 +87,11 @@ export function CheckInDialog({
   ciFireExpiry,
   ciFuelL,
   ciFuelPct,
+  ciIsVor,
   ciLevel,
   ciLevelLots,
   ciLot,
+  ciNextServicing,
   ciNotes,
   ciOccupiedLots,
   ciOdometer,
@@ -106,8 +112,10 @@ export function CheckInDialog({
   setCiFireExpiry,
   setCiFuelL,
   setCiFuelPct,
+  setCiIsVor,
   setCiLevel,
   setCiLot,
+  setCiNextServicing,
   setCiNotes,
   setCiOdometer,
   setCiPlate,
@@ -199,6 +207,16 @@ export function CheckInDialog({
                 </select>
               </div>
             </div>
+
+            <label className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-semibold text-zinc-700">
+              <input
+                type="checkbox"
+                checked={ciIsVor}
+                onChange={(event) => setCiIsVor(event.target.checked)}
+                className="size-4 accent-red-700"
+              />
+              Vehicle is VOR
+            </label>
 
             <div className="space-y-1">
               <label className="text-xs font-semibold text-zinc-700">
@@ -450,6 +468,18 @@ export function CheckInDialog({
               <FireExpiryPicker
                 value={ciFireExpiry}
                 onChange={setCiFireExpiry}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-zinc-700">
+                Next Servicing
+              </label>
+              <input
+                type="date"
+                value={ciNextServicing}
+                onChange={(event) => setCiNextServicing(event.target.value)}
+                className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600"
               />
             </div>
 

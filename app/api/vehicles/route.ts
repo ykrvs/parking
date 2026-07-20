@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
     const existingVehicles = await getVehicles(facilityCode);
     if (
       existingVehicles.some(
-        (v: { id?: string; plate?: string }) => v.id === plate || v.plate === plate,
+        (v) => String(v.id ?? "") === plate || String(v.plate ?? "") === plate,
       )
     ) {
       return NextResponse.json(
@@ -145,6 +145,9 @@ export async function POST(request: NextRequest) {
       fuel_l: parseNonNegativeNumber(body.fuel_l, "Fuel litres"),
       fuel_pct: parsePercentage(body.fuel_pct, "Fuel percentage"),
       fire_ext_expiry: body.fire_ext_expiry || null,
+      is_vor: body.is_vor === true,
+      next_servicing: body.next_servicing || null,
+      last_serviced: body.last_serviced || null,
       notes: body.notes || null,
       check_in: new Date().toISOString(),
     });

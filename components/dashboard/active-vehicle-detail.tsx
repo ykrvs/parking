@@ -2,11 +2,13 @@
 
 import {
   ArrowLeft,
+  CheckCircle2,
   Edit2,
   History,
   LogOut,
   Phone,
   Wrench,
+  XCircle,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -88,6 +90,18 @@ function fuelBarClass(pct?: number | null) {
   return "bg-red-500";
 }
 
+function dateDisplay(date?: string | null) {
+  return date ? format(new Date(date + "T00:00:00"), "dd MMM yyyy") : "-";
+}
+
+function isServiceDue(date?: string | null) {
+  if (!date) return false;
+  return (
+    new Date(date + "T00:00:00").getTime() <=
+    new Date().setHours(0, 0, 0, 0)
+  );
+}
+
 export function ActiveVehicleDetail({
   canDriveOut,
   isTurretEscEnabled,
@@ -105,9 +119,17 @@ export function ActiveVehicleDetail({
   vehicleUnitLabel,
 }: ActiveVehicleDetailProps) {
   const fireStatus = getFireExtStatus(vehicle.fire_ext_expiry);
+  const serviceDue = isServiceDue(vehicle.next_servicing);
 
   return (
-    <div className="bg-white rounded-xl border border-zinc-200 p-6 shadow-sm space-y-6">
+    <div
+      className={cn(
+        "rounded-xl border p-6 shadow-sm space-y-6",
+        serviceDue
+          ? "border-amber-300 bg-amber-50/60 shadow-amber-200/60"
+          : "border-zinc-200 bg-white",
+      )}
+    >
       <div className="flex items-center justify-between pb-4 border-b border-zinc-100">
         <Button
           variant="ghost"
@@ -123,9 +145,26 @@ export function ActiveVehicleDetail({
       </div>
 
       <div>
-        <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900">
-          {formatPlateDisplay(vehicle.plate)}
-        </h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900">
+            {formatPlateDisplay(vehicle.plate)}
+          </h2>
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-black uppercase",
+              vehicle.is_vor
+                ? "bg-red-100 text-red-700"
+                : "bg-emerald-100 text-emerald-700",
+            )}
+          >
+            {vehicle.is_vor ? (
+              <XCircle className="size-3" />
+            ) : (
+              <CheckCircle2 className="size-3" />
+            )}
+            {vehicle.is_vor ? "VOR" : "OK"}
+          </span>
+        </div>
         <p className="text-sm text-zinc-400 font-semibold mt-1">
           {vehicleUnitLabel(vehicle)}
         </p>
@@ -161,6 +200,37 @@ export function ActiveVehicleDetail({
               </a>
             )}
           </div>
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div
+          className={cn(
+            "rounded-xl border p-4",
+            serviceDue
+              ? "border-amber-300 bg-amber-100/60"
+              : "border-zinc-200 bg-zinc-50/25",
+          )}
+        >
+          <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">
+            Next Servicing
+          </p>
+          <p className="mt-1 text-sm font-bold text-zinc-800">
+            {dateDisplay(vehicle.next_servicing)}
+          </p>
+          {serviceDue && (
+            <p className="mt-1 text-xs font-semibold text-amber-800">
+              Servicing is due.
+            </p>
+          )}
+        </div>
+        <div className="rounded-xl border border-zinc-200 bg-zinc-50/25 p-4">
+          <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">
+            Last Serviced
+          </p>
+          <p className="mt-1 text-sm font-bold text-zinc-800">
+            {dateDisplay(vehicle.last_serviced)}
+          </p>
         </div>
       </div>
 
