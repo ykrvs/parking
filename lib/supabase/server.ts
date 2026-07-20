@@ -1,6 +1,11 @@
 import "server-only";
 
 import { createClient } from "@supabase/supabase-js";
+import {
+  assertOriginalDriverCanDriveOut,
+  assertVehicleFacilityAllowed,
+  resolveRequestedFacilityForProfile,
+} from "@/lib/vehicles/rules";
 
 const DEFAULT_TABLE = "users";
 
@@ -505,11 +510,10 @@ export async function resolveFacilityCode(
 
   if (profile.is_admin && requestedFacility) {
     const { facilities } = await getFacilities();
-    const match = facilities.find((f) => f.code === requestedFacility);
-    if (match) return match.code;
+    return resolveRequestedFacilityForProfile(profile, requestedFacility, facilities);
   }
 
-  return profile.facility_code || "11FMD";
+  return resolveRequestedFacilityForProfile(profile, requestedFacility, []);
 }
 
 // New vehicle ids are prefixed with their depot's facility code (see
@@ -546,12 +550,8 @@ export async function assertVehicleFacilityAccess(actorId: string, vehicleId: st
   if (!profile) {
     throw new Error("User not found.");
   }
-  if (profile.is_admin) return;
-
   const vehicleFacility = await resolveVehicleFacilityCode(vehicleId);
-  if (vehicleFacility !== profile.facility_code) {
-    throw new Error("This vehicle belongs to a different depot.");
-  }
+  assertVehicleFacilityAllowed(profile, vehicleFacility);
 }
 
 export async function assertVehicleDriveOutOwner(actorId: string, vehicleId: string) {
@@ -574,18 +574,7 @@ export async function assertVehicleDriveOutOwner(actorId: string, vehicleId: str
     throw new Error("Vehicle not found.");
   }
 
-  if (data.driver_id) {
-    if (data.driver_id !== actorId) {
-      throw new Error("Only the driver who logged this vehicle in can drive it out.");
-    }
-    return;
-  }
-
-  const storedDriver = (data.driver || "").trim().toLowerCase();
-  const actorName = (profile.name || "").trim().toLowerCase();
-  if (!storedDriver || storedDriver !== actorName) {
-    throw new Error("Only the driver who logged this vehicle in can drive it out.");
-  }
+  assertOriginalDriverCanDriveOut(profile, data);
 }
 
 export async function requireAdmin(actorId: string) {
