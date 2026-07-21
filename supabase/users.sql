@@ -30,6 +30,7 @@ alter table public.users enable row level security;
 
 grant usage on schema public to service_role;
 grant select, insert, update on table public.users to service_role;
+grant delete on table public.users to service_role;
 
 alter table public.users
 add column if not exists is_verified boolean not null default false;

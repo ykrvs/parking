@@ -28,6 +28,16 @@ export type UserProfile = {
   created_at: string;
 };
 
+export type UserRemovalNotice = {
+  id: string;
+  user_id: string;
+  user_name: string | null;
+  reason: string | null;
+  removed_by_name: string | null;
+  action: string;
+  created_at: string;
+};
+
 export type UserRegistration = {
   rank: string;
   ordDate: string;
@@ -127,6 +137,8 @@ const NO_FACILITY_USER_PROFILE_SELECT =
   "id, rank, name, is_admin, is_technician, is_verified, ord_date, phone, unit, created_at";
 const NO_FACILITY_LEGACY_USER_PROFILE_SELECT =
   "id, rank, name, is_admin, is_technician, is_verified, ord_date, phone, depot, created_at";
+const USER_REMOVAL_NOTICE_SELECT =
+  "id, user_id, user_name, reason, removed_by_name, action, created_at";
 
 function isMissingFacilityColumnError(message: string) {
   return message.toLowerCase().includes("facility_code");
@@ -425,6 +437,70 @@ export async function getUsers() {
     ...user,
     unit: user.depot ?? null,
   })) as UserProfile[];
+}
+
+export async function getUserRemovalNotice(userId: string) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from("user_removal_notices")
+    .select(USER_REMOVAL_NOTICE_SELECT)
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<UserRemovalNotice>();
+
+  if (error) {
+    const message = toErrorMessage(error);
+    if (
+      message.toLowerCase().includes("user_removal_notices") ||
+      message.toLowerCase().includes("does not exist")
+    ) {
+      return null;
+    }
+    throw error;
+  }
+
+  return data;
+}
+
+function getDateOnlyDaysFromToday(dateStr: string | null | undefined) {
+  if (!dateStr) return null;
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return null;
+  const dateOnly = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+  ).getTime();
+  const today = new Date().setHours(0, 0, 0, 0);
+  return Math.floor((dateOnly - today) / 86400000);
+}
+
+async function insertUserRemovalNotice(entry: {
+  user: UserProfile;
+  actor: UserProfile;
+  reason: string | null;
+  action: string;
+}) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return;
+
+  const { error } = await supabase.from("user_removal_notices").insert([
+    {
+      user_id: entry.user.id,
+      user_name: entry.user.name,
+      facility_code: entry.user.facility_code,
+      unit: entry.user.unit ?? entry.user.depot ?? null,
+      reason: entry.reason,
+      removed_by_id: entry.actor.id,
+      removed_by_name: entry.actor.name,
+      action: entry.action,
+    },
+  ]);
+
+  if (error) throw error;
 }
 
 export function isRegistrationComplete(profile: UserProfile | null) {
@@ -752,6 +828,90 @@ export async function setUserVerified(
   return data
     ? { ...data, _auditLogged: auditResult.success, _auditError: auditResult.error }
     : data;
+}
+
+export async function removeUser(
+  actorId: string,
+  targetId: string,
+  reason?: string | null,
+  action = "user.remove",
+) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return null;
+
+  const actor = await requireAdmin(actorId);
+  if (actor.id === targetId) {
+    throw new Error("Admins cannot remove their own account.");
+  }
+
+  const target = await getUserProfile(targetId);
+  if (!target) {
+    throw new Error("User not found.");
+  }
+
+  const normalizedReason = reason?.trim() || null;
+
+  await insertUserRemovalNotice({
+    user: target,
+    actor,
+    reason: normalizedReason,
+    action,
+  });
+
+  const table = getUsersTable();
+  const { error } = await supabase.from(table).delete().eq("id", targetId);
+  if (error) throw error;
+
+  const auditResult = await logAuditEvent({
+    actorId: actor.id,
+    actorName: actor.name,
+    action,
+    targetId,
+    targetLabel: target.name ?? targetId,
+    details: {
+      reason: normalizedReason,
+      facility_code: target.facility_code,
+      unit: target.unit ?? target.depot ?? null,
+      is_verified: target.is_verified,
+      ord_date: target.ord_date,
+    },
+  });
+  if (!auditResult.success) {
+    console.error(
+      `Audit log entry failed for action ${action} on ${targetId}: ${auditResult.error}`,
+    );
+  }
+
+  return {
+    removedUser: target,
+    _auditLogged: auditResult.success,
+    _auditError: auditResult.error,
+  };
+}
+
+export async function removeOrdExpiredUsers(actorId: string) {
+  const actor = await requireAdmin(actorId);
+  const users = await getUsers();
+  const expiredUsers = users.filter((user) => {
+    if (user.id === actor.id) return false;
+    const daysLeft = getDateOnlyDaysFromToday(user.ord_date);
+    return daysLeft !== null && daysLeft < -5;
+  });
+
+  const removed = [];
+  for (const user of expiredUsers) {
+    const result = await removeUser(
+      actor.id,
+      user.id,
+      "Automatically removed due to ORD date being more than 5 days ago.",
+      "user.remove.ord_expired",
+    );
+    if (result?.removedUser) {
+      removed.push(result.removedUser);
+    }
+  }
+
+  return removed;
 }
 
 export async function getVehicles(facilityCode: string) {

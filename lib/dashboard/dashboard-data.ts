@@ -24,6 +24,8 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "user.unverify": "marked unverified",
   "user.admin.grant": "granted admin access to",
   "user.admin.revoke": "revoked admin access from",
+  "user.remove": "removed",
+  "user.remove.ord_expired": "auto-removed due to ORD > 5 days",
   "safety_message.create": "created safety message:",
   "safety_message.update": "rescheduled safety message:",
   "safety_message.delete": "deleted safety message",
@@ -111,6 +113,16 @@ export type AdminUserRecord = {
   depot?: string | null;
   _auditLogged?: boolean;
   _auditError?: string | null;
+};
+
+export type UserRemovalNotice = {
+  id: string;
+  user_id: string;
+  user_name: string | null;
+  reason: string | null;
+  removed_by_name: string | null;
+  action: string;
+  created_at: string;
 };
 
 export type DashboardUserProfile = AdminUserRecord & {

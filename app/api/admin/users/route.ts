@@ -4,6 +4,8 @@ import { getRequestSession } from "@/lib/api-auth";
 import { rateLimited } from "@/lib/rate-limit";
 import {
   getUsers,
+  removeOrdExpiredUsers,
+  removeUser,
   requireAdmin,
   setUserAdmin,
   setUserVerified,
@@ -59,6 +61,66 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ user });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to update user";
+    const status = message.includes("Only admins") ? 403 : 500;
+    return NextResponse.json({ error: message }, { status });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  const session = await getRequestSession(request);
+
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const limited = rateLimited(session.openid, "admin-users:delete", 20, 60_000);
+  if (limited) return limited;
+
+  try {
+    const body = (await request.json()) as {
+      targetId?: string;
+      reason?: string | null;
+    };
+
+    if (!body.targetId) {
+      return NextResponse.json({ error: "Target user is required" }, { status: 400 });
+    }
+
+    const result = await removeUser(session.openid, body.targetId, body.reason);
+    return NextResponse.json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to remove user";
+    const status = message.includes("Only admins")
+      ? 403
+      : message.includes("cannot remove their own account")
+        ? 400
+        : 500;
+    return NextResponse.json({ error: message }, { status });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  const session = await getRequestSession(request);
+
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const limited = rateLimited(session.openid, "admin-users:ord-cleanup", 10, 60_000);
+  if (limited) return limited;
+
+  try {
+    const body = (await request.json().catch(() => ({}))) as {
+      action?: string;
+    };
+    if (body.action !== "cleanup-ord-expired") {
+      return NextResponse.json({ error: "Unsupported action" }, { status: 400 });
+    }
+
+    const removedUsers = await removeOrdExpiredUsers(session.openid);
+    return NextResponse.json({ removedUsers });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to clean up ORD users";
     const status = message.includes("Only admins") ? 403 : 500;
     return NextResponse.json({ error: message }, { status });
   }

@@ -51,6 +51,11 @@ type ProfileResponse = {
     depot?: string | null;
     facility_code?: string | null;
   } | null;
+  removalNotice: {
+    reason: string | null;
+    removed_by_name: string | null;
+    created_at: string;
+  } | null;
   registrationComplete: boolean;
 };
 
@@ -132,6 +137,9 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [removalNotice, setRemovalNotice] = useState<
+    ProfileResponse["removalNotice"]
+  >(null);
 
   useEffect(() => {
     if (auth.isLoading) return;
@@ -155,6 +163,8 @@ export default function RegisterPage() {
           router.replace("/");
           return;
         }
+
+        setRemovalNotice(data.removalNotice ?? null);
 
         setRank(data.profile?.rank ?? "");
         setName(data.profile?.name ?? auth.name ?? "");
@@ -308,6 +318,20 @@ export default function RegisterPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {removalNotice && (
+            <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <p className="font-bold">Your previous Trackr profile was removed.</p>
+              <p className="mt-1">
+                {removalNotice.reason ||
+                  "No reason was provided by the admin."}
+              </p>
+              {removalNotice.removed_by_name && (
+                <p className="mt-2 text-xs font-semibold text-amber-800">
+                  Removed by {removalNotice.removed_by_name}
+                </p>
+              )}
+            </div>
+          )}
           <form className="space-y-5" onSubmit={handleSubmit}>
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-medium">

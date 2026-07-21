@@ -32,6 +32,7 @@ import { HomeTab } from "@/components/dashboard/home-tab";
 import { LoginGate } from "@/components/dashboard/login-gate";
 import { ParkingTab } from "@/components/dashboard/parking-tab";
 import { ReminderTray } from "@/components/dashboard/reminder-tray";
+import { RemoveUserDialog } from "@/components/dashboard/remove-user-dialog";
 import { RequiredMark } from "@/components/dashboard/required-mark";
 import { SearchVehiclesTab } from "@/components/dashboard/search-vehicles-tab";
 import { ServicingReminderDialog } from "@/components/dashboard/servicing-reminder-dialog";
@@ -91,6 +92,7 @@ import {
   type ParkingLevelConfig,
   type SafetyMessageRecord,
   type TurretEscLogRecord,
+  type UserRemovalNotice,
   type VehicleUnitOption,
 } from "@/lib/dashboard/dashboard-data";
 import { cn } from "@/lib/utils";
@@ -138,6 +140,18 @@ export default function Home() {
     Record<string, boolean>
   >({});
   const [isSavingAdminUsers, setIsSavingAdminUsers] = useState(false);
+  const [removeUserTarget, setRemoveUserTarget] =
+    useState<AdminUserRecord | null>(null);
+  const [removeUserReason, setRemoveUserReason] = useState("");
+  const [isRemovingUser, setIsRemovingUser] = useState(false);
+  const [ordAutoRemovedUsers, setOrdAutoRemovedUsers] = useState<
+    AdminUserRecord[]
+  >([]);
+  const [seenOrdAutoRemovedIds, setSeenOrdAutoRemovedIds] = useState<
+    Set<string>
+  >(new Set());
+  const [removalNotice, setRemovalNotice] =
+    useState<UserRemovalNotice | null>(null);
 
   // Dashboard vehicle data state
   const [vehicles, setVehicles] = useState<DashboardVehicle[]>([]);
@@ -300,6 +314,8 @@ useEffect(() => {
         throw new Error(data.error || "Failed to check registration");
       }
 
+      setRemovalNotice(data.removalNotice ?? null);
+
       if (!data.registrationComplete) {
         router.replace("/register");
         return;
@@ -458,6 +474,34 @@ useEffect(() => {
 
     setIsLoadingAdmin(true);
     try {
+      const cleanupResponse = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "cleanup-ord-expired" }),
+      });
+      if (cleanupResponse.ok) {
+        const cleanupData = (await cleanupResponse.json()) as {
+          removedUsers?: AdminUserRecord[];
+        };
+        const unseenRemovedUsers = (cleanupData.removedUsers || []).filter(
+          (user) => !seenOrdAutoRemovedIds.has(user.id),
+        );
+        if (unseenRemovedUsers.length) {
+          setOrdAutoRemovedUsers(unseenRemovedUsers);
+          setSeenOrdAutoRemovedIds((seen) => {
+            const next = new Set(seen);
+            unseenRemovedUsers.forEach((user) => next.add(user.id));
+            return next;
+          });
+        }
+      } else {
+        const cleanupErr = await cleanupResponse.json().catch(() => null);
+        console.error(
+          "Failed to run ORD cleanup:",
+          cleanupErr?.error || cleanupResponse.status,
+        );
+      }
+
       const [usersResponse, safetyResponse, auditResponse] = await Promise.all([
         fetch("/api/admin/users"),
         fetch(
@@ -1564,6 +1608,42 @@ if (isVerificationPending) {
     }
   };
 
+  const openRemoveUserDialog = (user: AdminUserRecord) => {
+    setRemoveUserTarget(user);
+    setRemoveUserReason("");
+  };
+
+  const handleRemoveUser = async () => {
+    if (!removeUserTarget) return;
+
+    setIsRemovingUser(true);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          targetId: removeUserTarget.id,
+          reason: removeUserReason,
+        }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "User removal failed");
+
+      setRemoveUserTarget(null);
+      setRemoveUserReason("");
+      await fetchAdminData();
+      triggerToast(
+        d._auditLogged === false
+          ? `User removed (audit log failed: ${d._auditError || "unknown error"})`
+          : "User removed",
+      );
+    } catch (err: unknown) {
+      triggerToast(`User removal failed: ${getErrorMessage(err)}`);
+    } finally {
+      setIsRemovingUser(false);
+    }
+  };
+
   const handleCreateSafetyMessage = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -1749,6 +1829,8 @@ if (isVerificationPending) {
       (user.unit || user.depot || "").toLowerCase().includes(adminSearch) ||
       (user.phone || "").toLowerCase().includes(adminSearch),
   );
+  const userOrdsToday = (user: AdminUserRecord) =>
+    getOrdDaysLeft(user.ord_date) === 0;
   const hasAdminUserChanges = adminUsers.some(
     (user) =>
       adminDraftAdmins[user.id] !== undefined &&
@@ -1761,6 +1843,64 @@ if (isVerificationPending) {
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 rounded-md bg-zinc-900 text-white px-4 py-2 text-sm shadow-lg font-medium transition animate-in fade-in slide-in-from-bottom-3 duration-200">
           {toastMessage}
+        </div>
+      )}
+
+      {removeUserTarget && (
+        <RemoveUserDialog
+          user={removeUserTarget}
+          reason={removeUserReason}
+          isSubmitting={isRemovingUser}
+          onReasonChange={setRemoveUserReason}
+          onCancel={() => {
+            if (isRemovingUser) return;
+            setRemoveUserTarget(null);
+            setRemoveUserReason("");
+          }}
+          onSend={handleRemoveUser}
+        />
+      )}
+
+      {ordAutoRemovedUsers.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4 backdrop-blur-sm">
+          <Card className="w-full max-w-md rounded-xl border-amber-200 shadow-xl animate-in zoom-in-95 duration-200">
+            <CardHeader className="border-b border-amber-100">
+              <CardTitle className="text-base text-amber-900">
+                Users removed due to ORD &gt; 5 days
+              </CardTitle>
+              <CardDescription>
+                These profiles were automatically removed from Trackr.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 pt-4">
+              <div className="space-y-2">
+                {ordAutoRemovedUsers.map((user) => (
+                  <div
+                    key={user.id}
+                    className="rounded-lg border border-amber-100 bg-amber-50/70 px-3 py-2 text-sm"
+                  >
+                    <p className="font-bold text-zinc-900">
+                      {user.rank ? `${user.rank} ` : ""}
+                      {user.name}
+                    </p>
+                    <p className="text-xs text-zinc-600">
+                      {user.facility_code || "No depot"} ·{" "}
+                      {user.unit || user.depot || "No platoon"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  onClick={() => setOrdAutoRemovedUsers([])}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  OK
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -2425,16 +2565,24 @@ if (isVerificationPending) {
                     </p>
                   ) : (
                     <div className="overflow-hidden rounded-lg border border-zinc-200">
-                      <div className="grid grid-cols-[1.5fr_auto_1fr_auto] gap-3 bg-zinc-50 px-3 py-2 text-xs font-bold uppercase tracking-wider text-zinc-500">
+                      <div className="grid grid-cols-[1.5fr_auto_auto_1fr_auto] gap-3 bg-zinc-50 px-3 py-2 text-xs font-bold uppercase tracking-wider text-zinc-500">
                         <span>User</span>
-                        <span>Verified</span>
+                        <span className="text-center">Remove</span>
+                        <span className="text-center">Verified</span>
                         <span>Role</span>
                         <span className="text-right">Admin</span>
                       </div>
-                      {filteredAdminUsers.map((user) => (
+                      {filteredAdminUsers.map((user) => {
+                        const ordsToday = userOrdsToday(user);
+                        return (
                         <div
                           key={user.id}
-                          className="grid grid-cols-[1.5fr_auto_1fr_auto] items-center gap-3 border-t border-zinc-100 px-3 py-3"
+                          className={cn(
+                            "grid grid-cols-[1.5fr_auto_auto_1fr_auto] items-center gap-3 border-t px-3 py-3",
+                            ordsToday
+                              ? "border-amber-200 bg-amber-50/70"
+                              : "border-zinc-100",
+                          )}
                         >
                           <div className="min-w-0">
                             <p className="flex items-center gap-1.5 truncate text-sm font-bold text-zinc-900">
@@ -2446,19 +2594,39 @@ if (isVerificationPending) {
                               {user.phone || "No phone"} ·{" "}
                               {user.unit || user.depot || "No unit"}
                             </p>
+                            {ordsToday && (
+                              <p className="mt-1 text-xs font-bold text-amber-700">
+                                User ORDs today
+                              </p>
+                            )}
                           </div>
-                          <input
-                            type="checkbox"
-                            aria-label={`Mark ${user.name} as verified`}
-                            className="size-4 accent-emerald-600"
-                            checked={user.is_verified === true}
-                            onChange={(e) =>
-                              handleToggleUserVerified(
-                                user.id,
-                                e.target.checked,
-                              )
-                            }
-                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Remove ${user.name}`}
+                            title={`Remove ${user.name}`}
+                            disabled={user.id === profile.id}
+                            onClick={() => openRemoveUserDialog(user)}
+                            className="mx-auto size-8 text-red-700 hover:bg-red-50 hover:text-red-800 disabled:text-zinc-300"
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                          <label className="flex items-center justify-center gap-2 text-xs font-semibold text-zinc-600">
+                            <input
+                              type="checkbox"
+                              aria-label={`Mark ${user.name} as verified`}
+                              className="size-4 accent-emerald-600"
+                              checked={user.is_verified === true}
+                              onChange={(e) =>
+                                handleToggleUserVerified(
+                                  user.id,
+                                  e.target.checked,
+                                )
+                              }
+                            />
+                            <span className="hidden sm:inline">Verified</span>
+                          </label>
                           <span className="text-xs font-semibold text-zinc-600">
                             {user.is_technician ? "Technician" : "Combatant"}
                           </span>
@@ -2476,7 +2644,8 @@ if (isVerificationPending) {
                             }
                           />
                         </div>
-                      ))}
+                        );
+                      })}
                       {!filteredAdminUsers.length && (
                         <p className="border-t border-zinc-100 py-6 text-center text-sm text-zinc-500">
                           No users found.

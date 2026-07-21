@@ -4,6 +4,7 @@ import { getRequestSession } from "@/lib/api-auth";
 import { rateLimited } from "@/lib/rate-limit";
 import {
   getFacilities,
+  getUserRemovalNotice,
   getUserProfile,
   isRegistrationComplete,
   updateUserRegistration,
@@ -22,9 +23,13 @@ export async function GET(request: NextRequest) {
     }
 
     const profile = await getUserProfile(session.openid);
+    const removalNotice = profile
+      ? null
+      : await getUserRemovalNotice(session.openid);
 
     return NextResponse.json({
       profile,
+      removalNotice,
       registrationComplete: isRegistrationComplete(profile),
     });
   } catch (err) {
