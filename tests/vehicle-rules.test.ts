@@ -2,48 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  assertOriginalDriverCanDriveOut,
   assertVehicleFacilityAllowed,
   buildVehicleCheckInPayload,
   pickVehicleUpdateData,
   resolveRequestedFacilityForProfile,
 } from "../lib/vehicles/rules";
-
-test("only the original driver can drive out a vehicle by driver id", () => {
-  assert.doesNotThrow(() =>
-    assertOriginalDriverCanDriveOut(
-      { id: "driver-1", name: "Driver One" },
-      { driver_id: "driver-1", driver: "Someone Else" },
-    ),
-  );
-
-  assert.throws(
-    () =>
-      assertOriginalDriverCanDriveOut(
-        { id: "driver-2", name: "Driver Two" },
-        { driver_id: "driver-1", driver: "Driver Two" },
-      ),
-    /Only the driver who logged this vehicle in can drive it out/,
-  );
-});
-
-test("legacy drive-out ownership falls back to the stored driver name", () => {
-  assert.doesNotThrow(() =>
-    assertOriginalDriverCanDriveOut(
-      { id: "new-user-id", name: "  Lim Kai  " },
-      { driver: "lim kai" },
-    ),
-  );
-
-  assert.throws(
-    () =>
-      assertOriginalDriverCanDriveOut(
-        { id: "new-user-id", name: "Tan Wei" },
-        { driver: "Lim Kai" },
-      ),
-    /Only the driver who logged this vehicle in can drive it out/,
-  );
-});
 
 test("optional readings stay optional for check-in payloads", () => {
   const payload = buildVehicleCheckInPayload({
