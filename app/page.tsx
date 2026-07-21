@@ -136,6 +136,7 @@ export default function Home() {
     "users" | "safety" | "activity"
   >("users");
   const [adminUserSearch, setAdminUserSearch] = useState("");
+  const [adminUserDepotFilter, setAdminUserDepotFilter] = useState("all");
   const [adminDraftAdmins, setAdminDraftAdmins] = useState<
     Record<string, boolean>
   >({});
@@ -1824,10 +1825,12 @@ if (isVerificationPending) {
   const adminSearch = adminUserSearch.toLowerCase();
   const filteredAdminUsers = adminUsers.filter(
     (user) =>
-      (user.name || "").toLowerCase().includes(adminSearch) ||
-      (user.rank || "").toLowerCase().includes(adminSearch) ||
-      (user.unit || user.depot || "").toLowerCase().includes(adminSearch) ||
-      (user.phone || "").toLowerCase().includes(adminSearch),
+      (adminUserDepotFilter === "all" ||
+        user.facility_code === adminUserDepotFilter) &&
+      ((user.name || "").toLowerCase().includes(adminSearch) ||
+        (user.rank || "").toLowerCase().includes(adminSearch) ||
+        (user.unit || user.depot || "").toLowerCase().includes(adminSearch) ||
+        (user.phone || "").toLowerCase().includes(adminSearch)),
   );
   const userOrdsToday = (user: AdminUserRecord) =>
     getOrdDaysLeft(user.ord_date) === 0;
@@ -2535,13 +2538,31 @@ if (isVerificationPending) {
               {adminActiveTab === "users" && (
                 <div className="space-y-4 border-t border-zinc-100 pt-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <input
-                      type="search"
-                      value={adminUserSearch}
-                      onChange={(e) => setAdminUserSearch(e.target.value)}
-                      placeholder="Search users by name, rank, unit or phone"
-                      className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600 sm:max-w-sm"
-                    />
+                    <div className="flex w-full flex-col gap-2 sm:max-w-xl sm:flex-row">
+                      <input
+                        type="search"
+                        value={adminUserSearch}
+                        onChange={(e) => setAdminUserSearch(e.target.value)}
+                        placeholder="Search users by name, rank, unit or phone"
+                        className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-600 sm:flex-1"
+                      />
+                      <Select
+                        value={adminUserDepotFilter}
+                        onValueChange={setAdminUserDepotFilter}
+                      >
+                        <SelectTrigger className="h-10 w-full bg-white border-zinc-200 focus:border-red-600 focus:ring-3 focus:ring-red-600/15 justify-between sm:w-44">
+                          <SelectValue placeholder="Depot" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border border-zinc-200 shadow-md rounded-md">
+                          <SelectItem value="all">All depots</SelectItem>
+                          {facilities.map((facility) => (
+                            <SelectItem key={facility.code} value={facility.code}>
+                              {facility.name || facility.code}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <div className="flex items-center gap-2">
                       {hasAdminUserChanges && (
                         <span className="text-xs font-semibold text-amber-700">
