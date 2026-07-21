@@ -318,7 +318,12 @@ export function ActiveVehicleDetail({
           fireStatus.bg,
         )}
       >
-        <div className="text-3xl select-none leading-none shrink-0">FE</div>
+        <div
+          className="text-3xl select-none leading-none shrink-0"
+          aria-hidden="true"
+        >
+          🧯
+        </div>
         <div className="min-w-0 flex-1">
           <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider mb-1">
             Fire Extinguisher

@@ -26,6 +26,7 @@ import { AppShellNavigation } from "@/components/dashboard/app-shell-navigation"
 import { BosReadingsTab } from "@/components/dashboard/bos-readings-tab";
 import { CheckedOutVehicleDetail } from "@/components/dashboard/checked-out-vehicle-detail";
 import { CheckInDialog } from "@/components/dashboard/check-in-dialog";
+import { DriveOutConfirmDialog } from "@/components/dashboard/drive-out-confirm-dialog";
 import { FireExpiryPicker } from "@/components/dashboard/fire-expiry-picker";
 import { HomeTab } from "@/components/dashboard/home-tab";
 import { LoginGate } from "@/components/dashboard/login-gate";
@@ -33,6 +34,7 @@ import { ParkingTab } from "@/components/dashboard/parking-tab";
 import { ReminderTray } from "@/components/dashboard/reminder-tray";
 import { RequiredMark } from "@/components/dashboard/required-mark";
 import { SearchVehiclesTab } from "@/components/dashboard/search-vehicles-tab";
+import { ServicingReminderDialog } from "@/components/dashboard/servicing-reminder-dialog";
 import { VehicleHistoryTab } from "@/components/dashboard/vehicle-history-tab";
 import { UnverifiedDot } from "@/components/dashboard/status-indicators";
 import { Button } from "@/components/ui/button";
@@ -3174,123 +3176,32 @@ if (isVerificationPending) {
       )}
 
       {servicingPromptVehicle && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <Card className="w-full max-w-sm rounded-xl border-amber-200 shadow-xl animate-in zoom-in-95 duration-200">
-            <CardHeader>
-              <CardTitle className="text-lg text-amber-700 font-bold">
-                Servicing Reminder
-              </CardTitle>
-              <CardDescription>
-                {formatPlateDisplay(servicingPromptVehicle.plate)} is due for
-                servicing.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {!isServicingFollowUpOpen ? (
-                <>
-                  <p className="text-sm font-medium text-zinc-700">
-                    Has servicing been done on this vehicle yet?
-                  </p>
-                  <div className="flex gap-2 pt-2">
-                    <Button
-                      type="button"
-                      onClick={handleServicingDoneConfirm}
-                      disabled={isSubmitting}
-                      className="flex-1 bg-red-600 hover:bg-red-700"
-                    >
-                      Yes
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setIsServicingFollowUpOpen(true)}
-                      className="flex-1"
-                    >
-                      No
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <p className="text-sm font-medium text-zinc-700">
-                    Not yet.
-                  </p>
-                  <div className="grid gap-2 pt-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setServicingPromptVehicle(null);
-                        setIsServicingFollowUpOpen(false);
-                      }}
-                      className="w-full"
-                    >
-                      Not yet
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={() => {
-                        const vehicle = servicingPromptVehicle;
-                        setServicingPromptVehicle(null);
-                        setIsServicingFollowUpOpen(false);
-                        handleOpenUpdate(vehicle);
-                      }}
-                      className="w-full bg-red-600 hover:bg-red-700"
-                    >
-                      Choose another servicing date
-                    </Button>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+        <ServicingReminderDialog
+          isFollowUpOpen={isServicingFollowUpOpen}
+          isSubmitting={isSubmitting}
+          vehicle={servicingPromptVehicle}
+          onChooseAnotherDate={(vehicle) => {
+            setServicingPromptVehicle(null);
+            setIsServicingFollowUpOpen(false);
+            handleOpenUpdate(vehicle);
+          }}
+          onClose={() => {
+            setServicingPromptVehicle(null);
+            setIsServicingFollowUpOpen(false);
+          }}
+          onConfirmDone={handleServicingDoneConfirm}
+          onFollowUpOpenChange={setIsServicingFollowUpOpen}
+        />
       )}
 
       {/* DRIVE OUT CONFIRM OVERLAY */}
       {isConfirmingDriveout && selectedVehicle && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <Card className="w-full max-w-sm rounded-xl border-zinc-200 shadow-xl animate-in zoom-in-95 duration-200">
-            <CardHeader>
-              <CardTitle className="text-lg text-red-600 font-bold flex items-center gap-2">
-                <Trash2 className="size-5" />
-                Confirm Move Out
-              </CardTitle>
-              <CardDescription>
-                Frees the parking lot code and marks the checkout record.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm font-medium text-zinc-700">
-                Do you want to move{" "}
-                <span className="font-extrabold text-zinc-950">
-                  {formatPlateDisplay(selectedVehicle.plate)}
-                </span>
-                ,{" "}
-                <span className="font-extrabold text-zinc-950">
-                  {selectedVehicle.variant || "-"}
-                </span>
-                ?
-              </p>
-              <div className="flex gap-2 pt-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsConfirmingDriveout(false)}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleDriveoutConfirm}
-                  disabled={isSubmitting}
-                  className="flex-1 bg-red-600 hover:bg-red-700 font-bold"
-                >
-                  {isSubmitting ? "Processing..." : "Yes"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <DriveOutConfirmDialog
+          isSubmitting={isSubmitting}
+          vehicle={selectedVehicle}
+          onCancel={() => setIsConfirmingDriveout(false)}
+          onConfirm={handleDriveoutConfirm}
+        />
       )}
     </div>
   );
