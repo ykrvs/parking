@@ -5,13 +5,13 @@ import autoTable from "jspdf-autotable";
 import defaultParkingConfig from "@/lib/parking-config.json";
 
 export const SAFETY_MESSAGES = [
-  "Always check your mirrors before reversing. A moment of caution prevents a lifetime of regret.",
-  "Keep walkways clear at all times. Pedestrians share this space - give them room.",
-  "Do not exceed 10 km/h on all levels. Speed limits exist for your safety and others'.",
-  "Report any oil spills or wet floors immediately to prevent slips and falls.",
-  "Ensure your vehicle is in park with the handbrake engaged before leaving it.",
-  "Never leave engines running in enclosed spaces. Carbon monoxide is invisible and deadly.",
-  "Wear your high-visibility vest when working in the car park outside your vehicle.",
+  "Safety and quality go hand in hand.",
+  "Don't put your life on the line, think safety.",
+  "Think safe together, be safe forever.",
+  "Open the door to safety: awareness is the key.",
+  "Work together... work safely.",
+  "Safety is not automatic, think about it.",
+  "The safe way is the only way.",
 ];
 
 export const PLATE_MASK_ENABLED = true;
