@@ -2117,6 +2117,7 @@ if (isVerificationPending) {
         facilities={facilities}
         headerAccessory={
           <ReminderTray
+            announcements={visibleNotifications}
             fireExtAlerts={fireExtAlerts}
             myOrdReminder={myOrdReminder}
             ordAlerts={visibleOrdAlerts}
@@ -2124,6 +2125,11 @@ if (isVerificationPending) {
             profileName={profile.name}
             profileUnit={profileUnit}
             servicingAlerts={servicingAlerts}
+            onOpenAdminUsers={() => {
+              setAdminActiveTab("users");
+              goTab("admin");
+            }}
+            onOpenNotifications={() => goTab("notifications")}
             onOpenVehicle={handleOpenVehicle}
             vehicleUnitLabel={vehicleUnitLabel}
           />
@@ -2149,7 +2155,7 @@ if (isVerificationPending) {
       />
 
       {/* Main Tab Contents */}
-      <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 pb-20">
+      <main className="flex-1 max-w-5xl w-full mx-auto p-4 pb-32 sm:p-6 sm:pb-36">
         {/* TAB 1: HOME */}
         {activeTab === "home" && (
           <HomeTab

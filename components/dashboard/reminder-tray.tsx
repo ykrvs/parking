@@ -1,10 +1,19 @@
 "use client";
 
-import { Bell, ChevronDown, ChevronUp, Flame, User, Wrench } from "lucide-react";
+import {
+  Bell,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  Flame,
+  User,
+  Wrench,
+} from "lucide-react";
 import { useState } from "react";
 
 import {
   formatPlateDisplay,
+  type AnnouncementRecord,
   type AdminUserRecord,
   type DashboardVehicle,
 } from "@/lib/dashboard/dashboard-data";
@@ -26,6 +35,7 @@ type OrdAlert = {
 };
 
 type ReminderTrayProps = {
+  announcements: AnnouncementRecord[];
   fireExtAlerts: FireExtAlert[];
   myOrdReminder: number | null;
   ordAlerts: OrdAlert[];
@@ -33,11 +43,14 @@ type ReminderTrayProps = {
   profileName: string;
   profileUnit: string;
   servicingAlerts: ServicingAlert[];
+  onOpenAdminUsers: () => void;
+  onOpenNotifications: () => void;
   onOpenVehicle: (vehicle: DashboardVehicle) => void;
   vehicleUnitLabel: (vehicle: { vehicle_unit?: string | null }) => string;
 };
 
 export function ReminderTray({
+  announcements,
   fireExtAlerts,
   myOrdReminder,
   ordAlerts,
@@ -45,11 +58,14 @@ export function ReminderTray({
   profileName,
   profileUnit,
   servicingAlerts,
+  onOpenAdminUsers,
+  onOpenNotifications,
   onOpenVehicle,
   vehicleUnitLabel,
 }: ReminderTrayProps) {
   const [isOpen, setIsOpen] = useState(false);
   const alertCount =
+    announcements.length +
     fireExtAlerts.length +
     servicingAlerts.length +
     ordAlerts.length +
@@ -66,7 +82,7 @@ export function ReminderTray({
     <div className="relative z-40">
       <div
         className={cn(
-          "overflow-hidden rounded-lg border bg-white shadow-lg ring-1 ring-black/5 transition-all",
+          "overflow-visible rounded-lg border bg-white shadow-lg ring-1 ring-black/5 transition-all",
           isOpen
             ? "fixed left-1/2 top-20 w-[calc(100vw-2rem)] max-w-sm -translate-x-1/2"
             : "w-8 sm:w-auto",
@@ -78,11 +94,13 @@ export function ReminderTray({
           onClick={() => setIsOpen((open) => !open)}
           aria-expanded={isOpen}
           className={cn(
-            "relative flex h-8 w-full items-center justify-between gap-3 px-1.5 text-left transition hover:bg-zinc-50 sm:h-10 sm:px-3",
-            isOpen ? "border-b border-zinc-100" : "",
+            "relative flex h-8 w-full items-center gap-3 text-left transition hover:bg-zinc-50 sm:h-10 sm:px-3",
+            isOpen
+              ? "justify-between border-b border-zinc-100 px-3 pt-2 sm:pt-3"
+              : "justify-center px-0 sm:justify-between",
           )}
         >
-          <span className="flex min-w-0 items-center gap-2">
+          <span className="flex min-w-0 items-center justify-center gap-2">
             <span
               className={cn(
                 "flex size-6 shrink-0 items-center justify-center rounded-md sm:size-8 sm:rounded-lg",
@@ -107,7 +125,7 @@ export function ReminderTray({
           <span className="flex items-center gap-2">
             <span
               className={cn(
-                "absolute -right-1 -top-1 rounded-full px-1.5 py-0.5 text-[9px] font-black leading-none sm:static sm:px-2 sm:text-xs",
+                "absolute -right-1.5 -top-2 rounded-full px-1.5 py-0.5 text-[9px] font-black leading-none shadow-sm sm:static sm:px-2 sm:text-xs sm:shadow-none",
                 hasUrgentReminder
                   ? "bg-red-100 text-red-700"
                   : "bg-amber-100 text-amber-700",
@@ -124,7 +142,60 @@ export function ReminderTray({
         </button>
 
         {isOpen && (
-          <div className="max-h-[70vh] space-y-4 overflow-y-auto p-3">
+          <div className="max-h-[70vh] space-y-4 overflow-y-auto rounded-b-lg p-3 pt-4">
+            {announcements.length > 0 && (
+              <section className="space-y-2">
+                <div className="flex items-center gap-2 text-sky-800 font-bold text-xs uppercase tracking-wider">
+                  <Bell className="size-4" />
+                  Notifications
+                </div>
+                <div className="space-y-1.5">
+                  {announcements.map((announcement) => (
+                    <div
+                      key={announcement.id}
+                      className="rounded-lg border border-sky-100 bg-sky-50/80 px-3 py-2"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsOpen(false);
+                          onOpenNotifications();
+                        }}
+                        className="w-full text-left"
+                      >
+                        {announcement.title && (
+                          <p className="text-sm font-bold text-sky-950">
+                            {announcement.title}
+                          </p>
+                        )}
+                        <p className="text-sm font-medium leading-relaxed text-sky-900">
+                          {announcement.message}
+                        </p>
+                      </button>
+                      {announcement.link_url && (
+                        <div className="mt-2 flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              window.open(
+                                announcement.link_url || "",
+                                "_blank",
+                                "noopener,noreferrer",
+                              )
+                            }
+                            className="inline-flex items-center gap-1 text-xs font-bold text-sky-700 hover:text-sky-900"
+                          >
+                            <ExternalLink className="size-3" />
+                            {announcement.button_label || "Open link"}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {fireExtAlerts.length > 0 && (
               <section className="space-y-2">
                 <div className="flex items-center gap-2 text-red-800 font-bold text-xs uppercase tracking-wider">
@@ -261,14 +332,22 @@ export function ReminderTray({
                           ? "today"
                           : `within ${ordWarningDays} days`}
                       </span>
-                      <span
-                        className={cn(
-                          "shrink-0 text-xs font-bold",
-                          daysLeft === 0 ? "text-red-700" : "text-amber-700",
-                        )}
-                      >
-                        {daysLeft === 0 ? "Remove" : `${daysLeft}d left`}
-                      </span>
+                      {daysLeft === 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsOpen(false);
+                            onOpenAdminUsers();
+                          }}
+                          className="shrink-0 rounded-md bg-red-100 px-2 py-1 text-xs font-bold text-red-700 transition hover:bg-red-200"
+                        >
+                          Remove
+                        </button>
+                      ) : (
+                        <span className="shrink-0 text-xs font-bold text-amber-700">
+                          {daysLeft}d left
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>
