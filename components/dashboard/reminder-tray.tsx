@@ -9,7 +9,7 @@ import {
   User,
   Wrench,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   formatPlateDisplay,
@@ -77,8 +77,6 @@ export function ReminderTray({
     ordAlerts.some((entry) => entry.daysLeft === 0) ||
     myOrdReminder === 0;
 
-  if (alertCount === 0) return null;
-
   const openTray = () => {
     setIsClosing(false);
     setIsOpen(true);
@@ -94,6 +92,22 @@ export function ReminderTray({
   };
 
   const panelVisible = isOpen || isClosing;
+
+  useEffect(() => {
+    if (!panelVisible) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const previousOverscrollBehavior = document.body.style.overscrollBehavior;
+    document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "contain";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.overscrollBehavior = previousOverscrollBehavior;
+    };
+  }, [panelVisible]);
+
+  if (alertCount === 0) return null;
 
   return (
     <div className="relative z-40">
@@ -228,7 +242,7 @@ export function ReminderTray({
               </span>
             </button>
 
-          <div className="max-h-[70vh] space-y-4 overflow-y-auto rounded-b-lg p-3 pt-4">
+          <div className="max-h-[70vh] space-y-4 overflow-y-auto overscroll-contain rounded-b-lg p-3 pt-4">
             {announcements.length > 0 && (
               <section className="space-y-2">
                 <div className="flex items-center gap-2 text-sky-800 font-bold text-xs uppercase tracking-wider">
