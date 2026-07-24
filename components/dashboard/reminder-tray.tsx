@@ -64,6 +64,7 @@ export function ReminderTray({
   vehicleUnitLabel,
 }: ReminderTrayProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const alertCount =
     announcements.length +
     fireExtAlerts.length +
@@ -78,46 +79,55 @@ export function ReminderTray({
 
   if (alertCount === 0) return null;
 
+  const openTray = () => {
+    setIsClosing(false);
+    setIsOpen(true);
+  };
+
+  const closeTray = () => {
+    if (!isOpen || isClosing) return;
+    setIsClosing(true);
+    window.setTimeout(() => {
+      setIsOpen(false);
+      setIsClosing(false);
+    }, 140);
+  };
+
+  const panelVisible = isOpen || isClosing;
+
   return (
     <div className="relative z-40">
       <div
         className={cn(
-          "overflow-visible rounded-lg border bg-white shadow-lg ring-1 ring-black/5 transition-all",
-          isOpen
-            ? "fixed left-1/2 top-20 w-[calc(100vw-2rem)] max-w-sm -translate-x-1/2"
-            : "w-8 sm:w-auto",
+          "w-8 overflow-visible rounded-lg border bg-white shadow-lg ring-1 ring-black/5 transition-colors sm:w-auto",
           hasUrgentReminder ? "border-red-200" : "border-amber-200",
         )}
       >
         <button
           type="button"
-          onClick={() => setIsOpen((open) => !open)}
+          onClick={() => (isOpen ? closeTray() : openTray())}
           aria-expanded={isOpen}
           className={cn(
-            "relative flex h-8 w-full items-center gap-3 text-left transition hover:bg-zinc-50 sm:h-10 sm:px-3",
-            isOpen
-              ? "justify-between border-b border-zinc-100 px-3 pt-2 sm:pt-3"
-              : "justify-center px-0 sm:justify-between",
+            "relative flex h-8 w-full items-center gap-3 text-left transition hover:bg-zinc-50 sm:h-10 sm:justify-between sm:px-3",
+            "justify-center px-0",
           )}
         >
-          {!isOpen && (
-            <span className="absolute inset-0 flex items-center justify-center sm:hidden">
-              <span
-                className={cn(
-                  "flex size-6 items-center justify-center rounded-md",
-                  hasUrgentReminder
-                    ? "bg-red-100 text-red-700"
-                    : "bg-amber-100 text-amber-700",
-                )}
-              >
-                <Bell className="size-3.5" />
-              </span>
+          <span className="absolute inset-0 flex items-center justify-center sm:hidden">
+            <span
+              className={cn(
+                "flex size-6 items-center justify-center rounded-md",
+                hasUrgentReminder
+                  ? "bg-red-100 text-red-700"
+                  : "bg-amber-100 text-amber-700",
+              )}
+            >
+              <Bell className="size-3.5" />
             </span>
-          )}
+          </span>
           <span
             className={cn(
               "flex min-w-0 items-center justify-center gap-2",
-              !isOpen && "hidden sm:flex",
+              "hidden sm:flex",
             )}
           >
             <span
@@ -159,8 +169,65 @@ export function ReminderTray({
             )}
           </span>
         </button>
+      </div>
 
-        {isOpen && (
+      {panelVisible && (
+        <div
+          className={cn(
+            "fixed inset-0 z-40 bg-black/10 backdrop-blur-[1px] transition-opacity duration-150",
+            isClosing ? "opacity-0" : "opacity-100",
+          )}
+          onClick={closeTray}
+        >
+          <div
+            className={cn(
+              "fixed left-1/2 top-20 z-50 w-[calc(100vw-2rem)] max-w-sm -translate-x-1/2 overflow-hidden rounded-lg border bg-white shadow-xl ring-1 ring-black/5 transition duration-150",
+              hasUrgentReminder ? "border-red-200" : "border-amber-200",
+              isClosing ? "scale-95 opacity-0" : "scale-100 opacity-100",
+            )}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={closeTray}
+              aria-expanded={isOpen}
+              className="relative flex min-h-14 w-full items-center justify-between gap-3 border-b border-zinc-100 px-4 py-3 text-left transition hover:bg-zinc-50"
+            >
+              <span className="flex min-w-0 items-center gap-2.5">
+                <span
+                  className={cn(
+                    "flex size-8 shrink-0 items-center justify-center rounded-lg",
+                    hasUrgentReminder
+                      ? "bg-red-100 text-red-700"
+                      : "bg-amber-100 text-amber-700",
+                  )}
+                >
+                  <Bell className="size-4" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-xs font-black uppercase tracking-wider text-zinc-800">
+                    Reminders
+                  </span>
+                  <span className="block text-[11px] font-semibold text-zinc-500">
+                    {alertCount} active
+                  </span>
+                </span>
+              </span>
+              <span className="flex items-center gap-2">
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-0.5 text-xs font-black leading-none",
+                    hasUrgentReminder
+                      ? "bg-red-100 text-red-700"
+                      : "bg-amber-100 text-amber-700",
+                  )}
+                >
+                  {alertCount}
+                </span>
+                <ChevronUp className="size-4 text-zinc-400" />
+              </span>
+            </button>
+
           <div className="max-h-[70vh] space-y-4 overflow-y-auto rounded-b-lg p-3 pt-4">
             {announcements.length > 0 && (
               <section className="space-y-2">
@@ -177,7 +244,7 @@ export function ReminderTray({
                       <button
                         type="button"
                         onClick={() => {
-                          setIsOpen(false);
+                          closeTray();
                           onOpenNotifications();
                         }}
                         className="w-full text-left"
@@ -355,7 +422,7 @@ export function ReminderTray({
                         <button
                           type="button"
                           onClick={() => {
-                            setIsOpen(false);
+                            closeTray();
                             onOpenAdminUsers();
                           }}
                           className="shrink-0 rounded-md bg-red-100 px-2 py-1 text-xs font-bold text-red-700 transition hover:bg-red-200"
@@ -373,8 +440,9 @@ export function ReminderTray({
               </section>
             )}
           </div>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
