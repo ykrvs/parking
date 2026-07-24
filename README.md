@@ -1,6 +1,6 @@
 # Trackr
 
-Trackr is a Next.js vehicle parking and readiness dashboard for depot operations. It supports vehicle check-in, drive-out, parking layout views, BOS readings, reminders, admin verification, safety messages, audit history, and CSV/PDF exports.
+Trackr is a Next.js vehicle parking and readiness dashboard for depot operations. It supports vehicle check-in, drive-out, parking layout views, Vehicle data readings, reminders, admin verification, safety messages, audit history, and CSV/PDF exports.
 
 ## Stack
 
