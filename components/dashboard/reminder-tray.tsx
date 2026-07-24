@@ -100,7 +100,26 @@ export function ReminderTray({
               : "justify-center px-0 sm:justify-between",
           )}
         >
-          <span className="flex min-w-0 items-center justify-center gap-2">
+          {!isOpen && (
+            <span className="absolute inset-0 flex items-center justify-center sm:hidden">
+              <span
+                className={cn(
+                  "flex size-6 items-center justify-center rounded-md",
+                  hasUrgentReminder
+                    ? "bg-red-100 text-red-700"
+                    : "bg-amber-100 text-amber-700",
+                )}
+              >
+                <Bell className="size-3.5" />
+              </span>
+            </span>
+          )}
+          <span
+            className={cn(
+              "flex min-w-0 items-center justify-center gap-2",
+              !isOpen && "hidden sm:flex",
+            )}
+          >
             <span
               className={cn(
                 "flex size-6 shrink-0 items-center justify-center rounded-md sm:size-8 sm:rounded-lg",
