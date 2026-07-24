@@ -9,9 +9,11 @@ import {
   XCircle,
 } from "lucide-react";
 
+import { AnnouncementBanner } from "@/components/dashboard/announcement-banner";
 import { Skeleton } from "@/components/dashboard/status-indicators";
 import { Button } from "@/components/ui/button";
 import {
+  type AnnouncementRecord,
   formatPlateDisplay,
   getLevelLots,
   getLotOccupancyClasses,
@@ -22,6 +24,7 @@ import { cn } from "@/lib/utils";
 
 type HomeTabProps = {
   activeFacilityName: string;
+  announcement?: AnnouncementRecord | null;
   counts: Record<string, number>;
   isLoading: boolean;
   isUnverified: boolean;
@@ -33,6 +36,7 @@ type HomeTabProps = {
   formatTimeAgo: (iso?: string | null) => string;
   isServicingDue: (vehicle: DashboardVehicle) => boolean;
   onLogVehicleIn: () => void;
+  onDismissAnnouncement: (announcementId: string) => void;
   onOpenParkingLevel: (levelId: string) => void;
   onOpenVehicle: (vehicle: DashboardVehicle) => void;
   vehicleUnitLabel: (vehicle: { vehicle_unit?: string | null }) => string;
@@ -40,6 +44,7 @@ type HomeTabProps = {
 
 export function HomeTab({
   activeFacilityName,
+  announcement,
   counts,
   isLoading,
   isUnverified,
@@ -50,6 +55,7 @@ export function HomeTab({
   vehicleCount,
   formatTimeAgo,
   isServicingDue,
+  onDismissAnnouncement,
   onLogVehicleIn,
   onOpenParkingLevel,
   onOpenVehicle,
@@ -81,6 +87,13 @@ export function HomeTab({
         </p>
         <p className="text-zinc-500 text-[11px] font-medium">{safetyDate}</p>
       </div>
+
+      {announcement && (
+        <AnnouncementBanner
+          announcement={announcement}
+          onDismiss={onDismissAnnouncement}
+        />
+      )}
 
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-bold text-zinc-500 tracking-wider uppercase">

@@ -29,6 +29,9 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "safety_message.create": "created safety message:",
   "safety_message.update": "rescheduled safety message:",
   "safety_message.delete": "deleted safety message",
+  "announcement.create": "created announcement:",
+  "announcement.update": "updated announcement:",
+  "announcement.delete": "deleted announcement",
 };
 
 export type ParkingLevelConfig = {
@@ -85,6 +88,21 @@ export type SafetyMessageRecord = {
   starts_at: string | null;
   ends_at: string | null;
   is_active: boolean;
+  created_at: string;
+};
+
+export type AnnouncementRecord = {
+  id: string;
+  title: string | null;
+  message: string;
+  link_url: string | null;
+  button_label: string | null;
+  target_role: "all" | "admins" | "drivers" | "technicians";
+  starts_at: string | null;
+  ends_at: string | null;
+  is_active: boolean;
+  facility_code: string | null;
+  created_by: string | null;
   created_at: string;
 };
 

@@ -22,6 +22,10 @@ import { useEffect, useState } from "react";
 import { format } from "date-fns";
 
 import { ActiveVehicleDetail } from "@/components/dashboard/active-vehicle-detail";
+import {
+  AdminAnnouncementsTab,
+  type AnnouncementDraft,
+} from "@/components/dashboard/admin-announcements-tab";
 import { AppShellNavigation } from "@/components/dashboard/app-shell-navigation";
 import { BosReadingsTab } from "@/components/dashboard/bos-readings-tab";
 import { CheckedOutVehicleDetail } from "@/components/dashboard/checked-out-vehicle-detail";
@@ -30,6 +34,7 @@ import { DriveOutConfirmDialog } from "@/components/dashboard/drive-out-confirm-
 import { FireExpiryPicker } from "@/components/dashboard/fire-expiry-picker";
 import { HomeTab } from "@/components/dashboard/home-tab";
 import { LoginGate } from "@/components/dashboard/login-gate";
+import { NotificationsTab } from "@/components/dashboard/notifications-tab";
 import { ParkingTab } from "@/components/dashboard/parking-tab";
 import { ReminderTray } from "@/components/dashboard/reminder-tray";
 import { RemoveUserDialog } from "@/components/dashboard/remove-user-dialog";
@@ -84,6 +89,7 @@ import {
   toDateInputValue,
   utcIsoToLocalInput,
   vehicleMatchesLevel,
+  type AnnouncementRecord,
   type AdminUserRecord,
   type AuditLogEntry,
   type DashboardUserProfile,
@@ -126,14 +132,18 @@ export default function Home() {
     [],
   );
   const [safetyIndex, setSafetyIndex] = useState(0);
+  const [announcements, setAnnouncements] = useState<AnnouncementRecord[]>([]);
   const [adminUsers, setAdminUsers] = useState<AdminUserRecord[]>([]);
   const [adminSafetyMessages, setAdminSafetyMessages] = useState<
     SafetyMessageRecord[]
   >([]);
+  const [adminAnnouncements, setAdminAnnouncements] = useState<
+    AnnouncementRecord[]
+  >([]);
   const [auditLogEntries, setAuditLogEntries] = useState<AuditLogEntry[]>([]);
   const [isLoadingAdmin, setIsLoadingAdmin] = useState(false);
   const [adminActiveTab, setAdminActiveTab] = useState<
-    "users" | "safety" | "activity"
+    "users" | "announcements" | "safety" | "activity"
   >("users");
   const [adminUserSearch, setAdminUserSearch] = useState("");
   const [adminUserDepotFilter, setAdminUserDepotFilter] = useState("all");
@@ -141,6 +151,13 @@ export default function Home() {
     Record<string, boolean>
   >({});
   const [isSavingAdminUsers, setIsSavingAdminUsers] = useState(false);
+  const [isSavingAnnouncement, setIsSavingAnnouncement] = useState(false);
+  const [dismissedAnnouncementIds, setDismissedAnnouncementIds] = useState<
+    Set<string>
+  >(new Set());
+  const [deletedNotificationIds, setDeletedNotificationIds] = useState<
+    Set<string>
+  >(new Set());
   const [removeUserTarget, setRemoveUserTarget] =
     useState<AdminUserRecord | null>(null);
   const [removeUserReason, setRemoveUserReason] = useState("");
@@ -288,6 +305,30 @@ export default function Home() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  const announcementStorageKey = (kind: "dismissed" | "deleted") =>
+    profile?.id ? `trackr:${profile.id}:announcements:${kind}` : "";
+
+  const readAnnouncementIdSet = (kind: "dismissed" | "deleted") => {
+    const key = announcementStorageKey(kind);
+    if (!key) return new Set<string>();
+    try {
+      const raw = window.localStorage.getItem(key);
+      const parsed = raw ? (JSON.parse(raw) as unknown) : [];
+      return new Set(Array.isArray(parsed) ? parsed.filter(Boolean).map(String) : []);
+    } catch {
+      return new Set<string>();
+    }
+  };
+
+  const writeAnnouncementIdSet = (
+    kind: "dismissed" | "deleted",
+    ids: Set<string>,
+  ) => {
+    const key = announcementStorageKey(kind);
+    if (!key) return;
+    window.localStorage.setItem(key, JSON.stringify([...ids]));
+  };
+
  // Sync profile & check registration
 useEffect(() => {
   if (!auth.isAuthenticated || !auth.openid) return;
@@ -335,6 +376,7 @@ useEffect(() => {
         setDriveoutRecords([]);
         setParkingLevels([]);
         setSafetyMessages([]);
+        setAnnouncements([]);
         setProfileLoadError(null);
         return;
       }
@@ -379,6 +421,17 @@ useEffect(() => {
 
   return () => controller.abort();
 }, [auth.isAuthenticated, auth.openid, auth.rank, router]);
+
+useEffect(() => {
+  if (!profile?.id) {
+    setDismissedAnnouncementIds(new Set());
+    setDeletedNotificationIds(new Set());
+    return;
+  }
+
+  setDismissedAnnouncementIds(readAnnouncementIdSet("dismissed"));
+  setDeletedNotificationIds(readAnnouncementIdSet("deleted"));
+}, [profile?.id]);
 
   // Load Vehicles & dashboard metrics
   const fetchDashboardData = async () => {
@@ -470,6 +523,22 @@ useEffect(() => {
     }
   };
 
+  const fetchAnnouncements = async () => {
+    try {
+      const response = await fetch(
+        `/api/announcements?facility=${encodeURIComponent(activeFacility)}`,
+      );
+      if (!response.ok) throw new Error("Announcement request failed");
+
+      const data = (await response.json()) as {
+        announcements?: AnnouncementRecord[];
+      };
+      setAnnouncements(data.announcements || []);
+    } catch (err) {
+      console.error("Failed to load announcements:", err);
+    }
+  };
+
   const fetchAdminData = async () => {
     if (!profile?.is_admin) return;
 
@@ -503,10 +572,18 @@ useEffect(() => {
         );
       }
 
-      const [usersResponse, safetyResponse, auditResponse] = await Promise.all([
+      const [
+        usersResponse,
+        safetyResponse,
+        announcementsResponse,
+        auditResponse,
+      ] = await Promise.all([
         fetch("/api/admin/users"),
         fetch(
           `/api/safety-messages?all=true&facility=${encodeURIComponent(activeFacility)}`,
+        ),
+        fetch(
+          `/api/announcements?all=true&facility=${encodeURIComponent(activeFacility)}`,
         ),
         fetch("/api/admin/audit-log"),
       ]);
@@ -523,6 +600,13 @@ useEffect(() => {
           messages?: SafetyMessageRecord[];
         };
         setAdminSafetyMessages(safetyData.messages || []);
+      }
+
+      if (announcementsResponse.ok) {
+        const announcementsData = (await announcementsResponse.json()) as {
+          announcements?: AnnouncementRecord[];
+        };
+        setAdminAnnouncements(announcementsData.announcements || []);
       }
 
       if (auditResponse.ok) {
@@ -576,6 +660,7 @@ useEffect(() => {
   fetchDashboardData().finally(() => setIsLoadingDashboard(false));
   fetchParkingConfig();
   fetchSafetyMessages();
+  fetchAnnouncements();
 
   fetch(`/api/vehicle-units?facility=${encodeURIComponent(activeFacility)}`)
     .then((res) => (res.ok ? res.json() : null))
@@ -1645,6 +1730,117 @@ if (isVerificationPending) {
     }
   };
 
+  const handleDismissAnnouncement = (announcementId: string) => {
+    setDismissedAnnouncementIds((current) => {
+      const next = new Set(current);
+      next.add(announcementId);
+      writeAnnouncementIdSet("dismissed", next);
+      return next;
+    });
+  };
+
+  const handleDeleteNotification = (announcementId: string) => {
+    setDeletedNotificationIds((current) => {
+      const next = new Set(current);
+      next.add(announcementId);
+      writeAnnouncementIdSet("deleted", next);
+      return next;
+    });
+    setDismissedAnnouncementIds((current) => {
+      const next = new Set(current);
+      next.add(announcementId);
+      writeAnnouncementIdSet("dismissed", next);
+      return next;
+    });
+  };
+
+  const handleRestoreAnnouncement = (announcementId: string) => {
+    setDismissedAnnouncementIds((current) => {
+      const next = new Set(current);
+      next.delete(announcementId);
+      writeAnnouncementIdSet("dismissed", next);
+      return next;
+    });
+  };
+
+  const handleCreateAnnouncement = async (draft: AnnouncementDraft) => {
+    setIsSavingAnnouncement(true);
+    try {
+      const res = await fetch("/api/announcements", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          title: draft.title,
+          message: draft.message,
+          linkUrl: draft.linkUrl,
+          buttonLabel: draft.buttonLabel,
+          targetRole: draft.targetRole,
+          startsAt: draft.startsAt,
+          endsAt: draft.endsAt,
+          isActive: draft.isActive,
+          facility: activeFacility,
+        }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Announcement upload failed");
+
+      await fetchAnnouncements();
+      await fetchAdminData();
+      triggerToast(
+        d.auditLogged === false
+          ? `Announcement uploaded (audit log failed: ${d.auditError || "unknown error"})`
+          : "Announcement uploaded",
+      );
+    } catch (err: unknown) {
+      triggerToast(`Announcement upload failed: ${getErrorMessage(err)}`);
+    } finally {
+      setIsSavingAnnouncement(false);
+    }
+  };
+
+  const handleToggleAnnouncementActive = async (
+    announcementId: string,
+    isActive: boolean,
+  ) => {
+    try {
+      const res = await fetch("/api/announcements", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: announcementId, isActive }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Announcement update failed");
+
+      await fetchAnnouncements();
+      await fetchAdminData();
+      triggerToast(isActive ? "Announcement turned on" : "Announcement turned off");
+    } catch (err: unknown) {
+      triggerToast(`Announcement update failed: ${getErrorMessage(err)}`);
+    }
+  };
+
+  const handleDeleteAnnouncement = async (announcementId: string) => {
+    try {
+      const res = await fetch("/api/announcements", {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: announcementId }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Announcement delete failed");
+
+      await fetchAnnouncements();
+      await fetchAdminData();
+      triggerToast(
+        d.auditLogged === false
+          ? `Announcement deleted (audit log failed: ${d.auditError || "unknown error"})`
+          : "Announcement deleted",
+      );
+    } catch (err: unknown) {
+      triggerToast(`Announcement delete failed: ${getErrorMessage(err)}`);
+    }
+  };
+
   const handleCreateSafetyMessage = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -1839,6 +2035,13 @@ if (isVerificationPending) {
       adminDraftAdmins[user.id] !== undefined &&
       adminDraftAdmins[user.id] !== user.is_admin,
   );
+  const visibleNotifications = announcements.filter(
+    (announcement) => !deletedNotificationIds.has(announcement.id),
+  );
+  const activeAnnouncement =
+    visibleNotifications.find(
+      (announcement) => !dismissedAnnouncementIds.has(announcement.id),
+    ) ?? null;
 
   return (
     <div className="min-h-screen bg-zinc-100 text-zinc-950 font-sans flex flex-col antialiased">
@@ -1926,6 +2129,7 @@ if (isVerificationPending) {
           />
         }
         isSidebarOpen={isSidebarOpen}
+        notificationCount={visibleNotifications.length}
         profile={profile}
         goTab={goTab}
         onLogoClick={() => {
@@ -1935,6 +2139,7 @@ if (isVerificationPending) {
             fetchDashboardData();
             fetchParkingConfig();
             fetchSafetyMessages();
+            fetchAnnouncements();
           }
         }}
         logout={auth.logout}
@@ -1949,6 +2154,7 @@ if (isVerificationPending) {
         {activeTab === "home" && (
           <HomeTab
             activeFacilityName={activeFacilityName}
+            announcement={activeAnnouncement}
             counts={counts}
             isLoading={isLoadingDashboard}
             isUnverified={isUnverified}
@@ -1959,10 +2165,19 @@ if (isVerificationPending) {
             vehicleCount={vehicles.length}
             formatTimeAgo={formatTimeAgo}
             isServicingDue={isServicingDue}
+            onDismissAnnouncement={handleDismissAnnouncement}
             onLogVehicleIn={() => guardVerifiedAction(openCheckinModal)}
             onOpenParkingLevel={openParkingLevel}
             onOpenVehicle={handleOpenVehicle}
             vehicleUnitLabel={vehicleUnitLabel}
+          />
+        )}
+
+        {activeTab === "notifications" && (
+          <NotificationsTab
+            announcements={visibleNotifications}
+            onDelete={handleDeleteNotification}
+            onRestore={handleRestoreAnnouncement}
           />
         )}
 
@@ -2508,9 +2723,10 @@ if (isVerificationPending) {
                     Manage users and scheduled safety messages.
                   </p>
                 </div>
-                <div className="grid grid-cols-3 gap-1 rounded-lg border border-zinc-200 bg-zinc-50 p-1 text-sm font-semibold">
+                <div className="grid grid-cols-2 gap-1 rounded-lg border border-zinc-200 bg-zinc-50 p-1 text-sm font-semibold sm:grid-cols-4">
                   {[
                     { id: "users", label: "Users" },
+                    { id: "announcements", label: "Announcements" },
                     { id: "safety", label: "Safety" },
                     { id: "activity", label: "Activity" },
                   ].map((tab) => (
@@ -2519,7 +2735,11 @@ if (isVerificationPending) {
                       type="button"
                       onClick={() =>
                         setAdminActiveTab(
-                          tab.id as "users" | "safety" | "activity",
+                          tab.id as
+                            | "users"
+                            | "announcements"
+                            | "safety"
+                            | "activity",
                         )
                       }
                       className={cn(
@@ -2675,6 +2895,16 @@ if (isVerificationPending) {
                     </div>
                   )}
                 </div>
+              )}
+
+              {adminActiveTab === "announcements" && (
+                <AdminAnnouncementsTab
+                  announcements={adminAnnouncements}
+                  isSaving={isSavingAnnouncement}
+                  onCreate={handleCreateAnnouncement}
+                  onDelete={handleDeleteAnnouncement}
+                  onToggleActive={handleToggleAnnouncementActive}
+                />
               )}
 
               {adminActiveTab === "safety" && (

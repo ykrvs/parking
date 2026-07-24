@@ -72,6 +72,21 @@ export type SafetyMessage = {
   created_at: string;
 };
 
+export type Announcement = {
+  id: string;
+  title: string | null;
+  message: string;
+  link_url: string | null;
+  button_label: string | null;
+  target_role: "all" | "admins" | "drivers" | "technicians";
+  starts_at: string | null;
+  ends_at: string | null;
+  is_active: boolean;
+  facility_code: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
 export type ParkingLevelConfig = {
   id: string;
   label: string;
@@ -1168,6 +1183,112 @@ export async function deleteSafetyMessage(id: string) {
   if (!supabase) return null;
 
   const { error } = await supabase.from("safety_messages").delete().eq("id", id);
+  if (error) throw error;
+  return { success: true };
+}
+
+function announcementRolesForProfile(profile: UserProfile) {
+  const roles = ["all"];
+  if (profile.is_admin) roles.push("admins");
+  if (profile.is_technician) roles.push("technicians");
+  if (!profile.is_admin && !profile.is_technician) roles.push("drivers");
+  return roles;
+}
+
+export async function getActiveAnnouncements(
+  facilityCode: string,
+  profile: UserProfile,
+) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return [];
+
+  const now = new Date().toISOString();
+  const roles = announcementRolesForProfile(profile);
+  const { data, error } = await supabase
+    .from("app_announcements")
+    .select("*")
+    .eq("is_active", true)
+    .in("target_role", roles)
+    .or(`facility_code.eq.${facilityCode},facility_code.is.null`)
+    .or(`starts_at.is.null,starts_at.lte.${now}`)
+    .or(`ends_at.is.null,ends_at.gte.${now}`)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return (data || []) as Announcement[];
+}
+
+export async function getAnnouncements(facilityCode: string) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return [];
+
+  const { data, error } = await supabase
+    .from("app_announcements")
+    .select("*")
+    .or(`facility_code.eq.${facilityCode},facility_code.is.null`)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return (data || []) as Announcement[];
+}
+
+export async function createAnnouncement(announcementData: {
+  title?: string | null;
+  message: string;
+  link_url?: string | null;
+  button_label?: string | null;
+  target_role?: "all" | "admins" | "drivers" | "technicians";
+  starts_at?: string | null;
+  ends_at?: string | null;
+  is_active?: boolean;
+  created_by?: string | null;
+  facility_code?: string | null;
+}) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from("app_announcements")
+    .insert([announcementData])
+    .select()
+    .single<Announcement>();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function updateAnnouncement(
+  id: string,
+  updateData: {
+    title?: string | null;
+    message?: string;
+    link_url?: string | null;
+    button_label?: string | null;
+    target_role?: "all" | "admins" | "drivers" | "technicians";
+    starts_at?: string | null;
+    ends_at?: string | null;
+    is_active?: boolean;
+  },
+) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from("app_announcements")
+    .update(updateData)
+    .eq("id", id)
+    .select()
+    .single<Announcement>();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteAnnouncement(id: string) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return null;
+
+  const { error } = await supabase.from("app_announcements").delete().eq("id", id);
   if (error) throw error;
   return { success: true };
 }

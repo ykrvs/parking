@@ -2,6 +2,7 @@
 
 import {
   Battery,
+  Bell,
   CarFront,
   Clock,
   LogOut,
@@ -38,6 +39,7 @@ type AppShellNavigationProps = {
   facilities: FacilityOption[];
   headerAccessory?: ReactNode;
   isSidebarOpen: boolean;
+  notificationCount?: number;
   profile: ShellProfile;
   goTab: (tab: string) => void;
   onLogoClick?: () => void;
@@ -123,6 +125,7 @@ export function AppShellNavigation({
   facilities,
   headerAccessory,
   isSidebarOpen,
+  notificationCount = 0,
   profile,
   goTab,
   onLogoClick,
@@ -133,6 +136,12 @@ export function AppShellNavigation({
 }: AppShellNavigationProps) {
   const sidebarItems = [
     ...sidebarBaseItems,
+    {
+      id: "notifications",
+      label: "Notifications",
+      icon: <Bell className="size-4" />,
+      count: notificationCount,
+    },
     // Turret ESC Checklist tab - temporarily disabled.
     // Change `false &&` back to `profile.is_technician` to restore this nav item.
     ...(false && profile.is_technician
@@ -263,7 +272,12 @@ export function AppShellNavigation({
                     )}
                   >
                     {item.icon}
-                    {item.label}
+                    <span className="flex-1 text-left">{item.label}</span>
+                    {"count" in item && (item.count ?? 0) > 0 && (
+                      <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-700">
+                        {item.count}
+                      </span>
+                    )}
                   </button>
                 ))}
               </nav>
