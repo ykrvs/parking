@@ -61,11 +61,11 @@ const sidebarBaseItems = [
     label: "Vehicles",
     icon: <Search className="size-4" />,
   },
-  {
-    id: "bos",
-    label: "BOS",
-    icon: <Battery className="size-4" />,
-  },
+  // {
+  //   id: "bos",
+  //   label: "BOS",
+  //   icon: <Battery className="size-4" />,
+  // },
   {
     id: "parking",
     label: "Parking Overview",
@@ -93,11 +93,11 @@ const bottomNavItems = [
     label: "Vehicles",
     icon: <Search className="size-5" />,
   },
-  {
-    id: "bos",
-    label: "BOS",
-    icon: <Battery className="size-5" />,
-  },
+  // {
+  //   id: "bos",
+  //   label: "BOS",
+  //   icon: <Battery className="size-5" />,
+  // },
   {
     id: "parking",
     label: "Parking",
