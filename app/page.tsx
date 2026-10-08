@@ -2369,7 +2369,7 @@ if (isVerificationPending) {
         )}
 
         {/* TAB 3: BOS READINGS */}
-        {/* {activeTab === "bos" && (
+        {activeTab === "bos" && (
           <BosReadingsTab
             activeFacilityName={activeFacilityName}
             isLoading={isLoadingDashboard}
@@ -2386,7 +2386,7 @@ if (isVerificationPending) {
             }
             vehicleUnitColor={vehicleUnitColor}
           />
-        )} */}
+        )}
 
         {/* TAB 3: PARKING OVERVIEW & MAPS */}
         {activeTab === "parking" && (
