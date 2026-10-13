@@ -160,10 +160,10 @@ export function ParkingTab({
               <span className="size-3.5 border-1.5 border-emerald-700 bg-emerald-100 rounded"></span>
               Occupied
             </span>
-            <span className="inline-flex items-center gap-1.5 text-[11px] text-zinc-500 font-medium">
+            {/* <span className="inline-flex items-center gap-1.5 text-[11px] text-zinc-500 font-medium">
               <span className="size-3.5 border-1.5 border-red-300 bg-red-100 rounded"></span>
               Reserved
-            </span>
+            </span> */}
             <span className="inline-flex items-center gap-1.5 text-[11px] text-zinc-500 font-medium">
               <span className="size-3.5 border-1.5 border-zinc-300 bg-white rounded"></span>
               Empty
@@ -402,13 +402,13 @@ export function ParkingTab({
                     </span>{" "}
                     is currently empty.
                   </p>
-                  <Button
+                  {/* <Button
                     type="button"
                     onClick={onReserveLot}
                     className="h-8 bg-red-600 px-4 text-xs font-semibold hover:bg-red-700"
                   >
                     Reserve lot
-                  </Button>
+                  </Button> */}
                 </div>
               )
             )

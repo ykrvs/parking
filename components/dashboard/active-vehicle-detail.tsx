@@ -230,7 +230,7 @@ export function ActiveVehicleDetail({
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      {/* <div className="grid gap-3 sm:grid-cols-2">
         <div
           className={cn(
             "rounded-xl border p-4",
@@ -259,7 +259,7 @@ export function ActiveVehicleDetail({
             {dateDisplay(vehicle.last_serviced)}
           </p>
         </div>
-      </div>
+      </div> */}
 
       {/* <div className="space-y-2">
         <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
