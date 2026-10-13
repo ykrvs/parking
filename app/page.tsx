@@ -27,7 +27,7 @@ import {
   type AnnouncementDraft,
 } from "@/components/dashboard/admin-announcements-tab";
 import { AppShellNavigation } from "@/components/dashboard/app-shell-navigation";
-import { BosReadingsTab } from "@/components/dashboard/bos-readings-tab";
+// import { BosReadingsTab } from "@/components/dashboard/bos-readings-tab";
 import { CheckedOutVehicleDetail } from "@/components/dashboard/checked-out-vehicle-detail";
 import { CheckInDialog } from "@/components/dashboard/check-in-dialog";
 import { DriveOutConfirmDialog } from "@/components/dashboard/drive-out-confirm-dialog";
