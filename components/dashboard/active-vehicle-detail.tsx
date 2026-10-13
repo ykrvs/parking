@@ -261,7 +261,7 @@ export function ActiveVehicleDetail({
         </div>
       </div>
 
-      <div className="space-y-2">
+      {/* <div className="space-y-2">
         <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
           Latest Readings
         </h3>
@@ -365,7 +365,7 @@ export function ActiveVehicleDetail({
             {fireStatus.label}
           </p>
         </div>
-      </div>
+      </div> */}
 
       {/* Latest Turret ESC Section - temporarily disabled.
           Change `isTurretEscEnabled` to true to restore this section. */}

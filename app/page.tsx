@@ -3662,7 +3662,7 @@ if (isVerificationPending) {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                {/* <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-zinc-700">
                       Odometer (km)
@@ -3815,7 +3815,7 @@ if (isVerificationPending) {
                     onChange={(e) => setUpNotes(e.target.value)}
                     className="w-full min-h-[60px] rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-red-600"
                   />
-                </div>
+                </div> */}
 
                 <div className="flex gap-2 pt-2 border-t border-zinc-100 flex-shrink-0">
                   <Button
