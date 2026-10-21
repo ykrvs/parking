@@ -416,19 +416,19 @@ values (
               {
                 "id": "spare-store",
                 "type": "area",
-                "label": "SPARE\nSTORE",
+                "label": "",
                 "rowSpan": 4
               },
               {
                 "id": "innovation-room",
                 "type": "area",
-                "label": "INNOVATION\nROOM",
+                "label": "",
                 "rowSpan": 5
               },
               {
                 "id": "scrapyard",
                 "type": "area",
-                "label": "SCRAPYARD",
+                "label": "",
                 "rowSpan": 5
               }
             ]
@@ -445,7 +445,7 @@ values (
               {
                 "id": "stels-area",
                 "type": "area",
-                "label": "STELS",
+                "label": "",
                 "rowSpan": 3
               },
               {
@@ -989,13 +989,13 @@ values (
               {
                 "id": "gunnery-training",
                 "type": "area",
-                "label": "GUNNERY\nTRAINING",
+                "label": "",
                 "rowSpan": 4
               },
               {
                 "id": "peta-store",
                 "type": "area",
-                "label": "PETA\nSTORE",
+                "label": "",
                 "rowSpan": 5
               }
             ]
@@ -1244,13 +1244,13 @@ values (
               {
                 "id": "armskote",
                 "type": "area",
-                "label": "ARMSKOTE",
+                "label": "",
                 "rowSpan": 4
               },
               {
                 "id": "opstronic-store",
                 "type": "area",
-                "label": "OPSTRONIC\nSTORE",
+                "label": "",
                 "rowSpan": 5
               }
             ]

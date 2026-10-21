@@ -70,7 +70,7 @@
               {
                 "id": "stels-area",
                 "type": "area",
-                "label": "STELS",
+                "label": "",
                 "rowSpan": 3
               },
               {
